@@ -52,8 +52,21 @@ compromisso nem uma ordem — é um banco de ideias para escolher o que estudar 
 
 ## Segurança e integridade
 
-- **Rate limiting / proteção contra abuso** nos endpoints de voto (hoje qualquer cliente pode
-  disparar requisições sem limite).
+- ~~**Rate limiting / proteção contra abuso** nos endpoints de voto (hoje qualquer cliente pode
+  disparar requisições sem limite).~~ (concluído: limite em memória por IP,
+  `middleware/rate-limit.js`, aplicado em login/registro/confirmação/reset de senha e no voto
+  público — 120/hora nesse último, calibrado pra não travar uma sala de aula inteira votando pela
+  mesma rede. Se o backend algum dia rodar em múltiplas instâncias, precisa virar um store
+  compartilhado tipo Redis — hoje é só um `Map` em memória do processo.)
+- **Content-Security-Policy**: headers de baixo risco (`X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`) já estão em
+  `frontend/nginx.conf.template` e `backend/src/middleware/security-headers.js`. CSP ficou de
+  fora porque precisa mapear todo recurso externo carregado (Google Fonts da identidade visual,
+  Resend, etc.) e testar com cuidado — um CSP errado quebra a aplicação inteira silenciosamente.
+- **Checar tamanho da foto antes de decodificar**: `person.service.js` decodifica o base64 em
+  `Buffer` antes de comparar com `PHOTO_MAX_BYTES` — dá pra checar `base64.length` antes do
+  `Buffer.from` e economizar o decode em tentativas inválidas. Hoje não é uma vulnerabilidade de
+  verdade (o corpo da requisição já tem teto de 1MB em `utils/http.js`), só desperdício de CPU.
 - **Exportar a cadeia de auditoria**: um botão "baixar CSV/JSON" na tela de Auditoria, pra
   verificação por terceiros fora da aplicação.
 - **Ancoragem externa do hash**: publicar periodicamente o hash do último voto de uma sessão em

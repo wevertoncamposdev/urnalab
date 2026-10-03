@@ -5,11 +5,9 @@ import {
   Briefcase,
   ClipboardList,
   Flag,
-  History,
   IdCard,
   LayoutDashboard,
   ShieldCheck,
-  Users,
   Vote,
   Wand2,
 } from 'lucide-react';
@@ -17,9 +15,14 @@ import { Logo } from '@/components/branding/Logo';
 import { Wordmark } from '@/components/branding/Wordmark';
 import { cn } from '@/lib/utils';
 
-// Agrupado por momento do fluxo (não por ordem alfabética ou de criação):
-// visão geral primeiro, depois tudo que monta uma eleição, depois o que
-// acontece no dia da votação, e por fim o conteúdo de referência/estudo.
+// Agrupado por momento do fluxo (não por ordem alfabética ou de criação): visão geral
+// primeiro, depois o que precisa existir ANTES de uma sessão (cargos, partidos,
+// pessoas — nessa ordem de pré-requisito) terminando na própria sessão, depois o que
+// acontece no dia da votação, e por fim o conteúdo de referência/estudo. Candidatos não
+// tem item próprio aqui de propósito — já é acessível direto de dentro da sessão
+// (ver SessionDetails.jsx), não precisa duplicar no menu. "Linha do tempo" também saiu
+// do menu por ora (ideia em aberto pra ela, ver dev.md) — rota e página continuam
+// existindo, só não aparecem aqui.
 const NAV_GROUPS = [
   {
     label: null,
@@ -29,11 +32,10 @@ const NAV_GROUPS = [
     label: 'Montar a eleição',
     items: [
       { label: 'Assistente guiado', to: '/sessoes/assistente', icon: Wand2, accent: true },
-      { label: 'Eleições', to: '/sessoes', icon: ClipboardList },
       { label: 'Cargos', to: '/cargos', icon: Briefcase },
       { label: 'Partidos', to: '/partidos', icon: Flag },
       { label: 'Pessoas', to: '/pessoas', icon: IdCard },
-      { label: 'Candidatos', to: '/candidatos', icon: Users },
+      { label: 'Eleições', to: '/sessoes', icon: ClipboardList },
     ],
   },
   {
@@ -48,7 +50,6 @@ const NAV_GROUPS = [
     label: 'Conteúdo',
     items: [
       { label: 'Sistema eleitoral', to: '/sistema-eleitoral', icon: BookOpen },
-      { label: 'Linha do tempo', to: '/linha-do-tempo', icon: History },
     ],
   },
 ];
