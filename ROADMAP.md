@@ -38,6 +38,8 @@ andamento" acima como uma Etapa nova.
   eleições fora do modelo brasileiro (sindicato, grêmio, condomínio, etc.).
 - **Dois turnos**: regra de maioria absoluta para Presidente/Governador/Prefeito, com um segundo
   turno entre os dois mais votados quando ninguém passa de 50% dos votos válidos.
+- **Importação em massa de candidatos/partidos (CSV)**: hoje é tudo cadastro manual, um por um —
+  pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa funcionalidade será um recurso premium que precisa de assinatura mensal, ou cobrança por importação.
 
 ### Contas e multiusuário
 
@@ -47,6 +49,13 @@ andamento" acima como uma Etapa nova.
 - **Convite/compartilhamento de eleição**: permitir que mais de uma conta administre a mesma
   sessão (útil para simular uma comissão eleitoral). Depende de papéis de acesso pra fazer
   sentido: hoje uma sessão pertence a uma única conta.
+- **Convite de colaborador por e-mail**: reaproveitaria o Resend já integrado
+  (`email.service.js`, Etapa 8) pra mandar um link de convite pra outra conta entrar numa sessão
+  como colaboradora. Só faz sentido depois de papéis de acesso existir.
+- **Logo da instituição no perfil**: `InstitutionProfile` (Etapa 8.3) hoje só guarda texto —
+  acrescentar um upload de logo (reaproveitando `photo-storage.js`, já usado pra foto de
+  candidato) daria identidade visual própria pra cada eleição na cédula e nos resultados, além do
+  UrnaLab.
 
 ### Dados e infraestrutura
 
@@ -78,6 +87,14 @@ andamento" acima como uma Etapa nova.
   mesmo depois da senha trocar. Resolver isso exigiria algum estado no servidor (lista de tokens
   revogados, ou um campo `tokenVersion`/`passwordChangedAt` no `User` checado a cada requisição
   autenticada), o que é uma mudança de arquitetura, não só do fluxo de senha.
+- **Política de privacidade / LGPD**: o sistema já guarda nome, e-mail e dados da instituição de
+  pessoas reais (desde a Etapa 8). Conforme o uso cresce, vale ter uma página de privacidade
+  pública e um jeito self-service de excluir a própria conta e os dados associados — hoje isso só
+  dá pra fazer direto no banco.
+- **Log de atividade administrativa**: só o voto tem cadeia de hash auditável
+  (`utils/hash.js`). Quem criou, editou ou excluiu um cargo, partido, pessoa ou candidato não
+  fica registrado em lugar nenhum — útil pra investigar problema ou uso indevido de uma conta
+  colaborativa (ver convite de colaborador, acima).
 
 ### Qualidade e testes
 
@@ -96,6 +113,33 @@ andamento" acima como uma Etapa nova.
   navegação do navegador e timeout que volta pro cargo 1 se o eleitor ficar inativo.
 - **Linha do tempo**: a página existe (`/linha-do-tempo`, `Timeline.jsx`) mas saiu do menu por
   ora — ideia em aberto de pra onde evoluir ela, ainda sem formato definido.
+- **Contagem de votos em tempo real**: quem acompanha uma sessão aberta hoje precisa atualizar a
+  página pra ver o progresso. Um contador simples ("quantos votos já foram registrados", sem
+  revelar em quem) via polling já resolveria, sem precisar de WebSocket.
+- **PWA instalável**: o uso principal do link público é votar pelo celular — um manifest + ícone
+  deixaria instalável, com cara de app em vez de aba do navegador.
+- **Modo escuro**: o sistema de cores já é todo por token CSS (`styles/globals.css`,
+  `@theme inline`) — então dar um tema escuro seria "só" definir os mesmos tokens em
+  `prefers-color-scheme: dark`, sem tocar em nenhum componente.
+
+### Resultados e relatórios
+
+- **Gráfico visual na apuração**: `PositionResult.jsx` já mostra uma barra de progresso por
+  candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
+  relance, principalmente em apresentação pra turma.
+- **Exportar resultado em PDF/imagem**: pra divulgar o resultado de uma eleição fora da
+  aplicação (mural da escola, por exemplo) — hoje só dá pra tirar print da tela.
+
+### Notificações
+
+O balão no menu do usuário (`lib/notifications.js`, Etapa 8.4) hoje só tem uma notificação
+("complete o perfil da instituição"). Ideias de próximas:
+
+- **Sessão aberta sem voto há muito tempo**: lembrete pra quem esqueceu de divulgar o link depois
+  de abrir a votação.
+- **Resultado disponível**: avisar assim que uma sessão é finalizada e a apuração fica pronta.
+- **Convite pendente**: se a ideia de convite de colaborador (acima) sair do papel, o convite
+  pendente apareceria aqui.
 
 ### Operação
 
