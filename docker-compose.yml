@@ -39,7 +39,7 @@ services:
       DATA_PATH: /app/data
       # Obrigatórias pra subir (Etapa 8.1) — sem uma chave/domínio real do Resend, o
       # cadastro continua funcionando, só o e-mail de confirmação não chega (erro fica só
-      # no log do backend, ver DEPLOY.md).
+      # no log do backend, ver docs/DEPLOY.md).
       RESEND_API_KEY: ${RESEND_API_KEY:-troque-por-uma-chave-de-teste}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-no-reply@seudominio.com}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-UrnaLab}

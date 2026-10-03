@@ -24,7 +24,8 @@ Mais do que simular uma votação, o UrnaLab busca criar um ambiente para **apre
 Projeto para estudar Node.js puro, HTTP, APIs REST, arquitetura em camadas, persistência e React.
 **Não é uma urna eletrônica oficial** e não reproduz sistemas ou interfaces oficiais de votação.
 
-Lista de funcionalidades e histórico de versões: [CHANGELOG.md](CHANGELOG.md).
+Lista de funcionalidades e histórico de versões: [CHANGELOG.md](CHANGELOG.md). O que está sendo
+trabalhado agora e o banco de ideias futuras ficam em [ROADMAP.md](ROADMAP.md).
 
 ## Arquitetura
 
@@ -47,7 +48,7 @@ Variáveis do backend: `PORT`, `HOST`, `DATABASE_URL`, `DATA_PATH`, `FRONTEND_UR
 ## Deploy em produção
 
 Guia completo (Docker + Railway, variáveis de ambiente, volume persistente,
-checklist de segurança) em [DEPLOY.md](DEPLOY.md). Resumo: cada pasta (`backend/`,
+checklist de segurança) em [docs/DEPLOY.md](docs/DEPLOY.md). Resumo: cada pasta (`backend/`,
 `frontend/`) tem seu próprio `Dockerfile` e `railway.json`; teste localmente com
 `docker compose up --build` antes de subir.
 
@@ -114,7 +115,7 @@ link público de votação (`generatePublicToken`, `utils/id.js`), só que de us
 e-mail. `POST /api/auth/forgot-password` **sempre** responde `{ sent: true }`, exista ou não o
 e-mail e mesmo que o reenvio esteja em cooldown (60s) — a resposta nunca revela se uma conta
 existe. Depois de `POST /api/auth/reset-password`, o usuário não é logado automaticamente —
-precisa entrar de novo com a senha nova. Limitação conhecida (ver `dev.md`): como a autenticação é
+precisa entrar de novo com a senha nova. Limitação conhecida (ver `ROADMAP.md`): como a autenticação é
 stateless (JWT sem lista de revogação), um token emitido antes do reset continua válido até
 expirar.
 

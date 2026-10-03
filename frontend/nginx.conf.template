@@ -7,6 +7,14 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Headers de baixo risco, sem trade-off (Content-Security-Policy fica de fora —
+    # precisa mapear todo recurso externo, como os Google Fonts da identidade visual,
+    # antes de ativar; é uma etapa própria).
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
     # SPA: qualquer rota sem arquivo correspondente cai no index.html, deixando o
     # react-router decidir (evita 404 do nginx em /sessoes/123, por exemplo).
     location / {

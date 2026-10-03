@@ -7,7 +7,7 @@ import { PASSWORD_RESET_RULES } from '../rules/password-reset-rules.js';
 // mesmo princípio já usado pra Prisma (database/index.js) e fotos (storage/photo-storage.js).
 const resend = new Resend(config.resendApiKey);
 
-// Mesma paleta de frontend/src/styles/globals.css (ver identidade visual.md) — repetida
+// Mesma paleta de frontend/src/styles/globals.css (ver docs/identidade-visual.md) — repetida
 // aqui em hex puro porque e-mail não lê CSS custom properties. Tipografia usa stack
 // segura (Arial/Helvetica): webfont não é confiável em cliente de e-mail, a cor é que
 // carrega a identidade aqui.

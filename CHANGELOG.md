@@ -10,8 +10,29 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Added
+
+- **Rate limiting por IP** (`backend/src/middleware/rate-limit.js`, em memória — sem dependência
+  nova): login (10/15min), registro, reenvio de código e "esqueci minha senha" (5/hora),
+  confirmação de e-mail/reset/troca de senha (10/15min) e voto público (120/hora — número alto
+  de propósito, pra não travar uma sala de aula inteira votando pela mesma rede Wi-Fi). Estourar
+  o limite responde `429 RATE_LIMITED` com header `Retry-After`.
+- **Headers de segurança HTTP**: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+  em toda resposta da API (`backend/src/middleware/security-headers.js`) e também no frontend
+  (`frontend/nginx.conf.template`), que ganhou ainda `Strict-Transport-Security`.
+  `Content-Security-Policy` ficou de fora dessa leva — entra depois de mapear com cuidado todo
+  recurso externo carregado (Google Fonts, etc.), pra não quebrar a aplicação silenciosamente.
+
 ### Changed
 
+- **Raiz do projeto organizada**: `DEPLOY.md` e `identidade visual.md` foram pra `docs/`;
+  `PLANO.md` e `dev.md` (que na prática sempre tinham um vazio enquanto o outro crescia) viraram
+  as seções "Em andamento" e "Ideias futuras" de um `ROADMAP.md` só. Sem mudança de conteúdo, só
+  de organização — ver `.clauderules` pra a lista atualizada de onde encontrar cada coisa.
+- **Menu lateral reorganizado**: ordem agora segue o fluxo de pré-requisito — Cargos, Partidos e
+  Pessoas (precisam existir antes) até Eleições. Candidatos saiu do menu (continua acessível
+  direto da tela da sessão, como já era) e "Linha do tempo" saiu por ora do menu (rota e página
+  continuam existindo, ideia em aberto pra ela).
 - **Identidade visual UrnaLab** (`identidade visual.md`): wordmark oficial ("urna" em azul
   profundo + "lab" em verde, sempre minúsculo) substitui o texto "UrnaLab" solto no cabeçalho,
   no menu lateral, na landing e no login (`components/branding/Wordmark.jsx`). Tipografia da

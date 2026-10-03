@@ -1,6 +1,6 @@
 // Linha do tempo do projeto: o que cada etapa construiu e o que ela ensina.
 // Conteúdo estático, pensado pra quem usar este repo como material de estudo
-// (ver dev.md) — não precisa rodar o projeto pra entender a evolução dele.
+// (ver ROADMAP.md) — não precisa rodar o projeto pra entender a evolução dele.
 export const TIMELINE = [
   {
     phase: 'Etapa 1',

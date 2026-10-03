@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { TIMELINE } from '@/content/timeline';
 
 // Linha do tempo do projeto: o que cada etapa construiu e o que ela ensina.
-// Puramente informativo — ver dev.md pra ideias que ainda não viraram etapa.
+// Puramente informativo — ver ROADMAP.md pra ideias que ainda não viraram etapa.
 export default function Timeline() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">

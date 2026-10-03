@@ -4,6 +4,8 @@ import { createRouter } from './routes/index.js';
 import { applyCors } from './middleware/cors.js';
 import { handleError } from './middleware/error-handler.js';
 import { servePhoto } from './middleware/photo-static.js';
+import { checkRateLimit, getClientIp } from './middleware/rate-limit.js';
+import { applySecurityHeaders } from './middleware/security-headers.js';
 import { readJsonBody, sendError } from './utils/http.js';
 import { verifyJwt } from './utils/jwt.js';
 
@@ -11,6 +13,7 @@ const router = createRouter();
 
 async function handleRequest(req, res) {
   if (applyCors(req, res)) return;
+  applySecurityHeaders(res);
 
   try {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -23,6 +26,15 @@ async function handleRequest(req, res) {
 
     if (!match) {
       return sendError(res, 404, 'ROUTE_NOT_FOUND', 'Rota não encontrada.');
+    }
+
+    if (match.rateLimit) {
+      const key = `${req.method}:${url.pathname}:${getClientIp(req)}`;
+      const result = checkRateLimit(key, match.rateLimit);
+      if (!result.allowed) {
+        res.setHeader('Retry-After', String(result.retryAfterSeconds));
+        return sendError(res, 429, 'RATE_LIMITED', 'Muitas tentativas. Tente de novo em instantes.');
+      }
     }
 
     let userId = null;
