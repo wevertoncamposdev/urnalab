@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 // acontece no dia da votação, e por fim o conteúdo de referência/estudo. Candidatos não
 // tem item próprio aqui de propósito — já é acessível direto de dentro da sessão
 // (ver SessionDetails.jsx), não precisa duplicar no menu. "Linha do tempo" também saiu
-// do menu por ora (ideia em aberto pra ela, ver dev.md) — rota e página continuam
+// do menu por ora (ideia em aberto pra ela, ver ROADMAP.md) — rota e página continuam
 // existindo, só não aparecem aqui.
 const NAV_GROUPS = [
   {

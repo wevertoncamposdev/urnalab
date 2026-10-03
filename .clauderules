@@ -13,8 +13,12 @@ memória):
 
 - [README.md](README.md) — arquitetura, rotas da API, regras de negócio por etapa.
 - [CHANGELOG.md](CHANGELOG.md) — histórico real de versões (Keep a Changelog + SemVer, 0.x).
-- [DEPLOY.md](DEPLOY.md) — guia completo de deploy no Railway.
-- [dev.md](dev.md) — backlog de ideias futuras (não é compromisso, é banco de ideias).
+- [docs/DEPLOY.md](docs/DEPLOY.md) — guia completo de deploy no Railway.
+- [ROADMAP.md](ROADMAP.md) — seção "Em andamento" (o que está sendo trabalhado agora, era
+  `PLANO.md`) + seção "Ideias futuras" (banco de ideias sem compromisso, era `dev.md`) — os dois
+  arquivos antigos foram fundidos nesse, raiz mais limpa.
+- [docs/identidade-visual.md](docs/identidade-visual.md) — identidade visual da marca (cores,
+  tipografia, wordmark, tom de voz) — consultar antes de qualquer mudança visual nova.
 
 ## Arquitetura
 
@@ -56,7 +60,7 @@ mutex em processo (`sessionRepository.withLock` / `enqueueSessionTask`).
 
 ## Deploy no Railway — três serviços separados (backend / frontend / database)
 
-Decisão final, documentada em [DEPLOY.md](DEPLOY.md): **três serviços Railway distintos**, não um
+Decisão final, documentada em [docs/DEPLOY.md](docs/DEPLOY.md): **três serviços Railway distintos**, não um
 único container. Cada camada no seu próprio serviço, com seu próprio `Dockerfile` e
 `railway.json`:
 
@@ -103,7 +107,7 @@ de ambiente "chegando vazias" no Railway foram diagnosticadas com logs temporár
 (tamanho da string, nunca o valor) e com o echo de build acima — preferir esse padrão (log de
 comprimento, não de conteúdo) a expor segredo em log ao depurar algo parecido de novo.
 
-Checklist de segurança e todos os detalhes passo a passo: ler [DEPLOY.md](DEPLOY.md) antes de
+Checklist de segurança e todos os detalhes passo a passo: ler [docs/DEPLOY.md](docs/DEPLOY.md) antes de
 qualquer mudança em `Dockerfile`, `railway.json`, `docker-compose.yml`, `config.js` (validação de
 env) ou CORS — não reimplementar essas decisões do zero.
 
@@ -120,15 +124,15 @@ env) ou CORS — não reimplementar essas decisões do zero.
 
 ## Como desenvolver cada etapa
 
-Pra cada subitem do `PLANO.md` (8.1, 8.2, 8.3...), o padrão é executar do início ao fim até
+Pra cada subitem do `ROADMAP.md` (8.1, 8.2, 8.3...), o padrão é executar do início ao fim até
 funcionar — não parar no meio pra confirmar decisões de design que já são claras a partir do
-próprio `PLANO.md`, do código existente ou do padrão já estabelecido nas etapas anteriores:
+próprio `ROADMAP.md`, do código existente ou do padrão já estabelecido nas etapas anteriores:
 
 - **Não entrar em modo de planejamento (EnterPlanMode) nem usar AskUserQuestion por padrão** pra
   cada nova etapa — já temos escopo, convenções (ver 8.1/8.2 como referência de como uma etapa
-  fica pronta) e o `PLANO.md` descrevendo o que cada subitem precisa. Só parar e perguntar quando
+  fica pronta) e o `ROADMAP.md` descrevendo o que cada subitem precisa. Só parar e perguntar quando
   for algo que só o usuário pode decidir de verdade (ex.: uma credencial que falta, uma mudança de
-  comportamento visível que não está no `PLANO.md`) — não pra validar abordagem técnica que já
+  comportamento visível que não está no `ROADMAP.md`) — não pra validar abordagem técnica que já
   seguiria o padrão do resto do código.
 - **Focar só na funcionalidade pedida.** Se notar algo fora do escopo (drift, comentário solto,
   nome inconsistente), só mexer nisso se isso efetivamente travar a etapa atual (como a correção
