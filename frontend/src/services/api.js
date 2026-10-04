@@ -113,6 +113,12 @@ export const api = {
     save: (data) => request('/api/institution-profile', { method: 'PUT', body: data }),
   },
 
+  // Feedback autenticado grava o userId (ver backend/src/controllers/feedback.controller.js).
+  // A versão anônima da votação pública fica em `api.public.createFeedback`.
+  feedback: {
+    create: (data) => request('/api/feedback', { method: 'POST', body: data }),
+  },
+
   positions: {
     list: () => request('/api/positions'),
     create: (data) => request('/api/positions', { method: 'POST', body: data }),
@@ -165,11 +171,27 @@ export const api = {
     get: (sessionId) => request(`/api/sessions/${sessionId}/audit`),
   },
 
+  // Área de Gerenciamento: só a conta ADMIN_EMAIL (ver backend/src/config.js) recebe
+  // respostas de sucesso aqui — qualquer outra conta recebe 403 (ver admin.service.js).
+  admin: {
+    overview: () => request('/api/admin/overview'),
+    users: (params) => request(`/api/admin/users${toQuery(params)}`),
+    analytics: {
+      funnel: () => request('/api/admin/analytics/funnel'),
+    },
+    feedback: {
+      list: (params) => request(`/api/admin/feedback${toQuery(params)}`),
+      updateStatus: (id, status) => request(`/api/admin/feedback/${id}`, { method: 'PUT', body: { status } }),
+    },
+  },
+
   // Link público de votação: sem login, o token é a própria autorização.
   public: {
     getSession: (token) => request(`/api/public/sessions/${token}`),
     lookup: (token, params) => request(`/api/public/sessions/${token}/votes/lookup${toQuery(params)}`),
     createVote: (token, data) => request(`/api/public/sessions/${token}/votes`, { method: 'POST', body: data }),
     getResults: (token) => request(`/api/public/sessions/${token}/results`),
+    // Feedback sempre anônimo aqui (sem login) — ver backend/src/services/feedback.service.js.
+    createFeedback: (data) => request('/api/public/feedback', { method: 'POST', body: data }),
   },
 };

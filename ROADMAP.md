@@ -90,11 +90,15 @@ andamento" acima como uma Etapa nova.
 - **Política de privacidade / LGPD**: o sistema já guarda nome, e-mail e dados da instituição de
   pessoas reais (desde a Etapa 8). Conforme o uso cresce, vale ter uma página de privacidade
   pública e um jeito self-service de excluir a própria conta e os dados associados — hoje isso só
-  dá pra fazer direto no banco.
-- **Log de atividade administrativa**: só o voto tem cadeia de hash auditável
-  (`utils/hash.js`). Quem criou, editou ou excluiu um cargo, partido, pessoa ou candidato não
-  fica registrado em lugar nenhum — útil pra investigar problema ou uso indevido de uma conta
-  colaborativa (ver convite de colaborador, acima).
+  dá pra fazer direto no banco. Quando essa página existir, precisa citar a Área de Gerenciamento
+  (Etapa 9) e o analytics de uso (Etapa 10 — id anônimo de visitante em `localStorage`, nunca
+  ligado a nome/e-mail) como finalidades de tratamento: monitoramento agregado de uso do sistema
+  pelo administrador.
+- **Log de atividade administrativa**: só o voto (`utils/hash.js`) e o acesso à Área de
+  Gerenciamento (`AdminAccessLog`, Etapa 9) têm registro auditável hoje. Quem criou, editou ou
+  excluiu um cargo, partido, pessoa ou candidato não fica registrado em lugar nenhum — útil pra
+  investigar problema ou uso indevido de uma conta colaborativa (ver convite de colaborador,
+  acima).
 
 ### Qualidade e testes
 

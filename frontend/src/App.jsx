@@ -1,7 +1,13 @@
+import { useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { useAuth } from '@/hooks/useAuth';
+import { trackEvent } from '@/lib/analytics';
+import Admin from '@/pages/Admin';
+import AdminAnalytics from '@/pages/AdminAnalytics';
+import AdminFeedback from '@/pages/AdminFeedback';
 import Audit from '@/pages/Audit';
 import Candidates from '@/pages/Candidates';
 import ConfirmEmail from '@/pages/ConfirmEmail';
@@ -25,6 +31,24 @@ import SessionWizard from '@/pages/SessionWizard';
 import Timeline from '@/pages/Timeline';
 import Voting from '@/pages/Voting';
 
+// PAGE_VIEW a cada navegação (ver lib/analytics.js) — primeiro disparo leva o
+// document.referrer (origem de fora do app); os seguintes não, já que a navegação
+// interna não é "origem de visitante" nenhuma.
+function AnalyticsPageViewTracker() {
+  const location = useLocation();
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    trackEvent('PAGE_VIEW', {
+      path: `${location.pathname}${location.search}`,
+      referrer: firstRender.current ? document.referrer || null : null,
+    });
+    firstRender.current = false;
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 // Só deixa passar com sessão confirmada; sem ela, manda pro login (e lembra de
 // onde a pessoa estava, pra voltar depois de entrar).
 function RequireAuth({ children }) {
@@ -37,6 +61,15 @@ function RequireAuth({ children }) {
   if (status !== 'authenticated') {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
+  return children;
+}
+
+// Além de autenticado (RequireAuth já garante isso), a conta precisa ser a
+// ADMIN_EMAIL configurada no backend (ver /api/auth/me, campo isAdmin) — qualquer
+// outra conta nem vê essa rota existir, ela só volta pro painel normal.
+function RequireAdmin({ children }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return <Navigate to="/painel" replace />;
   return children;
 }
 
@@ -68,8 +101,13 @@ export default function App() {
           <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
           <Route path="linha-do-tempo" element={<Timeline />} />
+          <Route path="admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
+          <Route path="admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
+          <Route path="admin/feedback" element={<RequireAdmin><AdminFeedback /></RequireAdmin>} />
         </Route>
       </Routes>
+      <AnalyticsPageViewTracker />
+      <FeedbackButton />
       <Toaster />
     </>
   );

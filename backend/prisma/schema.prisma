@@ -29,6 +29,8 @@ model User {
   emailVerificationCode EmailVerificationCode?
   passwordResetToken    PasswordResetToken?
   institutionProfile    InstitutionProfile?
+  adminAccessLogs       AdminAccessLog[]
+  feedbacks             Feedback[]
 
   @@map("users")
 }
@@ -196,4 +198,52 @@ model Vote {
   @@index([sessionId])
   @@index([candidateId])
   @@map("votes")
+}
+
+// Registra todo acesso à Área de Gerenciamento (ver admin.service.js) — accountability
+// LGPD: mesmo com um único administrador hoje, fica registrado quando os dados de
+// usuários/instituições de terceiros foram consultados.
+model AdminAccessLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  admin       User     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  action      String
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId])
+  @@map("admin_access_logs")
+}
+
+// Evento de uso anônimo (Etapa 10) — nunca ligado a userId/e-mail, de propósito: o
+// funil é montado só pelo visitorId (UUID aleatório gerado no navegador, ver
+// frontend/src/lib/analytics.js), nunca por identidade.
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  visitorId String
+  name      String
+  path      String?
+  referrer  String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([name])
+  @@index([visitorId])
+  @@map("analytics_events")
+}
+
+// Feedback contextual (Etapa 10). userId é opcional: fica preenchido quando enviado
+// de dentro da área autenticada, e nulo quando vem da votação pública (sempre anônima).
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type      String
+  rating    Int?
+  message   String?
+  page      String?
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@map("feedbacks")
 }

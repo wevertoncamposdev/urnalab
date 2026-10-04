@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PostVoteFeedback } from '@/components/feedback/PostVoteFeedback';
 import { BallotCard } from '@/components/voting/BallotCard';
 import { CandidatePreviewPanel } from '@/components/voting/CandidatePreviewPanel';
 import { VoteKeypad } from '@/components/voting/VoteKeypad';
@@ -40,6 +41,7 @@ export default function Voting() {
     submitVote: ({ position, type, number }) =>
       api.votes.create({ sessionId: session.id, position, type, number, confirmed: true }),
     onBallotComplete: () => sessionsState.reload(),
+    sessionId: session?.id,
   });
   const { rule, digits, blank, lookup, submitting, votesCast, closed, ballotDone, ready, index } = ballot;
 
@@ -140,6 +142,7 @@ export default function Voting() {
             </p>
           </div>
           <Button onClick={ballot.resetBallot}>Próximo eleitor</Button>
+          <PostVoteFeedback />
         </Card>
       ) : (
         <>

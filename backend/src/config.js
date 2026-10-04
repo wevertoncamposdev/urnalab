@@ -57,4 +57,7 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY,
   emailFromAddress: process.env.EMAIL_FROM_ADDRESS,
   emailFromName: process.env.EMAIL_FROM_NAME,
+  // E-mail da única conta com acesso à Área de Gerenciamento (ver admin.service.js).
+  // Sem essa variável, nenhuma conta acessa — não existe um admin "padrão".
+  adminEmail: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : null,
 };

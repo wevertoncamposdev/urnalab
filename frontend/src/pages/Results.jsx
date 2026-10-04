@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PositionResult } from '@/components/results/PositionResult';
 import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
 import { useAsync } from '@/hooks/useAsync';
+import { trackEvent } from '@/lib/analytics';
 import { api } from '@/services/api';
 
 // Apuração por sessão: só sessões finalizadas entram na lista, como numa eleição real.
@@ -29,6 +30,10 @@ export default function Results() {
     () => (session ? api.results.get(session.id) : Promise.resolve(null)),
     [session?.id],
   );
+
+  useEffect(() => {
+    if (session) trackEvent('RESULTS_VIEWED', { sessionId: session.id });
+  }, [session?.id]);
 
   if (sessionsState.error) {
     return (

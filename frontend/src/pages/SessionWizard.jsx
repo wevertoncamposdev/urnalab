@@ -22,6 +22,7 @@ import { PersonFormDialog } from '@/components/people/PersonFormDialog';
 import { PositionFormDialog } from '@/components/positions/PositionFormDialog';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
+import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
@@ -113,7 +114,9 @@ export default function SessionWizard() {
     setSessionError(null);
     const payload = { name, year: year === '' ? null : Number(year), positions: selectedPositions };
     try {
+      const isNew = !session;
       const saved = session ? await api.sessions.update(session.id, payload) : await api.sessions.create(payload);
+      if (isNew) trackEvent('SESSION_CREATED', { sessionId: saved.id });
       setSession(saved);
       select(saved);
       goTo(1);

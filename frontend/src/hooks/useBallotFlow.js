@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics';
 import { playBallotConfirmedSound } from '@/lib/sound';
 
 // Lógica de uma cédula de votação: um cargo por vez, na ordem recebida, teclado
 // físico incluso, até fechar. Compartilhada entre a votação autenticada
 // (Voting.jsx) e o link público (PublicVoting.jsx) — só muda quem faz a
-// consulta do candidato e a gravação do voto (`lookupVote`/`submitVote`).
-export function useBallotFlow({ positions, enabled, lookupVote, submitVote, onBallotComplete }) {
+// consulta do candidato e a gravação do voto (`lookupVote`/`submitVote`). `sessionId`
+// é opcional e só alimenta o funil de analytics (ver ROADMAP.md "Validação e Feedback").
+export function useBallotFlow({ positions, enabled, lookupVote, submitVote, onBallotComplete, sessionId }) {
   const [index, setIndex] = useState(0);
   const [digits, setDigits] = useState('');
   const [blank, setBlank] = useState(false);
@@ -14,6 +16,15 @@ export function useBallotFlow({ positions, enabled, lookupVote, submitVote, onBa
   const [submitting, setSubmitting] = useState(false);
   const [votesCast, setVotesCast] = useState(0);
   const [closed, setClosed] = useState(false);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (enabled && !startedRef.current) {
+      startedRef.current = true;
+      trackEvent('VOTING_STARTED', { sessionId });
+    }
+    if (!enabled) startedRef.current = false;
+  }, [enabled, sessionId]);
 
   const rule = positions[index];
   const ballotDone = Boolean(enabled) && index >= positions.length;
@@ -75,6 +86,7 @@ export function useBallotFlow({ positions, enabled, lookupVote, submitVote, onBa
       if (next >= positions.length) {
         setVotesCast((count) => count + 1);
         playBallotConfirmedSound();
+        trackEvent('VOTING_COMPLETED', { sessionId });
         onBallotComplete?.();
       }
     } catch (err) {

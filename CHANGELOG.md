@@ -12,6 +12,31 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Validação e Feedback (Etapa 10)**: analytics de uso e feedback contextual, estendendo a
+  Área de Gerenciamento (Etapa 9). *Analytics* (`POST /api/analytics/events`, público, sem
+  nenhum dado pessoal): cada navegação grava um evento (`PAGE_VIEW`, `SESSION_CREATED`,
+  `CANDIDATE_REGISTERED`, `VOTING_STARTED`, `VOTING_COMPLETED`, `RESULTS_VIEWED`) identificado só
+  por um `visitorId` anônimo (UUID em `localStorage`, nunca ligado a nome/e-mail/conta) —
+  `GET /api/admin/analytics/funnel` (nova tela `/admin/analytics`) mostra quantos visitantes
+  únicos passam por cada etapa, páginas mais acessadas e origem dos visitantes. *Feedback*: botão
+  flutuante "Enviar feedback" em toda a aplicação (`POST /api/feedback` autenticado,
+  `POST /api/public/feedback` anônimo na votação pública) com tipo (Sugestão/Problema/Dúvida/
+  Outro) e mensagem, mais uma pergunta opcional de 1-5 estrelas ao concluir uma votação. Fica
+  vinculado ao `userId` quando enviado de dentro da área autenticada; sempre anônimo na votação
+  pública. Nova tela `/admin/feedback` lista e filtra por tipo/status, com mudança de status
+  (Novo/Em análise/Resolvido/Ignorado) — única escrita cross-tenant nova da Área de Gerenciamento
+  até agora (era só leitura), registrada em `AdminAccessLog` como as demais.
+- **Área de Gerenciamento (Etapa 9)**: painel administrativo (`/admin`, `GET /api/admin/overview`
+  e `GET /api/admin/users`) visível só para a conta cujo e-mail bate com a variável nova
+  `ADMIN_EMAIL` (ver `backend/.env.example`) — sem campo de role no banco, de propósito, já que
+  hoje é uma única conta. Mostra métricas agregadas (usuários, instituições com perfil, sessões e
+  votos, novos cadastros nos últimos 7/30 dias) e uma listagem paginada de usuários com **e-mail
+  parcialmente mascarado** (ex.: `wev***@gmail.com`) — minimização de dados pensando na LGPD, já
+  que é informação de terceiros. Somente leitura nesta primeira versão: nenhuma ação sobre contas
+  de outras pessoas. Todo acesso a essas rotas grava um registro em `AdminAccessLog` (migração
+  `add_admin_access_log`) — accountability, e semente do item futuro "log de atividade
+  administrativa" do `ROADMAP.md`. `GET /api/auth/me` (e login) passam a devolver também
+  `isAdmin`, usado pelo frontend para mostrar ou não o item "Área de Gerenciamento" no menu.
 - **Rate limiting por IP** (`backend/src/middleware/rate-limit.js`, em memória — sem dependência
   nova): login (10/15min), registro, reenvio de código e "esqueci minha senha" (5/hora),
   confirmação de e-mail/reset/troca de senha (10/15min) e voto público (120/hora — número alto
