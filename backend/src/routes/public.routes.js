@@ -1,8 +1,10 @@
+import { feedbackController } from '../controllers/feedback.controller.js';
 import { publicController } from '../controllers/public.controller.js';
 
 const ONE_HOUR = 60 * 60 * 1000;
 
-// Único grupo de rotas sem login: o token do link já é a autorização.
+// Único grupo de rotas sem login: o token do link já é a autorização (exceto o
+// feedback público, que não depende de nenhuma sessão específica).
 export function registerPublicRoutes(router) {
   router.get('/api/public/sessions/:token', publicController.getSession, { public: true });
   router.get('/api/public/sessions/:token/votes/lookup', publicController.lookup, { public: true });
@@ -14,4 +16,9 @@ export function registerPublicRoutes(router) {
     rateLimit: { windowMs: ONE_HOUR, max: 120 },
   });
   router.get('/api/public/sessions/:token/results', publicController.getResults, { public: true });
+  // Sempre anônimo (sem userId) — ver feedback.service.js e a decisão de autoria da Etapa 10.
+  router.post('/api/public/feedback', feedbackController.createPublic, {
+    public: true,
+    rateLimit: { windowMs: ONE_HOUR, max: 10 },
+  });
 }

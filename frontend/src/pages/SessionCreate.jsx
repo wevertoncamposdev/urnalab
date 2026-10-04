@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SessionForm } from '@/components/sessions/SessionForm';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
+import { trackEvent } from '@/lib/analytics';
 import { api } from '@/services/api';
 
 // Serve para criar (/sessoes/nova) e editar (/sessoes/:id/editar) uma sessão em rascunho.
@@ -35,6 +36,7 @@ export default function SessionCreate() {
     setSubmitError(null);
     try {
       const saved = editing ? await api.sessions.update(id, values) : await api.sessions.create(values);
+      if (!editing) trackEvent('SESSION_CREATED', { sessionId: saved.id });
       select(saved);
       toast.success(editing ? 'Alterações salvas.' : 'Sessão criada.');
       navigate(`/sessoes/${saved.id}`);

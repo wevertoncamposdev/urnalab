@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { CheckCircle2, Hourglass, Vote } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PostVoteFeedback } from '@/components/feedback/PostVoteFeedback';
 import { BallotCard } from '@/components/voting/BallotCard';
 import { CandidatePreviewPanel } from '@/components/voting/CandidatePreviewPanel';
 import { VoteKeypad } from '@/components/voting/VoteKeypad';
@@ -13,6 +15,7 @@ import { PositionResult } from '@/components/results/PositionResult';
 import { Logo } from '@/components/branding/Logo';
 import { useAsync } from '@/hooks/useAsync';
 import { useBallotFlow } from '@/hooks/useBallotFlow';
+import { trackEvent } from '@/lib/analytics';
 import { api } from '@/services/api';
 
 // Votação pelo link público: sem login, sem sidebar — só a cédula. Reaproveita
@@ -30,6 +33,7 @@ export default function PublicVoting() {
     lookupVote: (position, number) => api.public.lookup(token, { position, number }),
     submitVote: ({ position, type, number }) => api.public.createVote(token, { position, type, number, confirmed: true }),
     onBallotComplete: () => sessionState.reload(),
+    sessionId: info?.id ?? token,
   });
   const { rule, digits, blank, lookup, submitting, votesCast, closed, ballotDone, ready, index } = ballot;
 
@@ -38,6 +42,10 @@ export default function PublicVoting() {
     () => (showResults ? api.public.getResults(token) : Promise.resolve(null)),
     [token, showResults],
   );
+
+  useEffect(() => {
+    if (showResults) trackEvent('RESULTS_VIEWED', { sessionId: info?.id ?? token });
+  }, [showResults, info?.id, token]);
 
   if (sessionState.error?.status === 404) {
     return (
@@ -116,6 +124,7 @@ export default function PublicVoting() {
             </p>
           </div>
           <Button onClick={ballot.resetBallot}>Próximo eleitor</Button>
+          <PostVoteFeedback />
         </Card>
       ) : (
         <div className="flex flex-col gap-2 md:gap-4">

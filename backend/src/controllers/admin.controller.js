@@ -9,4 +9,16 @@ export const adminController = {
   async listUsers({ res, userId, query }) {
     sendSuccess(res, await adminService.listUsers(userId, query));
   },
+
+  async funnel({ res, userId }) {
+    sendSuccess(res, await adminService.getFunnel(userId));
+  },
+
+  async listFeedback({ res, userId, query }) {
+    sendSuccess(res, await adminService.listFeedback(userId, query));
+  },
+
+  async updateFeedbackStatus({ res, userId, params, body }) {
+    sendSuccess(res, await adminService.updateFeedbackStatus(userId, params.id, body?.status));
+  },
 };

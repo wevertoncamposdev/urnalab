@@ -7,6 +7,8 @@ import {
   Flag,
   IdCard,
   LayoutDashboard,
+  LineChart,
+  MessageSquare,
   ShieldAlert,
   ShieldCheck,
   Vote,
@@ -60,7 +62,11 @@ const NAV_GROUPS = [
 // sabe que essa rota existe (ver App.jsx, RequireAdmin, e user.isAdmin em useAuth).
 const ADMIN_GROUP = {
   label: 'Administração',
-  items: [{ label: 'Área de Gerenciamento', to: '/admin', icon: ShieldAlert }],
+  items: [
+    { label: 'Área de Gerenciamento', to: '/admin', icon: ShieldAlert },
+    { label: 'Analytics', to: '/admin/analytics', icon: LineChart },
+    { label: 'Feedback', to: '/admin/feedback', icon: MessageSquare },
+  ],
 };
 
 function useNavGroups() {
@@ -72,7 +78,7 @@ function NavItem({ label, to, icon: Icon, accent }) {
   return (
     <NavLink
       to={to}
-      end={to === '/painel'}
+      end={to === '/painel' || to === '/admin'}
       className={({ isActive }) =>
         cn(
           'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -150,7 +156,7 @@ export function MobileNav() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/painel'}
+              end={to === '/painel' || to === '/admin'}
               className={({ isActive }) =>
                 cn(
                   'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm',

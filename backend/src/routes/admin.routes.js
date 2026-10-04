@@ -5,4 +5,9 @@ import { adminController } from '../controllers/admin.controller.js';
 export function registerAdminRoutes(router) {
   router.get('/api/admin/overview', adminController.overview);
   router.get('/api/admin/users', adminController.listUsers);
+  router.get('/api/admin/analytics/funnel', adminController.funnel);
+  router.get('/api/admin/feedback', adminController.listFeedback);
+  // PUT (não PATCH): o roteador do projeto não implementa PATCH, e o resto do backend já
+  // usa PUT pra update parcial (ver institution-profile.routes.js, candidate.routes.js).
+  router.put('/api/admin/feedback/:id', adminController.updateFeedbackStatus);
 }

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { trackEvent } from '@/lib/analytics';
 import { fieldOfError } from '@/lib/form-errors';
 import { api } from '@/services/api';
 import { CandidateAvatar } from './CandidateAvatar';
@@ -73,8 +74,12 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
     setError(null);
     const payload = { sessionId, partyId, position, number, personId, ...(editing && { status }) };
     try {
-      if (editing) await api.candidates.update(candidate.id, payload);
-      else await api.candidates.create(payload);
+      if (editing) {
+        await api.candidates.update(candidate.id, payload);
+      } else {
+        await api.candidates.create(payload);
+        trackEvent('CANDIDATE_REGISTERED', { sessionId });
+      }
       toast.success(editing ? 'Alterações salvas.' : 'Candidatura registrada.');
       onSaved();
     } catch (err) {
