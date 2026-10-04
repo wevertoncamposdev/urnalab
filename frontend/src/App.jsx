@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
+import Admin from '@/pages/Admin';
 import Audit from '@/pages/Audit';
 import Candidates from '@/pages/Candidates';
 import ConfirmEmail from '@/pages/ConfirmEmail';
@@ -40,6 +41,15 @@ function RequireAuth({ children }) {
   return children;
 }
 
+// Além de autenticado (RequireAuth já garante isso), a conta precisa ser a
+// ADMIN_EMAIL configurada no backend (ver /api/auth/me, campo isAdmin) — qualquer
+// outra conta nem vê essa rota existir, ela só volta pro painel normal.
+function RequireAdmin({ children }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return <Navigate to="/painel" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <>
@@ -68,6 +78,7 @@ export default function App() {
           <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
           <Route path="linha-do-tempo" element={<Timeline />} />
+          <Route path="admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
         </Route>
       </Routes>
       <Toaster />

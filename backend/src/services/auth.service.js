@@ -75,6 +75,10 @@ async function sanitize(user) {
     email: user.email,
     emailVerified: Boolean(user.emailVerifiedAt),
     institutionProfileComplete: Boolean(await institutionProfileRepository.findByUserId(user.id)),
+    // Única fonte de verdade de quem tem acesso à Área de Gerenciamento (ver
+    // admin.service.js, que recalcula isso de novo — este flag só evita o frontend
+    // ter que chamar /api/admin/* só para decidir se mostra o item de menu).
+    isAdmin: Boolean(config.adminEmail) && user.email.toLowerCase() === config.adminEmail,
     createdAt: user.createdAt,
   };
 }

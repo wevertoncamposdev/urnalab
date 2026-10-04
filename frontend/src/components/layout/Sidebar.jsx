@@ -7,12 +7,14 @@ import {
   Flag,
   IdCard,
   LayoutDashboard,
+  ShieldAlert,
   ShieldCheck,
   Vote,
   Wand2,
 } from 'lucide-react';
 import { Logo } from '@/components/branding/Logo';
 import { Wordmark } from '@/components/branding/Wordmark';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 // Agrupado por momento do fluxo (não por ordem alfabética ou de criação): visão geral
@@ -54,6 +56,18 @@ const NAV_GROUPS = [
   },
 ];
 
+// Só aparece pra ADMIN_EMAIL (ver backend/src/config.js) — qualquer outra conta nem
+// sabe que essa rota existe (ver App.jsx, RequireAdmin, e user.isAdmin em useAuth).
+const ADMIN_GROUP = {
+  label: 'Administração',
+  items: [{ label: 'Área de Gerenciamento', to: '/admin', icon: ShieldAlert }],
+};
+
+function useNavGroups() {
+  const { user } = useAuth();
+  return user?.isAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
+}
+
 function NavItem({ label, to, icon: Icon, accent }) {
   return (
     <NavLink
@@ -88,6 +102,7 @@ function NavItem({ label, to, icon: Icon, accent }) {
 }
 
 export function Sidebar({ collapsed }) {
+  const navGroups = useNavGroups();
   if (collapsed) return null;
 
   return (
@@ -101,7 +116,7 @@ export function Sidebar({ collapsed }) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pb-4" aria-label="Principal">
-        {NAV_GROUPS.map((group, index) => (
+        {navGroups.map((group, index) => (
           <div key={group.label ?? `group-${index}`} className="flex flex-col gap-1">
             {group.label && (
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
@@ -125,9 +140,10 @@ export function Sidebar({ collapsed }) {
 // Navegação compacta para telas pequenas (a sidebar fica oculta abaixo de md):
 // mesma ordem dos grupos, com um separador sutil entre eles.
 export function MobileNav() {
+  const navGroups = useNavGroups();
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-b bg-card px-3 py-2 md:hidden" aria-label="Principal">
-      {NAV_GROUPS.map((group, groupIndex) => (
+      {navGroups.map((group, groupIndex) => (
         <div key={group.label ?? `mgroup-${groupIndex}`} className="flex items-center gap-1">
           {groupIndex > 0 && <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />}
           {group.items.map(({ label, to, icon: Icon, accent }) => (

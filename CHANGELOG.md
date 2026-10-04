@@ -12,6 +12,17 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Área de Gerenciamento (Etapa 9)**: painel administrativo (`/admin`, `GET /api/admin/overview`
+  e `GET /api/admin/users`) visível só para a conta cujo e-mail bate com a variável nova
+  `ADMIN_EMAIL` (ver `backend/.env.example`) — sem campo de role no banco, de propósito, já que
+  hoje é uma única conta. Mostra métricas agregadas (usuários, instituições com perfil, sessões e
+  votos, novos cadastros nos últimos 7/30 dias) e uma listagem paginada de usuários com **e-mail
+  parcialmente mascarado** (ex.: `wev***@gmail.com`) — minimização de dados pensando na LGPD, já
+  que é informação de terceiros. Somente leitura nesta primeira versão: nenhuma ação sobre contas
+  de outras pessoas. Todo acesso a essas rotas grava um registro em `AdminAccessLog` (migração
+  `add_admin_access_log`) — accountability, e semente do item futuro "log de atividade
+  administrativa" do `ROADMAP.md`. `GET /api/auth/me` (e login) passam a devolver também
+  `isAdmin`, usado pelo frontend para mostrar ou não o item "Área de Gerenciamento" no menu.
 - **Rate limiting por IP** (`backend/src/middleware/rate-limit.js`, em memória — sem dependência
   nova): login (10/15min), registro, reenvio de código e "esqueci minha senha" (5/hora),
   confirmação de e-mail/reset/troca de senha (10/15min) e voto público (120/hora — número alto

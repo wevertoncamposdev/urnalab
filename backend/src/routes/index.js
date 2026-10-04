@@ -1,4 +1,5 @@
 import { Router } from '../utils/router.js';
+import { registerAdminRoutes } from './admin.routes.js';
 import { registerAuditRoutes } from './audit.routes.js';
 import { registerAuthRoutes } from './auth.routes.js';
 import { registerCandidateRoutes } from './candidate.routes.js';
@@ -26,5 +27,6 @@ export function createRouter() {
   registerResultRoutes(router);
   registerAuditRoutes(router);
   registerPublicRoutes(router);
+  registerAdminRoutes(router);
   return router;
 }

@@ -165,6 +165,13 @@ export const api = {
     get: (sessionId) => request(`/api/sessions/${sessionId}/audit`),
   },
 
+  // Área de Gerenciamento: só a conta ADMIN_EMAIL (ver backend/src/config.js) recebe
+  // respostas de sucesso aqui — qualquer outra conta recebe 403 (ver admin.service.js).
+  admin: {
+    overview: () => request('/api/admin/overview'),
+    users: (params) => request(`/api/admin/users${toQuery(params)}`),
+  },
+
   // Link público de votação: sem login, o token é a própria autorização.
   public: {
     getSession: (token) => request(`/api/public/sessions/${token}`),

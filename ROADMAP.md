@@ -90,11 +90,14 @@ andamento" acima como uma Etapa nova.
 - **Política de privacidade / LGPD**: o sistema já guarda nome, e-mail e dados da instituição de
   pessoas reais (desde a Etapa 8). Conforme o uso cresce, vale ter uma página de privacidade
   pública e um jeito self-service de excluir a própria conta e os dados associados — hoje isso só
-  dá pra fazer direto no banco.
-- **Log de atividade administrativa**: só o voto tem cadeia de hash auditável
-  (`utils/hash.js`). Quem criou, editou ou excluiu um cargo, partido, pessoa ou candidato não
-  fica registrado em lugar nenhum — útil pra investigar problema ou uso indevido de uma conta
-  colaborativa (ver convite de colaborador, acima).
+  dá pra fazer direto no banco. Quando essa página existir, precisa citar a Área de Gerenciamento
+  (Etapa 9) como finalidade de tratamento: monitoramento agregado de uso do sistema pelo
+  administrador.
+- **Log de atividade administrativa**: só o voto (`utils/hash.js`) e o acesso à Área de
+  Gerenciamento (`AdminAccessLog`, Etapa 9) têm registro auditável hoje. Quem criou, editou ou
+  excluiu um cargo, partido, pessoa ou candidato não fica registrado em lugar nenhum — útil pra
+  investigar problema ou uso indevido de uma conta colaborativa (ver convite de colaborador,
+  acima).
 
 ### Qualidade e testes
 
@@ -147,3 +150,86 @@ O balão no menu do usuário (`lib/notifications.js`, Etapa 8.4) hoje só tem um
   soltos — ajuda a depurar problemas depois que o projeto sair do ambiente de estudo.
 - **Métricas básicas**: contagem de votos por minuto, tempo de resposta da API — dá pra expor um
   painel simples de operação da eleição.
+
+### Validação e Feedback
+
+Implementar ferramentas para acompanhar o uso real do UrnaLab e coletar opiniões dos usuários durante a fase inicial de validação.
+
+1. Analytics de uso
+
+Implementar uma ferramenta de analytics para acompanhar o comportamento dos usuários na aplicação.
+
+Monitorar principalmente:
+
+* acessos;
+* origem dos visitantes;
+* páginas mais acessadas;
+* criação de sessões;
+* cadastro de candidatos;
+* início da votação;
+* conclusão da votação;
+* acesso aos resultados;
+* pontos de abandono.
+
+Criar um funil básico:
+
+Visita → Criação de sessão → Cadastro → Votação → Resultado
+
+O objetivo é identificar onde os usuários encontram dificuldades ou abandonam a experiência.
+
+2. Feedback contextual
+
+Adicionar um botão **"Enviar feedback"** disponível na aplicação.
+
+Permitir que o usuário classifique o feedback como:
+
+* Sugestão;
+* Problema/Erro;
+* Dúvida;
+* Outro.
+
+Após momentos importantes da experiência, como concluir uma votação, apresentar opcionalmente uma pergunta curta:
+
+> **Como foi sua experiência com o UrnaLab?**
+>
+> ★ ★ ★ ★ ★
+
+Permitir comentário adicional.
+
+O feedback deve registrar o contexto da utilização, quando possível, como:
+
+* página atual;
+* tipo de ação realizada;
+* data/hora;
+* avaliação;
+* comentário.
+
+3. Painel simples de feedback
+
+Criar uma área administrativa `/admin/feedback` para visualizar os feedbacks recebidos.
+
+Exibir:
+
+* tipo;
+* avaliação;
+* mensagem;
+* data;
+* contexto;
+* status.
+
+Status:
+
+* Novo;
+* Em análise;
+* Resolvido;
+* Ignorado.
+
+Permitir filtrar por tipo e status.
+
+Objetivo
+
+Criar um ciclo contínuo de aprendizado:
+
+**Usuário utiliza → sistema registra comportamento → usuário envia feedback → administrador analisa → produto é melhorado.**
+
+Nesta fase, priorizar **coleta e aprendizado**, evitando construir um sistema administrativo complexo.

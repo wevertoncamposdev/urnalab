@@ -29,6 +29,7 @@ model User {
   emailVerificationCode EmailVerificationCode?
   passwordResetToken    PasswordResetToken?
   institutionProfile    InstitutionProfile?
+  adminAccessLogs       AdminAccessLog[]
 
   @@map("users")
 }
@@ -196,4 +197,18 @@ model Vote {
   @@index([sessionId])
   @@index([candidateId])
   @@map("votes")
+}
+
+// Registra todo acesso à Área de Gerenciamento (ver admin.service.js) — accountability
+// LGPD: mesmo com um único administrador hoje, fica registrado quando os dados de
+// usuários/instituições de terceiros foram consultados.
+model AdminAccessLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  admin       User     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  action      String
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId])
+  @@map("admin_access_logs")
 }
