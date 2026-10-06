@@ -1,10 +1,10 @@
-import { Pencil, Power, PowerOff } from 'lucide-react';
+import { FileText, Pencil, Power, PowerOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RowActions } from '@/components/layout/RowActions';
 import { ActiveBadge } from '@/components/layout/StatusBadge';
 import { CandidateAvatar } from './CandidateAvatar';
 
-export function CandidatesTable({ candidates, positionLabels, sessionsById, onEdit, onDeactivate, onReactivate }) {
+export function CandidatesTable({ candidates, positionLabels, sessionsById, onEdit, onDeactivate, onReactivate, onViewProposal }) {
   return (
     <Table>
       <TableHeader>
@@ -42,6 +42,7 @@ export function CandidatesTable({ candidates, positionLabels, sessionsById, onEd
                 <RowActions
                   label={candidate.name}
                   items={[
+                    { label: 'Ver proposta', icon: FileText, onSelect: () => onViewProposal(candidate) },
                     { label: 'Editar', icon: Pencil, onSelect: () => onEdit(candidate), disabled: locked },
                     candidate.status === 'ACTIVE'
                       ? { label: 'Desativar', icon: PowerOff, onSelect: () => onDeactivate(candidate), disabled: locked }

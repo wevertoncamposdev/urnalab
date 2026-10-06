@@ -4,10 +4,10 @@ import { trackEvent } from '@/lib/analytics';
 import { playBallotConfirmedSound } from '@/lib/sound';
 
 // Lógica de uma cédula de votação: um cargo por vez, na ordem recebida, teclado
-// físico incluso, até fechar. Compartilhada entre a votação autenticada
-// (Voting.jsx) e o link público (PublicVoting.jsx) — só muda quem faz a
-// consulta do candidato e a gravação do voto (`lookupVote`/`submitVote`). `sessionId`
-// é opcional e só alimenta o funil de analytics (ver ROADMAP.md "Validação e Feedback").
+// físico incluso, até fechar. Usada pelo link público de votação (PublicVoting.jsx) —
+// só quem faz a consulta do candidato e a gravação do voto (`lookupVote`/`submitVote`)
+// vem de fora. `sessionId` é opcional e só alimenta o funil de analytics (ver
+// ROADMAP.md "Validação e Feedback").
 export function useBallotFlow({ positions, enabled, lookupVote, submitVote, onBallotComplete, sessionId }) {
   const [index, setIndex] = useState(0);
   const [digits, setDigits] = useState('');

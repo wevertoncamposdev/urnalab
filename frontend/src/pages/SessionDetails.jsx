@@ -164,7 +164,7 @@ export default function SessionDetails() {
       {session.status === 'OPEN' && (
         <>
           <Button asChild>
-            <Link to={`/votacao?sessionId=${session.id}`}><Vote /> Votar</Link>
+            <a href={`/votar/${session.publicToken}`} target="_blank" rel="noreferrer"><Vote /> Votar</a>
           </Button>
           <ConfirmAction
             trigger={<Button variant="outline" disabled={working}><Square /> Finalizar eleição</Button>}

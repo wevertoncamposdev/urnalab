@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CandidateFormDialog } from '@/components/candidates/CandidateFormDialog';
+import { CandidateProposalDialog } from '@/components/candidates/CandidateProposalDialog';
 import { CandidatesTable } from '@/components/candidates/CandidatesTable';
 import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -66,6 +67,7 @@ export default function Candidates() {
 
   const [form, setForm] = useState({ open: false, candidate: null });
   const [deactivating, setDeactivating] = useState(null);
+  const [viewingProposal, setViewingProposal] = useState(null);
 
   const setupError = sessionsState.error ?? partiesState.error ?? positionsState.error ?? peopleState.error;
   const setupReady = sessionsState.data && partiesState.data && positionsState.data && peopleState.data;
@@ -211,6 +213,7 @@ export default function Candidates() {
             positionLabels={positionLabels}
             sessionsById={sessionsById}
             onEdit={(candidate) => setForm({ open: true, candidate })}
+            onViewProposal={setViewingProposal}
             onDeactivate={setDeactivating}
             onReactivate={(candidate) =>
               updateStatus(() => api.candidates.update(candidate.id, { status: 'ACTIVE' }), 'Candidato reativado.')
@@ -229,6 +232,10 @@ export default function Candidates() {
         defaultSessionId={sessionId === ALL ? undefined : sessionId}
         onOpenChange={(open) => setForm((current) => ({ ...current, open }))}
         onSaved={() => { candidatesState.reload(); sessionsState.reload(); partiesState.reload(); peopleState.reload(); }}
+      />
+      <CandidateProposalDialog
+        candidate={viewingProposal}
+        onOpenChange={(open) => !open && setViewingProposal(null)}
       />
       <ConfirmDialog
         open={Boolean(deactivating)}

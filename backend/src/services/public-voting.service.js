@@ -1,6 +1,8 @@
 import { positionRepository } from '../repositories/position.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
+import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { notFound } from '../utils/errors.js';
+import { candidateService } from './candidate.service.js';
 import { resultService } from './result.service.js';
 import { voteService } from './vote.service.js';
 
@@ -29,6 +31,26 @@ export const publicVotingService = {
         return { code, label: rule?.label ?? code, digits: rule?.digits ?? 0 };
       }),
     };
+  },
+
+  // Lista de apoio pro eleitor consultar número, partido e proposta antes de votar —
+  // só candidatos ativos, só os campos já expostos em outro lugar da votação pública
+  // (nome/foto/partido, ver voteService.lookup) mais a proposta de governo.
+  async getCandidates(token) {
+    const session = await requireSessionByToken(token);
+    const candidates = await candidateService.list(
+      { sessionId: session.id, status: CANDIDATE_STATUS.ACTIVE },
+      session.userId,
+    );
+    return candidates.map((c) => ({
+      id: c.id,
+      position: c.position,
+      number: c.number,
+      name: c.name,
+      photo: c.photo,
+      party: c.party,
+      governmentProposal: c.governmentProposal ?? null,
+    }));
   },
 
   async lookup(token, query) {

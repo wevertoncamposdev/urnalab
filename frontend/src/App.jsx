@@ -29,7 +29,6 @@ import SessionDetails from '@/pages/SessionDetails';
 import Sessions from '@/pages/Sessions';
 import SessionWizard from '@/pages/SessionWizard';
 import Timeline from '@/pages/Timeline';
-import Voting from '@/pages/Voting';
 
 // PAGE_VIEW a cada navegação (ver lib/analytics.js) — primeiro disparo leva o
 // document.referrer (origem de fora do app); os seguintes não, já que a navegação
@@ -74,6 +73,12 @@ function RequireAdmin({ children }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  // Na votação pública o feedback já é pedido depois do voto (PostVoteFeedback,
+  // dentro da tela de "voto computado") — o botão flutuante some pra não duplicar
+  // e deixar a cédula mais limpa.
+  const hideFeedbackButton = location.pathname.startsWith('/votar/');
+
   return (
     <>
       <Routes>
@@ -96,7 +101,6 @@ export default function App() {
           <Route path="partidos" element={<Parties />} />
           <Route path="pessoas" element={<People />} />
           <Route path="candidatos" element={<Candidates />} />
-          <Route path="votacao" element={<Voting />} />
           <Route path="resultados" element={<Results />} />
           <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
@@ -107,7 +111,7 @@ export default function App() {
         </Route>
       </Routes>
       <AnalyticsPageViewTracker />
-      <FeedbackButton />
+      {!hideFeedbackButton && <FeedbackButton />}
       <Toaster />
     </>
   );

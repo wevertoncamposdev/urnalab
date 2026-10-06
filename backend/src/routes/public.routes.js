@@ -7,6 +7,7 @@ const ONE_HOUR = 60 * 60 * 1000;
 // feedback público, que não depende de nenhuma sessão específica).
 export function registerPublicRoutes(router) {
   router.get('/api/public/sessions/:token', publicController.getSession, { public: true });
+  router.get('/api/public/sessions/:token/candidates', publicController.getCandidates, { public: true });
   router.get('/api/public/sessions/:token/votes/lookup', publicController.lookup, { public: true });
   router.post('/api/public/sessions/:token/votes', publicController.createVote, {
     public: true,
