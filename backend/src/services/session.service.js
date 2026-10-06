@@ -16,7 +16,7 @@ import { isPlainObject } from '../utils/object.js';
 // tenta de novo com outro código sorteado até um ficar livre.
 const MAX_SESSION_CODE_ATTEMPTS = 20;
 
-async function withUniqueSessionCode(createOrUpdate) {
+export async function withUniqueSessionCode(createOrUpdate) {
   for (let attempt = 1; attempt <= MAX_SESSION_CODE_ATTEMPTS; attempt += 1) {
     try {
       return await createOrUpdate(generateSessionCode());

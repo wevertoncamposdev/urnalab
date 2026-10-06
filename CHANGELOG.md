@@ -122,6 +122,14 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Fixed
 
+- **Criação de sessão de 2º turno falhava**: `resultService.createRunoffSession`
+  (`result.service.js`) chamava `sessionRepository.create` direto, sem passar `publicToken` —
+  campo obrigatório e único desde que o link público de votação foi implementado. O Prisma
+  rejeitava a criação por faltar esse campo, então toda tentativa de gerar o 2º turno de uma
+  eleição sem maioria absoluta falhava (bug preexistente, não introduzido pela mudança do código de
+  4 dígitos acima — só não tinha sido notado até agora). Corrigido reaproveitando o mesmo helper
+  `withUniqueSessionCode` (agora exportado de `session.service.js`) pra gerar um código único
+  também para a sessão nova do 2º turno.
 - **Logo/imagens em `public/img/` não atualizavam depois do deploy**: essas imagens mantêm o
   mesmo nome de arquivo pra sempre (a logo, em especial, precisa — é embutida como URL fixa nos
   e-mails transacionais, `backend/src/services/email.service.js`), então, sem nenhum
