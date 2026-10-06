@@ -35,7 +35,16 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   coluna 2, e a prévia do candidato digitado na coluna 3 — assim a cédula nunca some de vista
   enquanto se consulta uma proposta. A tela de "voto computado" também ganhou uma mensagem de
   fechamento ligada à proposta educacional do projeto (promover cidadania nas escolas). O
-  cabeçalho tem um botão de tela cheia (mesma função que existia na antiga tela autenticada).
+  cabeçalho tem um botão de tela cheia (mesma função que existia na antiga tela autenticada). O
+  contêiner da página ficou mais largo (até 1440px, antes 1152px) com menos padding lateral no
+  desktop, pra sobrar menos moldura vazia em monitores grandes/projetor de sala. O botão flutuante
+  "Enviar feedback" (global no resto do app) some nessa tela — o feedback já é pedido depois do
+  voto, na própria tela de "voto computado" (`PostVoteFeedback`).
+- **Trava ao remover cargo de uma sessão com candidato cadastrado**: `PUT /api/sessions/:id`
+  agora recusa (`SESSION_POSITION_HAS_CANDIDATES`) tirar um cargo de `positions` enquanto ainda
+  houver candidato `ACTIVE` vinculado a ele naquela sessão — evita candidato "órfão" (ativo, mas
+  que a votação nunca pergunta por ele, já que só pergunta pelos cargos habilitados). A mensagem
+  nomeia o(s) cargo(s) bloqueado(s) e já aparece no campo certo do formulário de edição de sessão.
 - **Validação e Feedback (Etapa 10)**: analytics de uso e feedback contextual, estendendo a
   Área de Gerenciamento (Etapa 9). *Analytics* (`POST /api/analytics/events`, público, sem
   nenhum dado pessoal): cada navegação grava um evento (`PAGE_VIEW`, `SESSION_CREATED`,

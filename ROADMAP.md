@@ -159,3 +159,74 @@ O balão no menu do usuário (`lib/notifications.js`, Etapa 8.4) hoje só tem um
 ### Hierarquia
 
 - Seria interessante poder criar hierarquias de cargos para entender a relação entre eles.
+
+### Duplicar sessão (reaproveitar candidatos entre eleições)
+
+Cenário motivador: a mesma sala de aula elege o representante de turma todo mês, sempre com a
+mesma estrutura — os mesmos cargos, quase sempre os mesmos candidatos — e só precisa tirar do
+páreo quem já foi eleito da vez passada. Hoje isso exige recadastrar cada candidatura na mão a
+cada eleição nova, mesmo pessoa e partido já cadastrados.
+
+**Por que duplicar, e não reabrir a sessão finalizada**: reabrir misturaria votos de duas rodadas
+diferentes na mesma cadeia de hash/auditoria, e o modelo inteiro (`SESSION_STATUS`,
+`startedAt`/`finishedAt`, resultado por sessão) pressupõe um evento fechado. Pedagogicamente
+também é melhor manter um registro por mês (dá pra comparar resultado de um mês com o outro).
+Duplicar cria uma sessão nova (rascunho) e preserva a antiga intacta.
+
+**O que já é reaproveitável hoje, sem mudança nenhuma**: `Position`, `Party` e `Person` já são
+cadastros por conta (`userId`), não por sessão — já valem pra qualquer eleição nova sem duplicar
+nada. Só `Candidate` é por sessão (`sessionId` + `personId` + `partyId` + `position` + `number`).
+Ou seja: duplicar sessão, na prática, é só (1) criar uma `Session` nova com os mesmos `positions`
+e (2) recriar os registros de `Candidate` na sessão nova, sem tocar em pessoa/partido/cargo.
+
+**Fluxo proposto**:
+
+1. Botão "Duplicar" em `SessionDetails.jsx` (e opcionalmente em `SessionsTable`/`SessionCard`),
+   disponível pra sessão em qualquer status (DRAFT/OPEN/FINISHED) — inclusive sem candidato
+   nenhum, caso a professora só queira reaproveitar os cargos.
+2. Abre um dialog novo (`DuplicateSessionDialog.jsx`) com campos **Nome** (padrão: nome da sessão
+   original) e **Ano** (padrão: ano corrente), e uma lista dos candidatos **ACTIVE** da sessão
+   original (via `api.candidates.list({ sessionId, status: 'ACTIVE' })`), cada um com checkbox
+   marcada por padrão, mais "selecionar todos"/"nenhum". **É aqui, nessa lista, que a professora
+   desmarca quem já foi eleito e não concorre de novo** — não precisa (e não dá: sessão FINISHED
+   trava edição de candidato) editar a sessão antiga pra isso. Candidatos já INACTIVE na sessão
+   original nem aparecem na lista — já saíram.
+3. Ao confirmar, cria a sessão nova e, pra cada candidato marcado, uma candidatura nova nela.
+
+**Backend**:
+
+- Rota nova `POST /api/sessions/:id/duplicate`, corpo `{ name, year, candidateIds }`.
+- `sessionService.duplicate(sourceId, { name, year, candidateIds }, userId)`:
+  1. Carrega a sessão de origem (confere dono).
+  2. Chama o `sessionService.create` já existente com
+     `{ name, year, positions: source.positions }` — reaproveita toda validação atual (nome, ano,
+     cargos, `INSTITUTION_PROFILE_REQUIRED`), sem duplicar lógica.
+  3. Pra cada id em `candidateIds` que pertence à sessão de origem e está `ACTIVE`: busca o
+     registro e chama `candidateService.create({ sessionId: novaSessao.id, partyId, personId,
+     position, number }, userId)`. Se vier `CANDIDATE_PARTY_INACTIVE` (partido que era ativo na
+     época e não é mais), pula esse candidato em vez de falhar a operação inteira — outros erros
+     inesperados propagam normalmente.
+  4. Retorna `{ session: novaSessao, copied: N, skipped: [{ name, reason }] }` pro frontend
+     avisar quantos candidatos entraram e quais ficaram de fora (e por quê).
+- Como a sessão nova nasce vazia, não existe risco de conflito de número (unicidade de número é
+  por `sessionId` + `position`) — todo candidato copiado entra limpo.
+
+**Frontend**:
+
+- `api.sessions.duplicate(id, data)` em `services/api.js`.
+- `DuplicateSessionDialog.jsx`: formulário nome/ano + lista de checkboxes dos candidatos ACTIVE
+  da sessão de origem, agrupados por cargo (mesma ordem usada no resto do app). Ao salvar, navega
+  pra tela da sessão nova (`/sessoes/:id`) já em rascunho, pronta pra revisar e abrir a votação.
+- Toast resumindo o resultado ("6 candidatos copiados, 1 pulado — partido inativo"), se houver
+  algum `skipped`.
+
+**Trava de segurança (já implementada)**: ao editar os cargos (`positions`) de uma sessão em
+rascunho, `sessionService.update` agora bloqueia remover um cargo que ainda tenha candidato
+`ACTIVE` vinculado — sem isso, o candidato ficaria "órfão" (continua `ACTIVE`, mas inalcançável,
+já que a votação só pergunta pelos cargos que sobraram em `positions`). O erro
+(`SESSION_POSITION_HAS_CANDIDATES`) nomeia o(s) cargo(s) travado(s) ("Desative os candidatos de
+Governador antes de remover esse cargo da sessão.") e já aparece no campo certo do formulário de
+edição (`SessionForm.jsx` casa pelo substring `POSITION` do código, igual já fazia com
+`SESSION_POSITION_INVALID`). Relevante pro fluxo de duplicar sessão acima: se a professora
+reaproveitar os cargos mas decidir depois tirar um deles, primeiro precisa desativar quem foi
+copiado pra ele.
