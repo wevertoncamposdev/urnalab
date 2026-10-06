@@ -130,6 +130,13 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   4 dígitos acima — só não tinha sido notado até agora). Corrigido reaproveitando o mesmo helper
   `withUniqueSessionCode` (agora exportado de `session.service.js`) pra gerar um código único
   também para a sessão nova do 2º turno.
+- **Candidatura recriada sem a proposta de governo (2º turno e "Duplicar sessão")**: tanto
+  `resultService.createRunoffSession` quanto `sessionService.duplicate` recriam a candidatura
+  copiando partido, pessoa, cargo e número, mas nenhum dos dois incluía `governmentProposal` —
+  campo adicionado depois que esse código de cópia já existia, então ficou de fora e a proposta
+  cadastrada no 1º turno (ou na sessão de origem) se perdia ao gerar a cópia. Corrigido nos dois
+  lugares: `createRunoffSession` agora repassa `original.governmentProposal` ao criar o candidato,
+  e `duplicate` repassa `candidate.governmentProposal` na chamada de `candidateService.create`.
 - **Logo/imagens em `public/img/` não atualizavam depois do deploy**: essas imagens mantêm o
   mesmo nome de arquivo pra sempre (a logo, em especial, precisa — é embutida como URL fixa nos
   e-mails transacionais, `backend/src/services/email.service.js`), então, sem nenhum

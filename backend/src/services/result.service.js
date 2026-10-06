@@ -193,6 +193,7 @@ export const resultService = {
           personId: original.personId,
           position: position.code,
           number: original.number,
+          governmentProposal: original.governmentProposal ?? null,
           userId,
           status: CANDIDATE_STATUS.ACTIVE,
           createdAt: new Date().toISOString(),

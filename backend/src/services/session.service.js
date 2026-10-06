@@ -233,6 +233,7 @@ export const sessionService = {
               personId: candidate.personId,
               position: candidate.position,
               number: candidate.number,
+              governmentProposal: candidate.governmentProposal,
             },
             userId,
           ),
