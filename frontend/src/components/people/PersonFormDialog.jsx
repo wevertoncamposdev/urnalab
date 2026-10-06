@@ -52,7 +52,7 @@ function PersonForm({ person, onSaved, onCancel }) {
         hint={
           editing
             ? 'Alterar aqui atualiza a foto em todas as sessões onde esta pessoa é candidata.'
-            : 'Um link de imagem (https://) ou uma foto tirada agora pela câmera.'
+            : 'Envie uma foto do dispositivo, tire uma com a câmera, ou cole o link de uma imagem.'
         }
       >
         <PhotoCaptureField id="person-photo" value={photo} onChange={setPhoto} disabled={submitting} />

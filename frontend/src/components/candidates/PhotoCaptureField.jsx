@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Check, RotateCcw, Trash2, Video, X } from 'lucide-react';
+import { Camera, Check, RotateCcw, Trash2, Upload, Video, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolvePhotoUrl } from '@/services/api';
@@ -18,16 +18,18 @@ const CAMERA_ERROR_MESSAGES = {
   NotReadableError: 'A câmera já está em uso por outro aplicativo ou aba.',
 };
 
-// Campo de foto do candidato: aceita um link http(s) digitado OU uma captura da
-// webcam (vira um data URI; o backend decodifica, salva o arquivo e devolve o
-// caminho). `value` é sempre o que vai no formulário: um link, um caminho já
-// salvo (/photos/...) ou, enquanto não enviado, o data URI recém-capturado.
+// Campo de foto: aceita um arquivo enviado do dispositivo, uma captura da
+// webcam, ou um link http(s) digitado. Upload e câmera viram um data URI (o
+// backend decodifica, salva o arquivo e devolve o caminho). `value` é sempre o
+// que vai no formulário: um link, um caminho já salvo (/photos/...) ou,
+// enquanto não enviado, o data URI recém-gerado.
 export function PhotoCaptureField({ id, value, onChange, disabled }) {
   const [capturing, setCapturing] = useState(false);
   const [stream, setStream] = useState(null);
   const [snapshot, setSnapshot] = useState(null); // prévia aguardando confirmação
   const [error, setError] = useState(null);
   const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Único lugar que para as tracks: dispara ao trocar/zerar o stream e no
   // desmonte do componente (ex.: fechar o diálogo com a câmera ainda ligada).
@@ -102,6 +104,42 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
     stopCamera();
   }
 
+  function openFilePicker() {
+    setError(null);
+    fileInputRef.current?.click();
+  }
+
+  // Mesmo recorte quadrado central da câmera (ver `takeSnapshot`), mas sem
+  // espelhar — a foto enviada já está do jeito que a pessoa quer.
+  function handleFileSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // permite selecionar o mesmo arquivo de novo depois
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione um arquivo de imagem.');
+      return;
+    }
+    setError(null);
+    const reader = new FileReader();
+    reader.onerror = () => setError('Não foi possível ler o arquivo selecionado.');
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => setError('Não foi possível abrir essa imagem.');
+      img.onload = () => {
+        const size = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - size) / 2;
+        const sy = (img.naturalHeight - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = CAPTURE_SIZE;
+        canvas.height = CAPTURE_SIZE;
+        canvas.getContext('2d').drawImage(img, sx, sy, size, size, 0, 0, CAPTURE_SIZE, CAPTURE_SIZE);
+        onChange(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   const isDataUri = value?.startsWith('data:');
   const previewUrl = isDataUri ? value : resolvePhotoUrl(value);
 
@@ -153,16 +191,12 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
           </div>
         )}
         <div className="flex flex-1 flex-col gap-2">
-          <Input
-            id={id}
-            value={isDataUri ? '' : value ?? ''}
-            placeholder={isDataUri ? 'Foto capturada pela câmera' : 'https://... (ou tire uma foto)'}
-            disabled={disabled || isDataUri}
-            onChange={(e) => onChange(e.target.value)}
-          />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={openFilePicker}>
+              <Upload /> Fazer upload
+            </Button>
             <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={startCamera}>
-              <Video /> Usar câmera
+              <Video /> Tirar foto
             </Button>
             {value && (
               <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange('')}>
@@ -170,6 +204,20 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
               </Button>
             )}
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Input
+            id={id}
+            value={isDataUri ? '' : value ?? ''}
+            placeholder={isDataUri ? 'Foto selecionada' : 'ou cole o link de uma imagem (https://)'}
+            disabled={disabled || isDataUri}
+            onChange={(e) => onChange(e.target.value)}
+          />
         </div>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
