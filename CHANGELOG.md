@@ -110,6 +110,22 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   `Content-Security-Policy` ficou de fora dessa leva — entra depois de mapear com cuidado todo
   recurso externo carregado (Google Fonts, etc.), pra não quebrar a aplicação silenciosamente.
 
+### Fixed
+
+- **Logo/imagens em `public/img/` não atualizavam depois do deploy**: essas imagens mantêm o
+  mesmo nome de arquivo pra sempre (a logo, em especial, precisa — é embutida como URL fixa nos
+  e-mails transacionais, `backend/src/services/email.service.js`), então, sem nenhum
+  `Cache-Control` explícito, o navegador podia continuar usando a versão antiga guardada em cache
+  indefinidamente mesmo depois de um deploy novo trocar o arquivo no servidor — o sintoma: trocar
+  a logo localmente funcionava, mas em produção (Railway) continuava aparecendo a antiga.
+  `frontend/nginx.conf.template` ganhou um `location /img/` com `Cache-Control: no-cache`, que
+  obriga o navegador a sempre revalidar (barato — vira um `304 Not Modified` quando o arquivo não
+  mudou) em vez de usar a cópia em cache sem perguntar. Validado rodando o template real num
+  nginx local: a resposta sai com o header novo, os headers de segurança continuam presentes
+  (precisam ser repetidos no `location` — `add_header` não herda do bloco `server` quando o
+  `location` define os seus próprios), e uma requisição condicional com o `ETag` certo já
+  devolve `304`.
+
 ### Changed
 
 - **Raiz do projeto organizada**: `DEPLOY.md` e `identidade visual.md` foram pra `docs/`;
