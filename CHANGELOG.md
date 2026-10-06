@@ -12,6 +12,68 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Captura de foto corrigida (sem distorção entre dispositivos)**: `PhotoCaptureField.jsx`
+  (usado no cadastro de Pessoas) agora sempre captura um **quadrado**, recortado do centro do
+  quadro nativo da câmera (`video.videoWidth`/`videoHeight`), em vez de esticar o retângulo
+  inteiro pra um 320x240 fixo. Antes, como a câmera quase nunca devolve exatamente 320x240 (webcam
+  de notebook costuma ser 16:9; celular, outra coisa), a foto saía espremida/distorcida de um
+  jeito diferente em cada aparelho — e ainda era recortada de novo na exibição, já que a foto
+  sempre aparece como círculo (`CandidateAvatar`, `object-cover`). Como o destino final é sempre
+  circular, capturar em quadrado elimina a distorção em qualquer câmera: a prévia ao vivo também
+  virou quadrada (`aspect-square`, antes `aspect-[4/3]`), então o que a pessoa vê enquadrando o
+  rosto é exatamente o que é salvo. Captura agora em 480x480 (antes 320x240), ainda bem abaixo do
+  limite de tamanho (`PHOTO_MAX_BYTES`, 300KB). Validado com câmeras sintéticas 16:9 e 9:16 via
+  Playwright, confirmando matematicamente o recorte central nos dois sentidos.
+- **Duplicar sessão**: botão "Duplicar" em `SessionDetails.jsx` (qualquer status) abre um dialog
+  (`DuplicateSessionDialog.jsx`) com nome/ano da sessão nova e a lista de candidatos **ativos**
+  da sessão de origem, cada um com checkbox marcada por padrão — pensado pro caso de eleições que
+  se repetem com o mesmo elenco (ex.: representante de turma todo mês): a professora desmarca só
+  quem já foi eleito da vez passada e não concorre de novo. Novo endpoint
+  `POST /api/sessions/:id/duplicate` (`sessionService.duplicate`) cria a sessão nova em rascunho
+  com os mesmos cargos da original e, pra cada candidato marcado, uma candidatura nova nela —
+  reaproveitando `sessionService.create`/`candidateService.create` já existentes, sem duplicar
+  nenhuma validação. Partido/pessoa/cargo não são duplicados (já são cadastros por conta, não por
+  sessão); se o partido de algum candidato ficou inativo desde a eleição original, ele é pulado
+  automaticamente em vez de travar a operação inteira, e o toast final avisa quantos foram
+  copiados e quais ficaram de fora (e por quê). A sessão de origem nunca é alterada.
+- **Trava ao remover cargo de uma sessão com candidato cadastrado**: `PUT /api/sessions/:id`
+  agora recusa (`SESSION_POSITION_HAS_CANDIDATES`) tirar um cargo de `positions` enquanto ainda
+  houver candidato `ACTIVE` vinculado a ele naquela sessão — evita candidato "órfão" (ativo, mas
+  que a votação nunca pergunta por ele, já que só pergunta pelos cargos habilitados). A mensagem
+  nomeia o(s) cargo(s) bloqueado(s) e já aparece no campo certo do formulário de edição de sessão.
+- **Proposta de governo do candidato**: campo opcional (textarea, até 2000 caracteres) na
+  candidatura (`POST`/`PUT /api/candidates`), onde o candidato descreve seus planos para o
+  mandato. Não é uma identidade do candidato — pode ser preenchido ou alterado mesmo depois que a
+  votação abre, só travando quando a sessão é finalizada (migração
+  `add_candidate_government_proposal`). Nova ação "Ver proposta" na tabela de Candidatos. Novo
+  endpoint público `GET /api/public/sessions/:token/candidates` (só candidatos ativos, só os
+  campos já expostos em outro lugar da votação pública: nome, foto, partido e proposta) alimenta
+  um seletor de candidatos na própria tela de votação (ver item abaixo).
+- **Votação pública redesenhada**: a tela de votação autenticada (`/votacao`) foi removida —
+  votar, mesmo testando como administrador, passa a ser sempre pelo link público (`/votar/:token`,
+  já existente); o botão "Votar" em `SessionDetails.jsx`/`SessionCard.jsx` agora abre esse link em
+  vez da rota interna. Essa tela, por ser o coração da aplicação (é nela que a votação de verdade
+  acontece), ganhou um visual mais organizado: cabeçalho fixo com a marca e o nome da sessão, uma
+  barra de progresso com uma "pílula" por cargo (votado / atual / a votar, em vez de só "cargo 2 de
+  4" em texto), um visor de dígitos escuro lembrando o de uma urna de verdade, teclado com
+  "Branco"/"Corrige" em cores próprias pra se diferenciar dos números à primeira vista, e um anel
+  colorido (verde/coral/amarelo) ao redor do painel do candidato indicando o resultado da consulta
+  sem precisar ler o texto. O layout é em três colunas no desktop (empilha no celular): logo +
+  dados da sessão + um seletor de candidatos com a proposta de governo logo abaixo (substituiu o
+  antigo botão/dialog "Ver candidatos", que cobria a cédula) na coluna 1, a cédula/teclado na
+  coluna 2, e a prévia do candidato digitado na coluna 3 — assim a cédula nunca some de vista
+  enquanto se consulta uma proposta. A tela de "voto computado" também ganhou uma mensagem de
+  fechamento ligada à proposta educacional do projeto (promover cidadania nas escolas). O
+  cabeçalho tem um botão de tela cheia (mesma função que existia na antiga tela autenticada). O
+  contêiner da página ficou mais largo (até 1440px, antes 1152px) com menos padding lateral no
+  desktop, pra sobrar menos moldura vazia em monitores grandes/projetor de sala. O botão flutuante
+  "Enviar feedback" (global no resto do app) some nessa tela — o feedback já é pedido depois do
+  voto, na própria tela de "voto computado" (`PostVoteFeedback`).
+- **Trava ao remover cargo de uma sessão com candidato cadastrado**: `PUT /api/sessions/:id`
+  agora recusa (`SESSION_POSITION_HAS_CANDIDATES`) tirar um cargo de `positions` enquanto ainda
+  houver candidato `ACTIVE` vinculado a ele naquela sessão — evita candidato "órfão" (ativo, mas
+  que a votação nunca pergunta por ele, já que só pergunta pelos cargos habilitados). A mensagem
+  nomeia o(s) cargo(s) bloqueado(s) e já aparece no campo certo do formulário de edição de sessão.
 - **Validação e Feedback (Etapa 10)**: analytics de uso e feedback contextual, estendendo a
   Área de Gerenciamento (Etapa 9). *Analytics* (`POST /api/analytics/events`, público, sem
   nenhum dado pessoal): cada navegação grava um evento (`PAGE_VIEW`, `SESSION_CREATED`,

@@ -154,6 +154,7 @@ export const api = {
     update: (id, data) => request(`/api/sessions/${id}`, { method: 'PUT', body: data }),
     open: (id) => request(`/api/sessions/${id}/open`, { method: 'POST' }),
     finish: (id) => request(`/api/sessions/${id}/finish`, { method: 'POST' }),
+    duplicate: (id, data) => request(`/api/sessions/${id}/duplicate`, { method: 'POST', body: data }),
   },
 
   votes: {
@@ -188,6 +189,7 @@ export const api = {
   // Link público de votação: sem login, o token é a própria autorização.
   public: {
     getSession: (token) => request(`/api/public/sessions/${token}`),
+    getCandidates: (token) => request(`/api/public/sessions/${token}/candidates`),
     lookup: (token, params) => request(`/api/public/sessions/${token}/votes/lookup${toQuery(params)}`),
     createVote: (token, data) => request(`/api/public/sessions/${token}/votes`, { method: 'POST', body: data }),
     getResults: (token) => request(`/api/public/sessions/${token}/results`),

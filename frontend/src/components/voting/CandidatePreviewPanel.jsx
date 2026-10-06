@@ -2,6 +2,7 @@ import { Frown, UserRound, Vote } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const PHOTO_SIZE = 'size-14 shrink-0 text-lg md:size-40 md:text-4xl';
 const PLACEHOLDER_CIRCLE =
@@ -9,11 +10,16 @@ const PLACEHOLDER_CIRCLE =
 
 // Painel da foto do candidato: no celular, uma faixa compacta (foto ao lado do
 // nome) acima do teclado — no desktop/tablet (md+), o painel maior e vertical
-// ao lado da cédula, como o monitor separado de uma urna real.
+// ao lado da cédula, como o monitor separado de uma urna real. O anel colorido
+// (verde/coral/amarelo) dá o mesmo veredito da cor sem precisar ler o texto.
 export function CandidatePreviewPanel({ blank, lookup }) {
   let content;
+  let eyebrow = null;
+  let ringClass = 'ring-0';
 
   if (blank) {
+    eyebrow = 'Voto em branco';
+    ringClass = 'ring-[3px] ring-accent/40';
     content = (
       <>
         <div className={PLACEHOLDER_CIRCLE}>
@@ -23,9 +29,12 @@ export function CandidatePreviewPanel({ blank, lookup }) {
       </>
     );
   } else if (lookup?.loading) {
+    eyebrow = 'Consultando...';
     content = <Skeleton className="size-14 shrink-0 rounded-full md:size-40" />;
   } else if (lookup?.result?.status === 'FOUND') {
     const { candidate } = lookup.result;
+    eyebrow = 'Seu voto vai para';
+    ringClass = 'ring-[3px] ring-success/40';
     content = (
       <>
         <CandidateAvatar name={candidate.name} photo={candidate.photo} className={PHOTO_SIZE} />
@@ -38,6 +47,8 @@ export function CandidatePreviewPanel({ blank, lookup }) {
       </>
     );
   } else if (lookup?.result?.status === 'NOT_FOUND') {
+    eyebrow = 'Atenção';
+    ringClass = 'ring-[3px] ring-coral/40';
     content = (
       <>
         <Frown className="size-6 shrink-0 text-danger md:size-14" />
@@ -48,6 +59,8 @@ export function CandidatePreviewPanel({ blank, lookup }) {
       </>
     );
   } else if (lookup?.result?.status === 'INACTIVE') {
+    eyebrow = 'Atenção';
+    ringClass = 'ring-[3px] ring-coral/40';
     content = (
       <>
         <Frown className="size-6 shrink-0 text-danger md:size-14" />
@@ -69,7 +82,17 @@ export function CandidatePreviewPanel({ blank, lookup }) {
   }
 
   return (
-    <Card className="flex flex-row items-center gap-3 p-3 md:flex-col md:justify-center md:gap-4 md:p-6 md:text-center md:min-h-80">
+    <Card
+      className={cn(
+        'flex flex-row items-center gap-3 p-3 transition-shadow duration-200 md:flex-col md:justify-center md:gap-3 md:p-6 md:text-center md:min-h-80',
+        ringClass,
+      )}
+    >
+      {eyebrow && (
+        <p className="hidden text-xs font-semibold uppercase tracking-wide text-muted-foreground md:order-first md:block">
+          {eyebrow}
+        </p>
+      )}
       {content}
     </Card>
   );

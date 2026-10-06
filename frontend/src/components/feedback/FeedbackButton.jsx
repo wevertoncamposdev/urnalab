@@ -16,8 +16,9 @@ const TYPE_OPTIONS = [
 ];
 
 // Botão global (montado em App.jsx, fora das Routes) — aparece em toda página,
-// inclusive na votação pública. Autenticado grava o userId; sem login, é anônimo
-// (ver backend/src/services/feedback.service.js e a decisão de autoria da Etapa 10).
+// exceto na votação pública (lá o feedback já é pedido depois do voto, ver
+// PostVoteFeedback). Autenticado grava o userId; sem login, é anônimo (ver
+// backend/src/services/feedback.service.js e a decisão de autoria da Etapa 10).
 export function FeedbackButton() {
   const { status } = useAuth();
   const [open, setOpen] = useState(false);

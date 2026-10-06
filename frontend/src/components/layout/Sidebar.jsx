@@ -11,7 +11,6 @@ import {
   MessageSquare,
   ShieldAlert,
   ShieldCheck,
-  Vote,
   Wand2,
 } from 'lucide-react';
 import { Logo } from '@/components/branding/Logo';
@@ -45,7 +44,6 @@ const NAV_GROUPS = [
   {
     label: 'Dia da votação',
     items: [
-      { label: 'Votação', to: '/votacao', icon: Vote },
       { label: 'Resultados', to: '/resultados', icon: BarChart3 },
       { label: 'Auditoria', to: '/auditoria', icon: ShieldCheck },
     ],

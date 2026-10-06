@@ -1,10 +1,13 @@
 import { sessionRepository } from '../repositories/session.repository.js';
 import { candidateRepository } from '../repositories/candidate.repository.js';
 import { institutionProfileRepository } from '../repositories/institution-profile.repository.js';
+import { personRepository } from '../repositories/person.repository.js';
 import { positionRepository } from '../repositories/position.repository.js';
 import { voteRepository } from '../repositories/vote.repository.js';
+import { candidateService } from './candidate.service.js';
+import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { SESSION_LIMITS, SESSION_STATUS } from '../rules/session-rules.js';
-import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
+import { AppError, badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { generatePublicToken } from '../utils/id.js';
 import { isPlainObject } from '../utils/object.js';
 
@@ -70,6 +73,28 @@ async function withStats(session) {
   return { ...current, positionsCount: current.positions.length, candidatesCount, votesCount };
 }
 
+// Impede tirar um cargo da sessão enquanto ele ainda tiver candidato ativo —
+// senão o candidato fica "órfão" (status ACTIVE, mas inalcançável: a votação só
+// pergunta pelos cargos que sobraram em `positions`). A professora precisa
+// desativar esses candidatos primeiro (possível enquanto a sessão é DRAFT).
+async function assertNoCandidatesInRemovedPositions(session, nextPositions, userId) {
+  const removed = session.positions.filter((code) => !nextPositions.includes(code));
+  if (removed.length === 0) return;
+
+  const affected = await candidateRepository.findWhere(
+    (c) => c.sessionId === session.id && c.status === CANDIDATE_STATUS.ACTIVE && removed.includes(c.position),
+  );
+  if (affected.length === 0) return;
+
+  const allPositions = await positionRepository.findAllForUser(userId);
+  const labelByCode = new Map(allPositions.map((p) => [p.code, p.label]));
+  const labels = [...new Set(affected.map((c) => labelByCode.get(c.position) ?? c.position))];
+  throw conflict(
+    'SESSION_POSITION_HAS_CANDIDATES',
+    `Desative os candidatos de ${labels.join(', ')} antes de remover ${labels.length === 1 ? 'esse cargo' : 'esses cargos'} da sessão.`,
+  );
+}
+
 async function changeStatus(id, userId, { from, to, timestampField, errorMessage }) {
   const session = await findOrFail(id, userId);
   if (session.status !== from) {
@@ -125,6 +150,7 @@ export const sessionService = {
       { name: current.name, year: current.year, positions: current.positions, ...changes },
       userId,
     );
+    await assertNoCandidatesInRemovedPositions(current, data.positions, userId);
     return withStats(await sessionRepository.update(id, data));
   },
 
@@ -144,5 +170,60 @@ export const sessionService = {
       timestampField: 'finishedAt',
       errorMessage: 'Só é possível finalizar uma sessão com votação aberta.',
     });
+  },
+
+  // Cria uma sessão nova (rascunho) com os mesmos cargos da sessão de origem, e
+  // recria como candidatura nova cada candidato marcado em `candidateIds` (só
+  // aceita os que estão ACTIVE na sessão de origem — pessoa e partido não são
+  // duplicados, só referenciados, já que já são cadastros por conta). Se algum
+  // candidato não puder ser recriado (ex.: partido ficou inativo desde então),
+  // ele é pulado em vez de derrubar a operação inteira — a sessão de origem não
+  // é tocada em nenhum momento.
+  async duplicate(sourceId, input, userId) {
+    const source = await findOrFail(sourceId, userId);
+    const data = isPlainObject(input) ? input : {};
+
+    const newSession = await sessionService.create(
+      { name: data.name, year: data.year, positions: source.positions },
+      userId,
+    );
+
+    const candidateIds = Array.isArray(data.candidateIds) ? data.candidateIds : [];
+    const sourceCandidates = candidateIds.length
+      ? await candidateRepository.findWhere(
+          (c) =>
+            c.sessionId === sourceId &&
+            c.userId === userId &&
+            c.status === CANDIDATE_STATUS.ACTIVE &&
+            candidateIds.includes(c.id),
+        )
+      : [];
+
+    const people = await personRepository.findAllForUser(userId);
+    const nameByPersonId = new Map(people.map((p) => [p.id, p.name]));
+
+    const copied = [];
+    const skipped = [];
+    for (const candidate of sourceCandidates) {
+      try {
+        copied.push(
+          await candidateService.create(
+            {
+              sessionId: newSession.id,
+              partyId: candidate.partyId,
+              personId: candidate.personId,
+              position: candidate.position,
+              number: candidate.number,
+            },
+            userId,
+          ),
+        );
+      } catch (err) {
+        if (!(err instanceof AppError)) throw err;
+        skipped.push({ name: nameByPersonId.get(candidate.personId) ?? candidate.personId, reason: err.message });
+      }
+    }
+
+    return { session: await sessionService.getById(newSession.id, userId), copied: copied.length, skipped };
   },
 };

@@ -6,10 +6,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { trackEvent } from '@/lib/analytics';
 import { fieldOfError } from '@/lib/form-errors';
 import { api } from '@/services/api';
 import { CandidateAvatar } from './CandidateAvatar';
+
+const GOVERNMENT_PROPOSAL_MAX_LENGTH = 2000;
 
 const FIELD_RULES = [
   ['SESSION_NOT_FOUND', 'sessionId'],
@@ -17,6 +20,7 @@ const FIELD_RULES = [
   ['NUMBER', 'number'],
   ['PARTY', 'partyId'],
   ['POSITION', 'position'],
+  ['GOVERNMENT_PROPOSAL', 'governmentProposal'],
 ];
 
 function candidacyLabel(count) {
@@ -40,6 +44,7 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
   const [number, setNumber] = useState(candidate?.number ?? '');
   const [personId, setPersonId] = useState(candidate?.personId ?? '');
   const [status, setStatus] = useState(candidate?.status ?? 'ACTIVE');
+  const [governmentProposal, setGovernmentProposal] = useState(candidate?.governmentProposal ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -72,7 +77,15 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    const payload = { sessionId, partyId, position, number, personId, ...(editing && { status }) };
+    const payload = {
+      sessionId,
+      partyId,
+      position,
+      number,
+      personId,
+      governmentProposal: governmentProposal.trim() || null,
+      ...(editing && { status }),
+    };
     try {
       if (editing) {
         await api.candidates.update(candidate.id, payload);
@@ -94,7 +107,7 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
         <Alert variant="destructive"><AlertDescription>{error.message}</AlertDescription></Alert>
       )}
       {identityLocked && (
-        <Alert><AlertDescription>A votação já abriu: só o status pode ser alterado.</AlertDescription></Alert>
+        <Alert><AlertDescription>A votação já abriu: só o status e a proposta de governo podem ser alterados.</AlertDescription></Alert>
       )}
 
       <FormField label="Sessão" htmlFor="candidate-session" error={fieldError('sessionId')}>
@@ -167,6 +180,22 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
             ))}
           </SelectContent>
         </Select>
+      </FormField>
+
+      <FormField
+        label="Proposta de governo"
+        htmlFor="candidate-government-proposal"
+        error={fieldError('governmentProposal')}
+        hint={`Opcional. O que o candidato pretende fazer no mandato (${governmentProposal.length}/${GOVERNMENT_PROPOSAL_MAX_LENGTH}).`}
+      >
+        <Textarea
+          id="candidate-government-proposal"
+          rows={6}
+          maxLength={GOVERNMENT_PROPOSAL_MAX_LENGTH}
+          value={governmentProposal}
+          onChange={(e) => setGovernmentProposal(e.target.value)}
+          placeholder="Descreva aqui os planos para o mandato, se eleito."
+        />
       </FormField>
 
       {editing && (

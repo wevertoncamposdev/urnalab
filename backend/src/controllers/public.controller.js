@@ -6,6 +6,10 @@ export const publicController = {
     sendSuccess(res, await publicVotingService.getSession(params.token));
   },
 
+  async getCandidates({ res, params }) {
+    sendSuccess(res, await publicVotingService.getCandidates(params.token));
+  },
+
   async lookup({ res, params, query }) {
     sendSuccess(res, await publicVotingService.lookup(params.token, query));
   },

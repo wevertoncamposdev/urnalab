@@ -3,7 +3,7 @@ import { partyRepository } from '../repositories/party.repository.js';
 import { personRepository } from '../repositories/person.repository.js';
 import { positionRepository } from '../repositories/position.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
-import { CANDIDATE_IDENTITY_FIELDS, CANDIDATE_STATUS } from '../rules/candidate-rules.js';
+import { CANDIDATE_IDENTITY_FIELDS, CANDIDATE_LIMITS, CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { PARTY_STATUS } from '../rules/party-rules.js';
 import { SESSION_STATUS } from '../rules/session-rules.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
@@ -24,6 +24,20 @@ function normalizeNumber(value, positionRule) {
     );
   }
   return number;
+}
+
+// Não obrigatório: vazio/ausente vira null. Se preenchido, respeita o limite de tamanho.
+function normalizeGovernmentProposal(value) {
+  if (value === undefined || value === null) return null;
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  if (text.length > CANDIDATE_LIMITS.governmentProposalMaxLength) {
+    throw badRequest(
+      'CANDIDATE_GOVERNMENT_PROPOSAL_TOO_LONG',
+      `A proposta de governo pode ter no máximo ${CANDIDATE_LIMITS.governmentProposalMaxLength} caracteres.`,
+    );
+  }
+  return text;
 }
 
 function assertStatus(status) {
@@ -183,6 +197,7 @@ export const candidateService = {
       personId: person.id,
       position: data.position,
       number,
+      governmentProposal: normalizeGovernmentProposal(data.governmentProposal),
       userId,
       status: CANDIDATE_STATUS.ACTIVE,
       createdAt: new Date().toISOString(),
@@ -206,7 +221,7 @@ export const candidateService = {
       throw badRequest('CANDIDATE_PERSON_IMMUTABLE', 'Não é possível trocar a pessoa vinculada à candidatura.');
     }
 
-    const merged = { ...current, ...pick(changes, [...CANDIDATE_IDENTITY_FIELDS, 'status']) };
+    const merged = { ...current, ...pick(changes, [...CANDIDATE_IDENTITY_FIELDS, 'status', 'governmentProposal']) };
 
     const identityChanged = CANDIDATE_IDENTITY_FIELDS.some(
       (field) => String(merged[field]) !== String(current[field]),
@@ -225,6 +240,7 @@ export const candidateService = {
       position: merged.position,
       number,
       status: merged.status,
+      governmentProposal: normalizeGovernmentProposal(merged.governmentProposal),
     });
   },
 

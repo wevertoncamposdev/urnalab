@@ -13,6 +13,17 @@ function SessionLinkButton({ enabled, to, disabledTitle, children }) {
   );
 }
 
+// Votar é sempre pelo link público (/votar/:token, ver PublicVoting.jsx) — não existe
+// mais uma tela de votação autenticada separada.
+function VoteButton({ session }) {
+  const url = `/votar/${session.publicToken}`;
+  return (
+    <Button size="sm" variant="outline" asChild={session.status === 'OPEN'} disabled={session.status !== 'OPEN'} title={session.status === 'OPEN' ? undefined : 'Abra a votação para registrar votos'}>
+      {session.status === 'OPEN' ? <a href={url} target="_blank" rel="noreferrer">Votar</a> : 'Votar'}
+    </Button>
+  );
+}
+
 export function SessionCard({ session }) {
   return (
     <Card>
@@ -34,13 +45,7 @@ export function SessionCard({ session }) {
           <Button asChild size="sm">
             <Link to={`/sessoes/${session.id}`}>Gerenciar</Link>
           </Button>
-          <SessionLinkButton
-            enabled={session.status === 'OPEN'}
-            to={`/votacao?sessionId=${session.id}`}
-            disabledTitle="Abra a votação para registrar votos"
-          >
-            Votar
-          </SessionLinkButton>
+          <VoteButton session={session} />
           <SessionLinkButton
             enabled={session.status === 'FINISHED'}
             to={`/resultados?sessionId=${session.id}`}

@@ -4,8 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolvePhotoUrl } from '@/services/api';
 
-const CAPTURE_WIDTH = 320;
-const CAPTURE_HEIGHT = 240;
+// Captura sempre um quadrado: é como a foto é exibida em todo o resto do app
+// (CandidateAvatar é sempre um círculo via object-cover). Pedir isso já na
+// câmera (constraint `aspectRatio`) é só uma sugestão — nem toda câmera atende
+// — por isso `takeSnapshot` também recorta pro quadrado central na hora de
+// desenhar no canvas, não importa a proporção nativa que a câmera devolveu
+// (16:9 comum em webcam de notebook, outra coisa no celular, etc.).
+const CAPTURE_SIZE = 480;
 
 const CAMERA_ERROR_MESSAGES = {
   NotAllowedError: 'Permissão da câmera negada. Libere o acesso nas configurações do navegador.',
@@ -52,7 +57,12 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
     setError(null);
     try {
       const nextStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: CAPTURE_WIDTH, height: CAPTURE_HEIGHT },
+        video: {
+          width: { ideal: CAPTURE_SIZE },
+          height: { ideal: CAPTURE_SIZE },
+          aspectRatio: { ideal: 1 },
+          facingMode: 'user',
+        },
       });
       setStream(nextStream);
       setCapturing(true);
@@ -66,17 +76,24 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
   // Congela o quadro atual numa prévia (sem confirmar ainda, pra dar chance de
   // repetir). O vídeo é espelhado na tela (parece mais natural, como um
   // espelho); espelha o canvas do mesmo jeito para a foto final bater com o
-  // que a pessoa viu ao tirar.
+  // que a pessoa viu ao tirar. Recorta pro maior quadrado central do quadro
+  // nativo da câmera (`videoWidth`/`videoHeight`, não o que foi pedido em
+  // `startCamera` — a câmera pode ter ignorado o pedido) em vez de esticar o
+  // retângulo inteiro pro quadrado: é isso que evita a distorção.
   function takeSnapshot() {
     const video = videoRef.current;
     if (!video) return;
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    const sx = (video.videoWidth - size) / 2;
+    const sy = (video.videoHeight - size) / 2;
+
     const canvas = document.createElement('canvas');
-    canvas.width = CAPTURE_WIDTH;
-    canvas.height = CAPTURE_HEIGHT;
+    canvas.width = CAPTURE_SIZE;
+    canvas.height = CAPTURE_SIZE;
     const ctx = canvas.getContext('2d');
-    ctx.translate(CAPTURE_WIDTH, 0);
+    ctx.translate(CAPTURE_SIZE, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, CAPTURE_SIZE, CAPTURE_SIZE);
     setSnapshot(canvas.toDataURL('image/jpeg', 0.8));
   }
 
@@ -95,7 +112,7 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
           <img
             src={snapshot}
             alt="Prévia da foto capturada"
-            className="aspect-[4/3] w-full max-w-xs rounded-lg bg-black object-cover"
+            className="aspect-square w-full max-w-xs rounded-lg bg-black object-cover"
           />
         ) : (
           // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -105,7 +122,7 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
             playsInline
             muted
             style={{ transform: 'scaleX(-1)' }}
-            className="aspect-[4/3] w-full max-w-xs rounded-lg bg-black object-cover"
+            className="aspect-square w-full max-w-xs rounded-lg bg-black object-cover"
           />
         )}
         <div className="flex gap-2">

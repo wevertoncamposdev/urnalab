@@ -151,3 +151,11 @@ O balão no menu do usuário (`lib/notifications.js`, Etapa 8.4) hoje só tem um
   soltos — ajuda a depurar problemas depois que o projeto sair do ambiente de estudo.
 - **Métricas básicas**: contagem de votos por minuto, tempo de resposta da API — dá pra expor um
   painel simples de operação da eleição.
+
+### Descrição do Cargo
+
+- Adicionar um campo para descrição do cargo, onde detalha quais são os direitos, deveres e obrigações de cada cargo.
+
+### Hierarquia
+
+- Seria interessante poder criar hierarquias de cargos para entender a relação entre eles.

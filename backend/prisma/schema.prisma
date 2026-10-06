@@ -160,6 +160,8 @@ model Candidate {
   // Guardado como texto para preservar zeros à esquerda ("05").
   number    String
   status    String   @default("ACTIVE")
+  // Opcional: o que o candidato pretende fazer no mandato, se eleito.
+  governmentProposal String?
   createdAt DateTime @default(now())
 
   votes Vote[]
