@@ -12,6 +12,18 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Captura de foto corrigida (sem distorção entre dispositivos)**: `PhotoCaptureField.jsx`
+  (usado no cadastro de Pessoas) agora sempre captura um **quadrado**, recortado do centro do
+  quadro nativo da câmera (`video.videoWidth`/`videoHeight`), em vez de esticar o retângulo
+  inteiro pra um 320x240 fixo. Antes, como a câmera quase nunca devolve exatamente 320x240 (webcam
+  de notebook costuma ser 16:9; celular, outra coisa), a foto saía espremida/distorcida de um
+  jeito diferente em cada aparelho — e ainda era recortada de novo na exibição, já que a foto
+  sempre aparece como círculo (`CandidateAvatar`, `object-cover`). Como o destino final é sempre
+  circular, capturar em quadrado elimina a distorção em qualquer câmera: a prévia ao vivo também
+  virou quadrada (`aspect-square`, antes `aspect-[4/3]`), então o que a pessoa vê enquadrando o
+  rosto é exatamente o que é salvo. Captura agora em 480x480 (antes 320x240), ainda bem abaixo do
+  limite de tamanho (`PHOTO_MAX_BYTES`, 300KB). Validado com câmeras sintéticas 16:9 e 9:16 via
+  Playwright, confirmando matematicamente o recorte central nos dois sentidos.
 - **Duplicar sessão**: botão "Duplicar" em `SessionDetails.jsx` (qualquer status) abre um dialog
   (`DuplicateSessionDialog.jsx`) com nome/ano da sessão nova e a lista de candidatos **ativos**
   da sessão de origem, cada um com checkbox marcada por padrão — pensado pro caso de eleições que

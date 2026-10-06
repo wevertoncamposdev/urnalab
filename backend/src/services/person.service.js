@@ -5,9 +5,10 @@ import { badRequest, conflict, notFound } from '../utils/errors.js';
 import { isPlainObject, normalizeText } from '../utils/object.js';
 import { isStoredPhotoPath, parsePhotoDataUri, photoStorage } from '../storage/photo-storage.js';
 
-// Uma captura da webcam (320x240, JPEG) fica na casa de dezenas de KB — bem abaixo
-// disso. O limite também precisa caber com folga no corpo da requisição JSON como
-// um todo (MAX_BODY_BYTES em utils/http.js), já que o base64 inflaciona ~33%.
+// Uma captura da webcam (480x480, JPEG, ver PhotoCaptureField.jsx) fica na casa de
+// dezenas de KB — bem abaixo disso. O limite também precisa caber com folga no
+// corpo da requisição JSON como um todo (MAX_BODY_BYTES em utils/http.js), já que
+// o base64 inflaciona ~33%.
 const PHOTO_MAX_BYTES = 300_000;
 
 function normalizeName(value) {
