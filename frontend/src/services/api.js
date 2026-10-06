@@ -154,6 +154,7 @@ export const api = {
     update: (id, data) => request(`/api/sessions/${id}`, { method: 'PUT', body: data }),
     open: (id) => request(`/api/sessions/${id}/open`, { method: 'POST' }),
     finish: (id) => request(`/api/sessions/${id}/finish`, { method: 'POST' }),
+    duplicate: (id, data) => request(`/api/sessions/${id}/duplicate`, { method: 'POST', body: data }),
   },
 
   votes: {

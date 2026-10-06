@@ -7,4 +7,5 @@ export function registerSessionRoutes(router) {
   router.put('/api/sessions/:id', sessionController.update);
   router.post('/api/sessions/:id/open', sessionController.open);
   router.post('/api/sessions/:id/finish', sessionController.finish);
+  router.post('/api/sessions/:id/duplicate', sessionController.duplicate);
 }

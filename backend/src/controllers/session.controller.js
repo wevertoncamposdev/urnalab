@@ -25,4 +25,8 @@ export const sessionController = {
   async finish({ res, params, userId }) {
     sendSuccess(res, await sessionService.finish(params.id, userId));
   },
+
+  async duplicate({ res, params, body, userId }) {
+    sendSuccess(res, await sessionService.duplicate(params.id, body, userId), 201);
+  },
 };

@@ -1,11 +1,13 @@
 import { sessionRepository } from '../repositories/session.repository.js';
 import { candidateRepository } from '../repositories/candidate.repository.js';
 import { institutionProfileRepository } from '../repositories/institution-profile.repository.js';
+import { personRepository } from '../repositories/person.repository.js';
 import { positionRepository } from '../repositories/position.repository.js';
 import { voteRepository } from '../repositories/vote.repository.js';
+import { candidateService } from './candidate.service.js';
 import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { SESSION_LIMITS, SESSION_STATUS } from '../rules/session-rules.js';
-import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
+import { AppError, badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { generatePublicToken } from '../utils/id.js';
 import { isPlainObject } from '../utils/object.js';
 
@@ -168,5 +170,60 @@ export const sessionService = {
       timestampField: 'finishedAt',
       errorMessage: 'Só é possível finalizar uma sessão com votação aberta.',
     });
+  },
+
+  // Cria uma sessão nova (rascunho) com os mesmos cargos da sessão de origem, e
+  // recria como candidatura nova cada candidato marcado em `candidateIds` (só
+  // aceita os que estão ACTIVE na sessão de origem — pessoa e partido não são
+  // duplicados, só referenciados, já que já são cadastros por conta). Se algum
+  // candidato não puder ser recriado (ex.: partido ficou inativo desde então),
+  // ele é pulado em vez de derrubar a operação inteira — a sessão de origem não
+  // é tocada em nenhum momento.
+  async duplicate(sourceId, input, userId) {
+    const source = await findOrFail(sourceId, userId);
+    const data = isPlainObject(input) ? input : {};
+
+    const newSession = await sessionService.create(
+      { name: data.name, year: data.year, positions: source.positions },
+      userId,
+    );
+
+    const candidateIds = Array.isArray(data.candidateIds) ? data.candidateIds : [];
+    const sourceCandidates = candidateIds.length
+      ? await candidateRepository.findWhere(
+          (c) =>
+            c.sessionId === sourceId &&
+            c.userId === userId &&
+            c.status === CANDIDATE_STATUS.ACTIVE &&
+            candidateIds.includes(c.id),
+        )
+      : [];
+
+    const people = await personRepository.findAllForUser(userId);
+    const nameByPersonId = new Map(people.map((p) => [p.id, p.name]));
+
+    const copied = [];
+    const skipped = [];
+    for (const candidate of sourceCandidates) {
+      try {
+        copied.push(
+          await candidateService.create(
+            {
+              sessionId: newSession.id,
+              partyId: candidate.partyId,
+              personId: candidate.personId,
+              position: candidate.position,
+              number: candidate.number,
+            },
+            userId,
+          ),
+        );
+      } catch (err) {
+        if (!(err instanceof AppError)) throw err;
+        skipped.push({ name: nameByPersonId.get(candidate.personId) ?? candidate.personId, reason: err.message });
+      }
+    }
+
+    return { session: await sessionService.getById(newSession.id, userId), copied: copied.length, skipped };
   },
 };

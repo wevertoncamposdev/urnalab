@@ -12,6 +12,23 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Duplicar sessão**: botão "Duplicar" em `SessionDetails.jsx` (qualquer status) abre um dialog
+  (`DuplicateSessionDialog.jsx`) com nome/ano da sessão nova e a lista de candidatos **ativos**
+  da sessão de origem, cada um com checkbox marcada por padrão — pensado pro caso de eleições que
+  se repetem com o mesmo elenco (ex.: representante de turma todo mês): a professora desmarca só
+  quem já foi eleito da vez passada e não concorre de novo. Novo endpoint
+  `POST /api/sessions/:id/duplicate` (`sessionService.duplicate`) cria a sessão nova em rascunho
+  com os mesmos cargos da original e, pra cada candidato marcado, uma candidatura nova nela —
+  reaproveitando `sessionService.create`/`candidateService.create` já existentes, sem duplicar
+  nenhuma validação. Partido/pessoa/cargo não são duplicados (já são cadastros por conta, não por
+  sessão); se o partido de algum candidato ficou inativo desde a eleição original, ele é pulado
+  automaticamente em vez de travar a operação inteira, e o toast final avisa quantos foram
+  copiados e quais ficaram de fora (e por quê). A sessão de origem nunca é alterada.
+- **Trava ao remover cargo de uma sessão com candidato cadastrado**: `PUT /api/sessions/:id`
+  agora recusa (`SESSION_POSITION_HAS_CANDIDATES`) tirar um cargo de `positions` enquanto ainda
+  houver candidato `ACTIVE` vinculado a ele naquela sessão — evita candidato "órfão" (ativo, mas
+  que a votação nunca pergunta por ele, já que só pergunta pelos cargos habilitados). A mensagem
+  nomeia o(s) cargo(s) bloqueado(s) e já aparece no campo certo do formulário de edição de sessão.
 - **Proposta de governo do candidato**: campo opcional (textarea, até 2000 caracteres) na
   candidatura (`POST`/`PUT /api/candidates`), onde o candidato descreve seus planos para o
   mandato. Não é uma identidade do candidato — pode ser preenchido ou alterado mesmo depois que a

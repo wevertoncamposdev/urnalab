@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BarChart3, Copy, ExternalLink, Pencil, Play, ShieldCheck, Square, Users, Vote } from 'lucide-react';
+import { BarChart3, Copy, CopyPlus, ExternalLink, Pencil, Play, ShieldCheck, Square, Users, Vote } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmAction } from '@/components/sessions/ConfirmAction';
+import { DuplicateSessionDialog } from '@/components/sessions/DuplicateSessionDialog';
 import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
@@ -89,6 +90,7 @@ export default function SessionDetails() {
   const sessionState = useAsync(() => api.sessions.get(id), [id]);
   const positionsState = useAsync(() => api.positions.list(), []);
   const [working, setWorking] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const session = sessionState.data;
 
@@ -141,11 +143,15 @@ export default function SessionDetails() {
   }
 
   const rules = Object.fromEntries(positionsState.data.map((p) => [p.code, p]));
+  const positionLabels = Object.fromEntries(positionsState.data.map((p) => [p.code, p.label]));
 
   const actions = (
     <>
       <Button asChild variant="outline">
         <Link to={`/candidatos?sessionId=${session.id}`}><Users /> Candidatos</Link>
+      </Button>
+      <Button type="button" variant="outline" onClick={() => setDuplicating(true)}>
+        <CopyPlus /> Duplicar
       </Button>
       {session.status === 'DRAFT' && (
         <>
@@ -236,6 +242,12 @@ export default function SessionDetails() {
           </CardContent>
         </Card>
       </div>
+
+      <DuplicateSessionDialog
+        session={duplicating ? session : null}
+        positionLabels={positionLabels}
+        onOpenChange={setDuplicating}
+      />
     </div>
   );
 }
