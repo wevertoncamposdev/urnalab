@@ -12,6 +12,16 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Código de votação com 4 dígitos (em vez de hash)**: o link público de votação
+  (`/votar/:token`) agora usa um código curto de 4 dígitos (`generateSessionCode`, `utils/id.js`),
+  fácil de digitar ou ditar em voz alta, em vez do token longo em base64url de antes. Como só há 10
+  mil combinações, colisão é esperada: `withUniqueSessionCode` (`session.service.js`) sorteia de
+  novo até achar um código livre, tanto na criação da sessão quanto no "self-heal" de sessões
+  antigas sem token. O token opaco e longo original (`generatePublicToken`) continua existindo e é
+  usado só pelo reset de senha, onde um código curto seria adivinhável. A tela da sessão
+  (`SessionDetails.jsx`) agora destaca o código em si, além do link completo, pra facilitar a
+  digitação manual. Sessões já existentes mantêm o token antigo até trocarem — sem migração de
+  banco, já que a coluna continua `TEXT`.
 - **Captura de foto corrigida (sem distorção entre dispositivos)**: `PhotoCaptureField.jsx`
   (usado no cadastro de Pessoas) agora sempre captura um **quadrado**, recortado do centro do
   quadro nativo da câmera (`video.videoWidth`/`videoHeight`), em vez de esticar o retângulo

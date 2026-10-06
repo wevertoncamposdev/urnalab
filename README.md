@@ -111,8 +111,8 @@ quem já tinha conta.
 
 "Esqueci minha senha" no login manda um link de redefinição por e-mail (mesmo
 `email.service.js` da 8.1), com token opaco de uso único válido por 30 minutos — mesmo padrão do
-link público de votação (`generatePublicToken`, `utils/id.js`), só que de uso único e enviado por
-e-mail. `POST /api/auth/forgot-password` **sempre** responde `{ sent: true }`, exista ou não o
+link público de votação, só que com token opaco e longo (`generatePublicToken`, `utils/id.js`), de
+uso único e enviado por e-mail. `POST /api/auth/forgot-password` **sempre** responde `{ sent: true }`, exista ou não o
 e-mail e mesmo que o reenvio esteja em cooldown (60s) — a resposta nunca revela se uma conta
 existe. Depois de `POST /api/auth/reset-password`, o usuário não é logado automaticamente —
 precisa entrar de novo com a senha nova. Limitação conhecida (ver `ROADMAP.md`): como a autenticação é
@@ -138,12 +138,15 @@ notificação — um balão no menu do usuário, não mais um alerta fixo no Das
 
 ## Link público de votação
 
-Toda sessão tem um `publicToken` (aleatório, sem relação com o id) desde que criada — sessões mais
-antigas ganham o token na primeira vez que forem abertas (`GET /api/sessions` ou `/:id`). Enquanto
-a sessão está `OPEN`, o link `/votar/:token` do frontend vota nela sem precisar de conta; funciona
-bem pelo celular. Ele para de aceitar voto sozinho fora do estado `OPEN` — o token em si é a
-autorização, não há usuário por trás. O front reaproveita a mesma lógica da cédula (hook
-`useBallotFlow`) tanto na votação autenticada quanto no link público.
+Toda sessão tem um `publicToken` — um código de 4 dígitos (`generateSessionCode`, `utils/id.js`),
+fácil de digitar ou ditar em voz alta, sem relação com o id — desde que criada; sessões mais
+antigas ganham o token na primeira vez que forem abertas (`GET /api/sessions` ou `/:id`). Como só
+há 10 mil combinações, a geração tenta de novo em caso de colisão (`withUniqueSessionCode`,
+`session.service.js`) até achar um código livre. Enquanto a sessão está `OPEN`, o link
+`/votar/:token` do frontend vota nela sem precisar de conta; funciona bem pelo celular, e a tela da
+sessão destaca o código em si para digitação manual. Ele para de aceitar voto sozinho fora do
+estado `OPEN` — o token em si é a autorização, não há usuário por trás. O front reaproveita a mesma
+lógica da cédula (hook `useBallotFlow`) tanto na votação autenticada quanto no link público.
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
