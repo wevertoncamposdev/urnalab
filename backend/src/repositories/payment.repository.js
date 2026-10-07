@@ -26,4 +26,16 @@ export const paymentRepository = {
   async update(id, data) {
     return serializeDates(await prisma.payment.update({ where: { id }, data }));
   },
+
+  // Tentativas PENDING abandonadas (usuário saiu do Checkout Pro sem pagar) nunca mais
+  // recebem webhook — sem isso elas ficariam PENDING pra sempre. Chamado de forma "lazy"
+  // a cada novo checkout da mesma sessão (ver payment.service.js createCheckout), não por
+  // um job periódico: não há infraestrutura de cron no projeto, e isso é barato o
+  // suficiente pra rodar ali.
+  async expireStalePending(sessionId, olderThan) {
+    await prisma.payment.updateMany({
+      where: { sessionId, status: 'PENDING', createdAt: { lt: olderThan } },
+      data: { status: 'REJECTED' },
+    });
+  },
 };

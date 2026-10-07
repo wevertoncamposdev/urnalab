@@ -65,6 +65,12 @@ export const config = {
   // sem isso configurado; só payment.service.js recusa a operação (ver mercadopago.service.js)
   // se faltar o access token na hora de criar uma cobrança de verdade.
   mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null,
+  // Segredo usado para validar a assinatura (header x-signature) das notificações do
+  // webhook — painel do Mercado Pago, na mesma tela onde fica o notification_url. Também
+  // opcional: sem ele, a assinatura não é checada (mesmo comportamento de antes), só com
+  // um aviso no log; configurado, qualquer notificação sem assinatura válida é rejeitada
+  // (ver mercadopago.service.js verifyWebhookSignature).
+  mercadoPagoWebhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || null,
   // URL pública do backend (ex.: https://urnalab-api.up.railway.app) — necessária pro
   // Mercado Pago notificar pagamentos (webhook), já que FRONTEND_URL é a origem do front,
   // não a do backend. Mesmo status de opcional: só exigida ao criar uma cobrança.

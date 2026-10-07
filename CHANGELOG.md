@@ -10,6 +10,23 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Security
+
+- **Cobrança pela exportação em PDF — reforço de segurança (Etapa 13)**: levantado numa revisão de
+  código da Etapa 12. (1) `POST /api/payments/webhook` agora valida a assinatura
+  (`x-signature`/`x-request-id`) da notificação do Mercado Pago, via
+  `MERCADOPAGO_WEBHOOK_SECRET` (opcional — sem ela, o comportamento é o mesmo de antes, só com um
+  aviso no log); a reconsulta à API deles antes de aprovar (já existente) continua sendo a fonte de
+  verdade do status, a assinatura só evita gastar essa chamada com notificação forjada. (2)
+  `payment.service.js confirmPayment` agora revalida `transaction_amount` contra o `amountCents`
+  cobrado antes de aprovar um pagamento. (3) `mapMercadoPagoStatus` (`payment-rules.js`) passa a
+  reconhecer `refunded`/`charged_back` como estados próprios (`REFUNDED`/`CHARGED_BACK`) em vez de
+  cair genericamente em `PENDING` — e `paidAt` não é mais apagado nessa transição, preservando
+  quando o pagamento foi aprovado originalmente. (4) Rate limit (10 por 15 min, por IP) em
+  `POST /api/sessions/:id/payment`. (5) Tentativas `PENDING` abandonadas (sessão nunca paga) agora
+  expiram sozinhas (`paymentRepository.expireStalePending`, verificação "lazy" no início de um novo
+  checkout da mesma sessão) em vez de acumular pra sempre.
+
 ### Added
 
 - **Cobrança pela exportação em PDF**: baixar o PDF da apuração (Etapa 11) agora exige uma cobrança

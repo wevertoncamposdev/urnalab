@@ -30,6 +30,52 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
   alcançável (o webhook não funciona com `localhost`) e conferir que o webhook aprova o
   pagamento e libera o PDF de verdade.
 
+### Etapa 14 — Pagamento: botão de compra mais claro e área financeira do usuário
+
+- [ ] 14.1 — Trocar o botão "Pagar R$ X e baixar PDF" por um "Exportar" com indicador de cadeado
+  que abre um diálogo explicando a cobrança (o que libera, que vale pra sempre naquela sessão, o
+  valor e que o pagamento é processado pelo Mercado Pago) antes de redirecionar ao checkout — hoje
+  o botão (`Results.jsx`) não deixa claro que é uma compra de verdade.
+- [ ] 14.2 — Área financeira do usuário (nova página, ex. `/financeiro`): histórico de pagamentos
+  (`GET /api/payments`, escopado à própria conta), com status, valor, data e produto.
+- [ ] 14.3 — Opção de reembolso pelo próprio usuário, via API de refund do Mercado Pago. **Regra de
+  negócio obrigatória**: só permitir reembolso se o material ainda não tiver sido baixado/consumido
+  — sem essa trava o usuário fica com o PDF **e** o dinheiro de volta. Exige registrar o momento do
+  primeiro download (hoje `resultController.downloadPdf` não grava nada — precisa de um
+  `downloadedAt` no `Payment`, ou um registro de acesso separado) e checar isso antes de aceitar o
+  pedido.
+
+### Etapa 15 — Produtos genéricos (reaproveitar o sistema de pagamento)
+
+- [ ] 15.1 — Model `Product` (nome, descrição, tipo — ex. `SESSION_EXPORT`, `EBOOK` —, preço em
+  centavos, ativo/inativo), gerenciado pelo admin (ver Etapa 16), substituindo a env var
+  `SESSION_RESULTS_PRICE_CENTS` fixa por um preço editável em banco. A exportação de PDF por
+  sessão se torna o primeiro `Product` (migração de dado único, sem precisar recriar nada).
+- [ ] 15.2 — Generalizar `Payment` pra referenciar um `productId` (hoje é só sessão): produtos
+  "por sessão" continuam exigindo `sessionId`; produtos "por conta" (ex. ebook) liberam acesso
+  direto pro `userId`, sem sessão envolvida. Avaliar se isso é um campo opcional em `Payment` ou um
+  novo model de concessão de acesso (`Purchase`/`Entitlement`) por cima do `Payment` existente.
+- [ ] 15.3 — Primeiro produto novo de verdade: materiais didáticos (ebooks/planos de aula de
+  cidadania usando o UrnaLab) — armazenamento do arquivo (mesmo padrão de `photo-storage.js`),
+  endpoint de download protegido pelo mesmo tipo de gate que hoje existe pro PDF (`isPaid`), e um
+  CTA de loja a partir da página `/sistema-eleitoral` (conteúdo educacional já existente).
+
+### Etapa 16 — Área de Gerenciamento: rota própria e gestão de produtos
+
+Depende da Etapa 15 existir pra ter o que gerenciar (produtos/vendas); a rota própria (16.1) pode
+ser feita antes, independente do resto.
+
+- [ ] 16.1 — Mover a Área de Gerenciamento pra uma rota própria, separada da árvore de rotas comum
+  do usuário (hoje é `/admin*` dentro do mesmo app, com a checagem de `ADMIN_EMAIL` feita dentro de
+  `admin.service.js` a cada chamada) — objetivo é reduzir a superfície de acesso e evitar que
+  qualquer requisição de cliente comum passe perto do código de autorização admin.
+- [ ] 16.2 — CRUD de `Product` (Etapa 15) pelo admin: criar/editar preço, nome, descrição, ativar
+  ou desativar um produto.
+- [ ] 16.3 — Histórico de vendas por produto (quantidade, receita, status de cada pagamento) —
+  reaproveita o `Payment` generalizado (Etapa 15).
+- [ ] 16.4 — Manter e reorganizar o que já existe hoje (`overview`, `users`, `analytics/funnel`,
+  `feedback`) dentro dessa área revisada, sem perder nenhuma funcionalidade atual.
+
 ---
 
 ## Ideias futuras

@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from '../config.js';
 import { serviceUnavailable } from '../utils/errors.js';
 
@@ -42,7 +43,46 @@ function isLoopback(url) {
   }
 }
 
+// Header "x-signature: ts=<timestamp>,v1=<hash>" — formato chave=valor separado por
+// vírgula, documentado em https://www.mercadopago.com.br/developers (Webhooks > Assinatura).
+function parseSignatureHeader(header) {
+  const parts = {};
+  for (const pair of (header ?? '').split(',')) {
+    const [key, value] = pair.split('=').map((part) => part?.trim());
+    if (key && value) parts[key] = value;
+  }
+  return parts;
+}
+
+// Confere que a notificação do webhook veio mesmo do Mercado Pago, antes de gastar uma
+// chamada à API deles pra reconsultar o pagamento (ver getPayment). Sem
+// MERCADOPAGO_WEBHOOK_SECRET configurado, não dá pra validar — deixa passar (mesmo
+// comportamento de antes desta checagem existir), só avisando no log; a segurança do
+// status em si continua garantida pela reconsulta, que nunca confia no corpo da notificação.
+function verifyWebhookSignature({ signatureHeader, requestId, mpPaymentId }) {
+  const secret = config.mercadoPagoWebhookSecret;
+  if (!secret) {
+    console.warn('[mercadopago] MERCADOPAGO_WEBHOOK_SECRET não configurado — assinatura do webhook não verificada.');
+    return true;
+  }
+
+  const { ts, v1 } = parseSignatureHeader(signatureHeader);
+  if (!ts || !v1 || !mpPaymentId) return false;
+
+  // Manifest exato exigido pelo Mercado Pago: "id:{data.id};request-id:{x-request-id};ts:{ts};".
+  const manifest = `id:${String(mpPaymentId).toLowerCase()};request-id:${requestId ?? ''};ts:${ts};`;
+  const expected = createHmac('sha256', secret).update(manifest).digest('hex');
+
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(v1);
+  return (
+    expectedBuffer.length === receivedBuffer.length && timingSafeEqual(expectedBuffer, receivedBuffer)
+  );
+}
+
 export const mercadoPagoService = {
+  verifyWebhookSignature,
+
   // Cria uma "preference" (Checkout Pro) pra uma cobrança avulsa. `externalReference`
   // é o id do nosso Payment — é por ele que o webhook (ver payment.service.js) liga o
   // pagamento aprovado de volta à sessão certa.
