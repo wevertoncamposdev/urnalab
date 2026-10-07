@@ -13,6 +13,7 @@ import Candidates from '@/pages/Candidates';
 import ConfirmEmail from '@/pages/ConfirmEmail';
 import Dashboard from '@/pages/Dashboard';
 import ElectoralSystem from '@/pages/ElectoralSystem';
+import Financeiro from '@/pages/Financeiro';
 import ForgotPassword from '@/pages/ForgotPassword';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
@@ -102,6 +103,7 @@ export default function App() {
           <Route path="pessoas" element={<People />} />
           <Route path="candidatos" element={<Candidates />} />
           <Route path="resultados" element={<Results />} />
+          <Route path="financeiro" element={<Financeiro />} />
           <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
           <Route path="linha-do-tempo" element={<Timeline />} />

@@ -15,6 +15,18 @@ export const paymentRepository = {
     );
   },
 
+  // Área financeira do usuário (Etapa 14) — histórico de todas as cobranças da conta,
+  // com o nome/ano da sessão pra exibição (sem outros campos da sessão: só o que a tela
+  // precisa mostrar).
+  async findByUser(userId) {
+    const payments = await prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { session: { select: { id: true, name: true, year: true } } },
+    });
+    return payments.map((payment) => ({ ...serializeDates(payment), session: payment.session }));
+  },
+
   // Qualquer cobrança aprovada já basta — uma sessão só precisa de uma aprovada
   // pra liberar o PDF pra sempre (ver payment.service.js).
   async findApprovedBySession(sessionId) {
@@ -37,5 +49,11 @@ export const paymentRepository = {
       where: { sessionId, status: 'PENDING', createdAt: { lt: olderThan } },
       data: { status: 'REJECTED' },
     });
+  },
+
+  // Só grava na primeira vez (where downloadedAt: null) — é o que `payment.service.js
+  // refund` depois usa pra travar reembolso de quem já baixou o material.
+  async markDownloaded(id) {
+    await prisma.payment.updateMany({ where: { id, downloadedAt: null }, data: { downloadedAt: new Date() } });
   },
 };

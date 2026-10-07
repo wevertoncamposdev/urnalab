@@ -5,7 +5,7 @@ import { sessionRepository } from '../repositories/session.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { PAYMENT_STATUS, mapMercadoPagoStatus } from '../rules/payment-rules.js';
 import { SESSION_STATUS } from '../rules/session-rules.js';
-import { conflict, notFound } from '../utils/errors.js';
+import { conflict, notFound, serviceUnavailable } from '../utils/errors.js';
 import { mercadoPagoService } from './mercadopago.service.js';
 
 // Tentativa PENDING mais antiga que isso é considerada abandonada (ver
@@ -114,5 +114,47 @@ export const paymentService = {
     const patch = { status, mpPaymentId: String(mpPayment.id) };
     if (status === PAYMENT_STATUS.APPROVED) patch.paidAt = new Date().toISOString();
     await paymentRepository.update(payment.id, patch);
+  },
+
+  // Área financeira do usuário (Etapa 14) — histórico de todas as cobranças da conta,
+  // de qualquer sessão.
+  async listForUser(userId) {
+    return paymentRepository.findByUser(userId);
+  },
+
+  // Chamado por result.controller.js a cada download bem-sucedido do PDF — só grava a
+  // primeira vez (ver paymentRepository.markDownloaded), é o que `refund` abaixo usa pra
+  // travar reembolso de quem já baixou.
+  async markDownloaded(sessionId, userId) {
+    const approved = await paymentRepository.findApprovedBySession(sessionId);
+    if (approved && approved.userId === userId) {
+      await paymentRepository.markDownloaded(approved.id);
+    }
+  },
+
+  // Reembolso pedido pelo próprio usuário (Etapa 14). Regra de negócio inegociável: só
+  // antes do primeiro download — senão a conta fica com o PDF **e** o dinheiro de volta.
+  // O status real some confirmado de novo pelo webhook (igual a qualquer outra mudança
+  // de status), esta função só reflete a resposta síncrona do reembolso.
+  async refund(paymentId, userId) {
+    const payment = await paymentRepository.findById(paymentId);
+    if (!payment || payment.userId !== userId) {
+      throw notFound('PAYMENT_NOT_FOUND', 'Pagamento não encontrado.');
+    }
+    if (payment.status !== PAYMENT_STATUS.APPROVED) {
+      throw conflict('NOT_REFUNDABLE', 'Só é possível reembolsar um pagamento aprovado.');
+    }
+    if (payment.downloadedAt) {
+      throw conflict(
+        'ALREADY_DOWNLOADED',
+        'O material desta cobrança já foi baixado — não é possível reembolsar depois de baixado.',
+      );
+    }
+    if (!payment.mpPaymentId) {
+      throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', 'Pagamento sem referência no Mercado Pago — não é possível reembolsar.');
+    }
+
+    await mercadoPagoService.refundPayment(payment.mpPaymentId);
+    return paymentRepository.update(payment.id, { status: PAYMENT_STATUS.REFUNDED });
   },
 };

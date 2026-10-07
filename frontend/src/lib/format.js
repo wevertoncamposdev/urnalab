@@ -9,3 +9,6 @@ export function formatDateTime(iso) {
 }
 
 export const shortHash = (hash) => (hash ? `${hash.slice(0, 8)}…${hash.slice(-4)}` : '—');
+
+export const formatCents = (cents) =>
+  (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -14,10 +15,8 @@ import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { trackEvent } from '@/lib/analytics';
 import { saveBlobAsFile } from '@/lib/download';
+import { formatCents } from '@/lib/format';
 import { api } from '@/services/api';
-
-const centsToBRL = (cents) =>
-  (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // Apuração por sessão: só sessões finalizadas entram na lista, como numa eleição real.
 export default function Results() {
@@ -28,6 +27,7 @@ export default function Results() {
   const [creatingRunoff, setCreatingRunoff] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
+  const [showChargeDialog, setShowChargeDialog] = useState(false);
 
   const finishedSessions = (sessionsState.data ?? []).filter((s) => s.status === 'FINISHED');
   const session = finishedSessions.find((s) => s.id === sessionId) ?? finishedSessions[0] ?? null;
@@ -150,11 +150,14 @@ export default function Results() {
           <>
             {sessionPicker}
             {paymentState.data && !paymentState.data.paid ? (
-              <Button type="button" variant="outline" onClick={startCheckout} disabled={startingCheckout}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowChargeDialog(true)}
+                disabled={startingCheckout}
+              >
                 <Lock />
-                {startingCheckout
-                  ? 'Abrindo pagamento...'
-                  : `Pagar ${centsToBRL(paymentState.data.priceCents)} e baixar PDF`}
+                {startingCheckout ? 'Abrindo pagamento...' : 'Exportar'}
               </Button>
             ) : (
               <Button
@@ -197,6 +200,25 @@ export default function Results() {
           ))}
         </>
       )}
+
+      <ConfirmDialog
+        open={showChargeDialog}
+        onOpenChange={setShowChargeDialog}
+        title="Exportar resultado em PDF"
+        description={
+          paymentState.data
+            ? `Essa sessão ainda não tem a exportação liberada. Ao confirmar, você será ` +
+              `redirecionado ao Mercado Pago pra pagar ${formatCents(paymentState.data.priceCents)} — ` +
+              `um pagamento único que libera o download do PDF dessa sessão pra sempre, quantas ` +
+              `vezes quiser.`
+            : ''
+        }
+        confirmLabel={paymentState.data ? `Pagar ${formatCents(paymentState.data.priceCents)}` : 'Pagar'}
+        onConfirm={() => {
+          setShowChargeDialog(false);
+          startCheckout();
+        }}
+      />
     </div>
   );
 }

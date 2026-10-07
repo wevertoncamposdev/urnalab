@@ -11,6 +11,7 @@ import {
   MessageSquare,
   ShieldAlert,
   ShieldCheck,
+  Wallet,
   Wand2,
 } from 'lucide-react';
 import { Logo } from '@/components/branding/Logo';
@@ -46,6 +47,12 @@ const NAV_GROUPS = [
     items: [
       { label: 'Resultados', to: '/resultados', icon: BarChart3 },
       { label: 'Auditoria', to: '/auditoria', icon: ShieldCheck },
+    ],
+  },
+  {
+    label: 'Conta',
+    items: [
+      { label: 'Financeiro', to: '/financeiro', icon: Wallet },
     ],
   },
   {

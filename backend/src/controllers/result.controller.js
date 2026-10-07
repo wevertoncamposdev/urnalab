@@ -19,6 +19,9 @@ export const resultController = {
     if (!paid) {
       throw paymentRequired('PAYMENT_REQUIRED', 'Pague pela exportação para baixar o PDF desta sessão.');
     }
+    // Trava do reembolso (ver payment.service.js refund): a partir do primeiro download,
+    // essa cobrança não pode mais ser reembolsada.
+    await paymentService.markDownloaded(params.id, userId);
 
     const report = await resultsReportService.build(params.id, userId);
     const buffer = await renderResultsPdf(report);

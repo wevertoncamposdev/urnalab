@@ -129,6 +129,28 @@ export const mercadoPagoService = {
     };
   },
 
+  // Reembolso total (Etapa 14) — corpo vazio no POST já significa "devolver o valor
+  // inteiro" na API do Mercado Pago (reembolso parcial exigiria um `amount` no corpo,
+  // sem uso aqui: a trava de `payment.service.js refund` é tudo ou nada, antes do
+  // primeiro download). O webhook também recebe a notificação dessa mudança de status
+  // depois — esta chamada só confirma a resposta síncrona da API.
+  async refundPayment(mpPaymentId) {
+    const accessToken = requireAccessToken();
+
+    const response = await fetch(`${API_URL}/v1/payments/${mpPaymentId}/refunds`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      console.error('[mercadopago] erro ao reembolsar pagamento', mpPaymentId, response.status, payload);
+      throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', 'Não foi possível processar o reembolso. Tente de novo.');
+    }
+
+    return payload;
+  },
+
   // Reconsulta um pagamento pelo id que o Mercado Pago manda na notificação do
   // webhook — nunca confiamos no status que vem na própria notificação, só no que
   // a API devolve ao ser consultada de volta (evita falsificação do payload do webhook).

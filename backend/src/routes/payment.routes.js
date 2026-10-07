@@ -9,6 +9,11 @@ export function registerPaymentRoutes(router) {
   router.post('/api/sessions/:id/payment', paymentController.createCheckout, {
     rateLimit: { windowMs: FIFTEEN_MIN, max: 10 },
   });
+  // Área financeira do usuário (Etapa 14): histórico de cobranças e reembolso.
+  router.get('/api/payments', paymentController.listMine);
+  router.post('/api/payments/:id/refund', paymentController.refund, {
+    rateLimit: { windowMs: FIFTEEN_MIN, max: 10 },
+  });
   // Único endpoint deste arquivo sem login: quem chama é o próprio Mercado Pago, não
   // o usuário (ver payment.service.js confirmPayment — o status real vem de uma
   // reconsulta à API deles, nunca do corpo desta notificação).

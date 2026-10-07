@@ -273,6 +273,10 @@ model Payment {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   paidAt        DateTime?
+  // Primeiro download do PDF depois de aprovado (Etapa 14) — trava de reembolso: uma
+  // vez preenchido, `payment.service.js refund` não deixa mais reembolsar essa cobrança
+  // (senão o usuário ficaria com o PDF e o dinheiro de volta).
+  downloadedAt  DateTime?
 
   @@index([userId])
   @@index([sessionId])

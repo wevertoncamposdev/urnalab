@@ -29,6 +29,17 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Área financeira do usuário e reembolso (Etapa 14)**: nova página `/financeiro` (link na
+  sidebar, grupo "Conta") lista o histórico de cobranças da própria conta — sessão, data, valor,
+  status e se já foi baixado (`GET /api/payments`, `paymentRepository.findByUser`). Uma cobrança
+  `APPROVED` ainda não baixada ganha um botão "Solicitar reembolso"
+  (`POST /api/payments/:id/refund`, via `mercadoPagoService.refundPayment`); **regra de negócio
+  inegociável**: depois do primeiro download do PDF (`Payment.downloadedAt`, gravado por
+  `resultController.downloadPdf` no primeiro acesso bem-sucedido), o reembolso não fica mais
+  disponível nem no backend nem na tela — sem essa trava a conta ficaria com o PDF **e** o
+  dinheiro de volta. Na tela de Resultados, o botão "Pagar R$ X e baixar PDF" virou um "Exportar"
+  com ícone de cadeado que abre um diálogo explicando a cobrança (o que libera, que vale pra
+  sempre, o valor, que é processado pelo Mercado Pago) antes de redirecionar ao checkout.
 - **Cobrança pela exportação em PDF**: baixar o PDF da apuração (Etapa 11) agora exige uma cobrança
   aprovada por sessão — paga uma vez, libera o download daquela sessão pra sempre. Integração com
   o **Mercado Pago** (Checkout Pro) via chamadas diretas à API REST deles

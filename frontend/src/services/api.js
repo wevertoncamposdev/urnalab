@@ -202,6 +202,10 @@ export const api = {
   payments: {
     getStatus: (sessionId) => request(`/api/sessions/${sessionId}/payment`),
     createCheckout: (sessionId) => request(`/api/sessions/${sessionId}/payment`, { method: 'POST' }),
+    // Área financeira (Etapa 14): histórico de todas as cobranças da conta e reembolso
+    // (só antes do primeiro download — ver backend/src/services/payment.service.js refund).
+    listMine: () => request('/api/payments'),
+    refund: (id) => request(`/api/payments/${id}/refund`, { method: 'POST' }),
   },
 
   audit: {

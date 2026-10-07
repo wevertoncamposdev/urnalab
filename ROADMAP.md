@@ -30,21 +30,6 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
   alcançável (o webhook não funciona com `localhost`) e conferir que o webhook aprova o
   pagamento e libera o PDF de verdade.
 
-### Etapa 14 — Pagamento: botão de compra mais claro e área financeira do usuário
-
-- [ ] 14.1 — Trocar o botão "Pagar R$ X e baixar PDF" por um "Exportar" com indicador de cadeado
-  que abre um diálogo explicando a cobrança (o que libera, que vale pra sempre naquela sessão, o
-  valor e que o pagamento é processado pelo Mercado Pago) antes de redirecionar ao checkout — hoje
-  o botão (`Results.jsx`) não deixa claro que é uma compra de verdade.
-- [ ] 14.2 — Área financeira do usuário (nova página, ex. `/financeiro`): histórico de pagamentos
-  (`GET /api/payments`, escopado à própria conta), com status, valor, data e produto.
-- [ ] 14.3 — Opção de reembolso pelo próprio usuário, via API de refund do Mercado Pago. **Regra de
-  negócio obrigatória**: só permitir reembolso se o material ainda não tiver sido baixado/consumido
-  — sem essa trava o usuário fica com o PDF **e** o dinheiro de volta. Exige registrar o momento do
-  primeiro download (hoje `resultController.downloadPdf` não grava nada — precisa de um
-  `downloadedAt` no `Payment`, ou um registro de acesso separado) e checar isso antes de aceitar o
-  pedido.
-
 ### Etapa 15 — Produtos genéricos (reaproveitar o sistema de pagamento)
 
 - [ ] 15.1 — Model `Product` (nome, descrição, tipo — ex. `SESSION_EXPORT`, `EBOOK` —, preço em
