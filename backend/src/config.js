@@ -60,4 +60,16 @@ export const config = {
   // E-mail da única conta com acesso à Área de Gerenciamento (ver admin.service.js).
   // Sem essa variável, nenhuma conta acessa — não existe um admin "padrão".
   adminEmail: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : null,
+  // Cobrança pela exportação em PDF (Etapa 12), via Mercado Pago (Checkout Pro). Ao
+  // contrário do Resend, opcional na subida do servidor — o resto do sistema funciona
+  // sem isso configurado; só payment.service.js recusa a operação (ver mercadopago.service.js)
+  // se faltar o access token na hora de criar uma cobrança de verdade.
+  mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null,
+  // URL pública do backend (ex.: https://urnalab-api.up.railway.app) — necessária pro
+  // Mercado Pago notificar pagamentos (webhook), já que FRONTEND_URL é a origem do front,
+  // não a do backend. Mesmo status de opcional: só exigida ao criar uma cobrança.
+  backendUrl: process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/+$/, '') : null,
+  // Preço (em centavos) de liberar o PDF de uma sessão finalizada. Uma cobrança aprovada
+  // libera download ilimitado daquela sessão (ver docs/ROADMAP.md, Etapa 12).
+  sessionResultsPriceCents: Number(process.env.SESSION_RESULTS_PRICE_CENTS) || 990,
 };

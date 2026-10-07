@@ -8,6 +8,7 @@ import { registerFeedbackRoutes } from './feedback.routes.js';
 import { registerHealthRoutes } from './health.routes.js';
 import { registerInstitutionProfileRoutes } from './institution-profile.routes.js';
 import { registerPartyRoutes } from './party.routes.js';
+import { registerPaymentRoutes } from './payment.routes.js';
 import { registerPersonRoutes } from './person.routes.js';
 import { registerPositionRoutes } from './position.routes.js';
 import { registerPublicRoutes } from './public.routes.js';
@@ -27,6 +28,7 @@ export function createRouter() {
   registerCandidateRoutes(router);
   registerVoteRoutes(router);
   registerResultRoutes(router);
+  registerPaymentRoutes(router);
   registerAuditRoutes(router);
   registerPublicRoutes(router);
   registerAdminRoutes(router);

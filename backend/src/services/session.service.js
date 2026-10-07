@@ -5,11 +5,26 @@ import { personRepository } from '../repositories/person.repository.js';
 import { positionRepository } from '../repositories/position.repository.js';
 import { voteRepository } from '../repositories/vote.repository.js';
 import { candidateService } from './candidate.service.js';
+import { isUniqueViolation } from '../database/index.js';
 import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { SESSION_LIMITS, SESSION_STATUS } from '../rules/session-rules.js';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
-import { generatePublicToken } from '../utils/id.js';
+import { generateSessionCode } from '../utils/id.js';
 import { isPlainObject } from '../utils/object.js';
+
+// Só 10 mil códigos de 4 dígitos existem, então colisão é esperada (não um bug) —
+// tenta de novo com outro código sorteado até um ficar livre.
+const MAX_SESSION_CODE_ATTEMPTS = 20;
+
+export async function withUniqueSessionCode(createOrUpdate) {
+  for (let attempt = 1; attempt <= MAX_SESSION_CODE_ATTEMPTS; attempt += 1) {
+    try {
+      return await createOrUpdate(generateSessionCode());
+    } catch (error) {
+      if (!isUniqueViolation(error) || attempt === MAX_SESSION_CODE_ATTEMPTS) throw error;
+    }
+  }
+}
 
 // Valida e normaliza os dados vindos da requisição. Lança o primeiro erro encontrado.
 async function normalizeInput(input, userId) {
@@ -63,7 +78,9 @@ async function findOrFail(id, userId) {
 async function withStats(session) {
   let current = session;
   if (!current.publicToken) {
-    current = await sessionRepository.update(current.id, { publicToken: generatePublicToken() });
+    current = await withUniqueSessionCode((publicToken) =>
+      sessionRepository.update(current.id, { publicToken }),
+    );
   }
 
   const [candidatesCount, votesCount] = await Promise.all([
@@ -128,15 +145,17 @@ export const sessionService = {
     }
 
     const data = await normalizeInput(isPlainObject(input) ? input : {}, userId);
-    const session = await sessionRepository.create({
-      ...data,
-      userId,
-      publicToken: generatePublicToken(),
-      status: SESSION_STATUS.DRAFT,
-      createdAt: new Date().toISOString(),
-      startedAt: null,
-      finishedAt: null,
-    });
+    const session = await withUniqueSessionCode((publicToken) =>
+      sessionRepository.create({
+        ...data,
+        userId,
+        publicToken,
+        status: SESSION_STATUS.DRAFT,
+        createdAt: new Date().toISOString(),
+        startedAt: null,
+        finishedAt: null,
+      }),
+    );
     return withStats(session);
   },
 
@@ -214,6 +233,7 @@ export const sessionService = {
               personId: candidate.personId,
               position: candidate.position,
               number: candidate.number,
+              governmentProposal: candidate.governmentProposal,
             },
             userId,
           ),

@@ -21,6 +21,24 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Imagens em public/img/ (logo, banner) mantêm sempre o mesmo nome de
+    # arquivo — a logo também é embutida nos e-mails transacionais
+    # (backend/src/services/email.service.js) como uma URL fixa, então não dá
+    # pra passar pelo pipeline de assets com hash do Vite (que resolveria isso
+    # trocando o nome a cada build). Sem isso, o navegador guardava a versão
+    # antiga indefinidamente depois de trocar o arquivo, já que a URL nunca
+    # muda. "no-cache" não desliga o cache: só obriga revalidar a cada acesso
+    # (barato — vira um 304 se o arquivo não mudou).
+    # `add_header` num location NÃO herda os da `server` acima — precisa
+    # repetir, senão as imagens passam a responder sem eles.
+    location /img/ {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-cache";
+    }
+
     location = /health {
         access_log off;
         return 200 "ok";

@@ -8,7 +8,7 @@ import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { SESSION_STATUS } from '../rules/session-rules.js';
 import { VOTE_TYPE } from '../rules/vote-rules.js';
 import { conflict, notFound } from '../utils/errors.js';
-import { sessionService } from './session.service.js';
+import { sessionService, withUniqueSessionCode } from './session.service.js';
 
 async function findSessionOrFail(id, userId) {
   const session = await sessionRepository.findById(id);
@@ -170,16 +170,19 @@ export const resultService = {
       throw conflict('RUNOFF_NOT_NEEDED', 'Nenhum cargo desta sessão precisa de 2º turno.');
     }
 
-    const newSession = await sessionRepository.create({
-      name: `${session.name} - 2º turno`,
-      year: session.year,
-      positions: runoffPositions.map((p) => p.code),
-      userId,
-      status: SESSION_STATUS.DRAFT,
-      createdAt: new Date().toISOString(),
-      startedAt: null,
-      finishedAt: null,
-    });
+    const newSession = await withUniqueSessionCode((publicToken) =>
+      sessionRepository.create({
+        name: `${session.name} - 2º turno`,
+        year: session.year,
+        positions: runoffPositions.map((p) => p.code),
+        userId,
+        publicToken,
+        status: SESSION_STATUS.DRAFT,
+        createdAt: new Date().toISOString(),
+        startedAt: null,
+        finishedAt: null,
+      }),
+    );
 
     for (const position of runoffPositions) {
       for (const candidateId of position.runoff.candidateIds) {
@@ -190,6 +193,7 @@ export const resultService = {
           personId: original.personId,
           position: position.code,
           number: original.number,
+          governmentProposal: original.governmentProposal ?? null,
           userId,
           status: CANDIDATE_STATUS.ACTIVE,
           createdAt: new Date().toISOString(),

@@ -8,6 +8,7 @@ export const ANALYTICS_EVENT_NAMES = Object.freeze([
   'VOTING_STARTED',
   'VOTING_COMPLETED',
   'RESULTS_VIEWED',
+  'RESULTS_PDF_DOWNLOADED',
 ]);
 
 export const ANALYTICS_LIMITS = Object.freeze({

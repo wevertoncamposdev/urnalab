@@ -12,6 +12,62 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Cobrança pela exportação em PDF**: baixar o PDF da apuração (Etapa 11) agora exige uma cobrança
+  aprovada por sessão — paga uma vez, libera o download daquela sessão pra sempre. Integração com
+  o **Mercado Pago** (Checkout Pro) via chamadas diretas à API REST deles
+  (`backend/src/services/mercadopago.service.js`, com `fetch` nativo do Node — sem SDK novo como
+  dependência), no mesmo padrão de serviço externo já usado pro Resend (`email.service.js`):
+  `MERCADOPAGO_ACCESS_TOKEN`/`BACKEND_URL` opcionais na subida do servidor, só exigidas na hora de
+  criar uma cobrança de verdade. Novo model `Payment` (`prisma/schema.prisma`) guarda cada
+  tentativa (`PENDING`/`APPROVED`/`REJECTED`) por sessão; `payment.service.js` cria a preference
+  (`POST /api/sessions/:id/payment`) e expõe o status pro front (`GET /api/sessions/:id/payment`);
+  `POST /api/payments/webhook` (rota pública) recebe a notificação do Mercado Pago e sempre
+  reconsulta o pagamento na API deles antes de aprovar — nunca confia no status que vem no corpo da
+  notificação. Gate em `result.controller.js downloadPdf` (402 `PAYMENT_REQUIRED` sem pagamento
+  aprovado). Na tela de Resultados, o botão "Baixar PDF" vira "Pagar e baixar PDF" (com o preço,
+  `SESSION_RESULTS_PRICE_CENTS`, padrão R$ 9,90) enquanto a sessão não tem pagamento aprovado;
+  pagar redireciona pro Checkout Pro e a volta (`back_urls`) cai de novo em `/resultados` com
+  `?payment=success|pending|failure`, recarregando o status. **Ainda não validado ponta a ponta**:
+  depende de uma conta/credenciais reais do Mercado Pago (sandbox), que o projeto ainda não tem —
+  ver `ROADMAP.md`.
+- **Exportar resultado da apuração em PDF**: novo botão "Baixar PDF" na tela de Resultados, pra
+  dar pra professora/responsável um relatório pronto pra impressão/mural da escola — hoje só dava
+  pra tirar print da tela. Gerado no **backend** com `pdfkit` (puro JS, sem Chromium/Puppeteer —
+  imagem Docker continua enxuta), reaproveitando os dados que `resultService.getBySession` já
+  calcula (vencedores, percentuais, 2º turno), sem nenhuma lógica de apuração nova.
+  Novo endpoint `GET /api/sessions/:id/results/pdf` (autenticado, mesmas travas de dono/sessão
+  finalizada de `/results`); nome do arquivo decidido pelo backend
+  (`apuracao-<slug-da-sessão>-<ano>.pdf`) e lido do `Content-Disposition` no frontend.
+  Relatório dividido em **3 partes, cada uma começando numa página nova** em vez de empilhar tudo
+  em sequência (`backend/src/reports/results-pdf.js`):
+  1. **Detalhes da eleição** — instituição, nome/ano da sessão, resumo em 4 cards (cargos, votos,
+     votos válidos, candidatos — cada um com uma faixa de cor diferente) e o aviso de quais cargos
+     vão pro 2º turno, se houver.
+  2. **Candidatos eleitos** — vitrine própria, maior, separada da Parte 1: um card por eleito
+     (foto grande, cargo, nome, partido/número, votos/%); um único eleito vira um card-herói na
+     largura toda, mais de um usa grade de 2 colunas (empate em 1º lugar = um card por empatado);
+     sem eleitos ainda, mostra um aviso em vez de ficar vazia.
+  3. **Resultado por cargo** — a tabela completa de ranking por cargo (foto, nome, partido,
+     número, votos, %, barra proporcional, chip de eleito/2º turno, `status INACTIVE` com sufixo)
+     e a barra 100% empilhada de válidos/brancos/nulos, fechando com "Como ler este relatório".
+
+  Cada parte abre com um cabeçalho pequeno ("Parte 1 de 3 · ...", cor própria) pra ajudar na
+  navegação. Marca d'água da logo da urnalab (bem clara, atrás do conteúdo) em toda página, e um
+  selo circular da mesma logo no cabeçalho — reaproveita o PNG que já existia em
+  `frontend/public/img/urnalab-logo.png` (copiado pra `backend/src/reports/assets/`, já que o
+  Dockerfile do backend só empacota `src`). Foto de candidato só é embutida quando é um arquivo
+  local `.jpg`/`.png` (`photoStorage.read`); `.webp`, URL remota ou arquivo ausente caem pro
+  monograma de iniciais — nunca derruba a geração do PDF.
+- **Código de votação com 4 dígitos (em vez de hash)**: o link público de votação
+  (`/votar/:token`) agora usa um código curto de 4 dígitos (`generateSessionCode`, `utils/id.js`),
+  fácil de digitar ou ditar em voz alta, em vez do token longo em base64url de antes. Como só há 10
+  mil combinações, colisão é esperada: `withUniqueSessionCode` (`session.service.js`) sorteia de
+  novo até achar um código livre, tanto na criação da sessão quanto no "self-heal" de sessões
+  antigas sem token. O token opaco e longo original (`generatePublicToken`) continua existindo e é
+  usado só pelo reset de senha, onde um código curto seria adivinhável. A tela da sessão
+  (`SessionDetails.jsx`) agora destaca o código em si, além do link completo, pra facilitar a
+  digitação manual. Sessões já existentes mantêm o token antigo até trocarem — sem migração de
+  banco, já que a coluna continua `TEXT`.
 - **Captura de foto corrigida (sem distorção entre dispositivos)**: `PhotoCaptureField.jsx`
   (usado no cadastro de Pessoas) agora sempre captura um **quadrado**, recortado do centro do
   quadro nativo da câmera (`video.videoWidth`/`videoHeight`), em vez de esticar o retângulo
@@ -24,6 +80,11 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   rosto é exatamente o que é salvo. Captura agora em 480x480 (antes 320x240), ainda bem abaixo do
   limite de tamanho (`PHOTO_MAX_BYTES`, 300KB). Validado com câmeras sintéticas 16:9 e 9:16 via
   Playwright, confirmando matematicamente o recorte central nos dois sentidos.
+- **Upload de foto a partir do dispositivo**: `PhotoCaptureField.jsx` (cadastro de Pessoas) ganhou
+  um botão "Fazer upload", permitindo escolher um arquivo de imagem do computador/celular como
+  alternativa à webcam e ao link http(s) já existentes. Passa pelo mesmo recorte central quadrado
+  (480x480) e pela mesma validação de tamanho (`PHOTO_MAX_BYTES`) do restante do fluxo de foto —
+  nenhuma regra nova, só mais uma fonte de imagem de entrada.
 - **Duplicar sessão**: botão "Duplicar" em `SessionDetails.jsx` (qualquer status) abre um dialog
   (`DuplicateSessionDialog.jsx`) com nome/ano da sessão nova e a lista de candidatos **ativos**
   da sessão de origem, cada um com checkbox marcada por padrão — pensado pro caso de eleições que
@@ -109,6 +170,37 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   (`frontend/nginx.conf.template`), que ganhou ainda `Strict-Transport-Security`.
   `Content-Security-Policy` ficou de fora dessa leva — entra depois de mapear com cuidado todo
   recurso externo carregado (Google Fonts, etc.), pra não quebrar a aplicação silenciosamente.
+
+### Fixed
+
+- **Criação de sessão de 2º turno falhava**: `resultService.createRunoffSession`
+  (`result.service.js`) chamava `sessionRepository.create` direto, sem passar `publicToken` —
+  campo obrigatório e único desde que o link público de votação foi implementado. O Prisma
+  rejeitava a criação por faltar esse campo, então toda tentativa de gerar o 2º turno de uma
+  eleição sem maioria absoluta falhava (bug preexistente, não introduzido pela mudança do código de
+  4 dígitos acima — só não tinha sido notado até agora). Corrigido reaproveitando o mesmo helper
+  `withUniqueSessionCode` (agora exportado de `session.service.js`) pra gerar um código único
+  também para a sessão nova do 2º turno.
+- **Candidatura recriada sem a proposta de governo (2º turno e "Duplicar sessão")**: tanto
+  `resultService.createRunoffSession` quanto `sessionService.duplicate` recriam a candidatura
+  copiando partido, pessoa, cargo e número, mas nenhum dos dois incluía `governmentProposal` —
+  campo adicionado depois que esse código de cópia já existia, então ficou de fora e a proposta
+  cadastrada no 1º turno (ou na sessão de origem) se perdia ao gerar a cópia. Corrigido nos dois
+  lugares: `createRunoffSession` agora repassa `original.governmentProposal` ao criar o candidato,
+  e `duplicate` repassa `candidate.governmentProposal` na chamada de `candidateService.create`.
+- **Logo/imagens em `public/img/` não atualizavam depois do deploy**: essas imagens mantêm o
+  mesmo nome de arquivo pra sempre (a logo, em especial, precisa — é embutida como URL fixa nos
+  e-mails transacionais, `backend/src/services/email.service.js`), então, sem nenhum
+  `Cache-Control` explícito, o navegador podia continuar usando a versão antiga guardada em cache
+  indefinidamente mesmo depois de um deploy novo trocar o arquivo no servidor — o sintoma: trocar
+  a logo localmente funcionava, mas em produção (Railway) continuava aparecendo a antiga.
+  `frontend/nginx.conf.template` ganhou um `location /img/` com `Cache-Control: no-cache`, que
+  obriga o navegador a sempre revalidar (barato — vira um `304 Not Modified` quando o arquivo não
+  mudou) em vez de usar a cópia em cache sem perguntar. Validado rodando o template real num
+  nginx local: a resposta sai com o header novo, os headers de segurança continuam presentes
+  (precisam ser repetidos no `location` — `add_header` não herda do bloco `server` quando o
+  `location` define os seus próprios), e uma requisição condicional com o `ETag` certo já
+  devolve `304`.
 
 ### Changed
 

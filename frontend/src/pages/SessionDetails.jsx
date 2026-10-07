@@ -54,11 +54,22 @@ function PublicLinkCard({ publicToken }) {
       <CardHeader>
         <CardTitle>Link público de votação</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
           Qualquer pessoa com este link vota nesta sessão, sem precisar de conta — funciona bem
           pelo celular. Ele para de funcionar sozinho quando a eleição for finalizada.
         </p>
+        <div className="flex flex-col items-center gap-1 rounded-lg border bg-muted/40 py-4">
+          <span className="text-xs text-muted-foreground">Código de acesso</span>
+          <button
+            type="button"
+            onClick={() => copyPublicLink(publicToken)}
+            className="font-mono text-3xl font-bold tracking-widest tabular-nums"
+            title="Copiar código"
+          >
+            {publicToken}
+          </button>
+        </div>
         <div className="flex gap-2">
           <Input readOnly value={url} onFocus={(e) => e.target.select()} className="font-mono text-xs" />
           <Button type="button" variant="outline" size="icon" onClick={() => copyPublicLink(url)} aria-label="Copiar link" title="Copiar link">

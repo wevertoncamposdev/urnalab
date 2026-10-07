@@ -90,6 +90,34 @@ async function request(path, { method = 'GET', body } = {}) {
   return payload.data;
 }
 
+function parseFileName(contentDisposition, fallback) {
+  return /filename="([^"]+)"/.exec(contentDisposition ?? '')?.[1] ?? fallback;
+}
+
+// Irmã de request(), mas devolve o arquivo em vez de JSON no sucesso (erro continua
+// JSON normal). Usa fetch com header Authorization manual porque <a href>/window.open
+// não carregam JWT, e as rotas de arquivo são autenticadas.
+async function requestFile(path) {
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+    });
+  } catch {
+    throw new ApiError('NETWORK_ERROR', 'Não foi possível conectar à API.', 0);
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    if (response.status === 401) onUnauthorized?.();
+    const error = payload?.error;
+    throw new ApiError(error?.code ?? 'UNKNOWN_ERROR', error?.message ?? 'Erro inesperado.', response.status);
+  }
+
+  const blob = await response.blob();
+  return { blob, fileName: parseFileName(response.headers.get('Content-Disposition'), 'arquivo') };
+}
+
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: 'POST', body }),
@@ -164,8 +192,16 @@ export const api = {
 
   results: {
     get: (sessionId) => request(`/api/sessions/${sessionId}/results`),
+    downloadPdf: (sessionId) => requestFile(`/api/sessions/${sessionId}/results/pdf`),
     createRunoffSession: (sessionId) =>
       request(`/api/sessions/${sessionId}/results/runoff-session`, { method: 'POST' }),
+  },
+
+  // Cobrança pela exportação em PDF (Etapa 12) — uma cobrança aprovada libera o
+  // download da sessão pra sempre (ver backend/src/services/payment.service.js).
+  payments: {
+    getStatus: (sessionId) => request(`/api/sessions/${sessionId}/payment`),
+    createCheckout: (sessionId) => request(`/api/sessions/${sessionId}/payment`, { method: 'POST' }),
   },
 
   audit: {

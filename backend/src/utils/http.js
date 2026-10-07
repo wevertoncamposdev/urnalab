@@ -17,6 +17,16 @@ export const sendSuccess = (res, data, status = 200) =>
 export const sendError = (res, status, code, message) =>
   sendJson(res, status, { success: false, error: { code, message } });
 
+export function sendPdfDownload(res, buffer, fileName) {
+  res.writeHead(200, {
+    'Content-Type': 'application/pdf',
+    'Content-Length': buffer.length,
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Cache-Control': 'no-store',
+  });
+  res.end(buffer);
+}
+
 export async function readJsonBody(req) {
   const chunks = [];
   let size = 0;

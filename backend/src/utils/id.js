@@ -2,6 +2,12 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 export const generateId = () => randomUUID();
 
-// Token de compartilhamento público (link de votação): aleatório e não
-// sequencial, sem ligação com o id da sessão — dá pra trocar um sem afetar o outro.
+// Token de uso sensível (ex.: redefinição de senha): aleatório, longo e
+// imprevisível — não pode virar um código curto, senão fica adivinhável.
 export const generatePublicToken = () => randomBytes(18).toString('base64url');
+
+// Código do link público de votação: 4 dígitos, fácil de digitar ou ditar em
+// voz alta. Só 10 mil combinações possíveis, então quem usa isso precisa tratar
+// colisão (ver generateSessionCode em session.service.js) — não serve pra nada
+// que precise ser imprevisível de verdade.
+export const generateSessionCode = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0');
