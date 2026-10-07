@@ -31,6 +31,7 @@ model User {
   institutionProfile    InstitutionProfile?
   adminAccessLogs       AdminAccessLog[]
   feedbacks             Feedback[]
+  payments              Payment[]
 
   @@map("users")
 }
@@ -141,6 +142,7 @@ model Session {
 
   candidates Candidate[]
   votes      Vote[]
+  payments   Payment[]
 
   @@index([userId])
   @@map("sessions")
@@ -248,4 +250,31 @@ model Feedback {
 
   @@index([status])
   @@map("feedbacks")
+}
+
+// Cobrança pela exportação em PDF do resultado (Etapa 12) — modelo "por sessão": uma
+// cobrança aprovada libera o PDF daquela sessão pra sempre, quantas vezes quiser baixar
+// (ver payment.service.js). Sem sessionId @unique de propósito: uma tentativa rejeitada
+// ou pendente não pode travar uma nova tentativa de pagamento pra mesma sessão.
+model Payment {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId     String
+  session       Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  status        String    @default("PENDING")
+  // Id da preference criada no Mercado Pago (Checkout Pro) — usado pra montar o
+  // link de pagamento devolvido ao front.
+  mpPreferenceId String?
+  // Id do pagamento em si, só preenchido quando o webhook confirma (ver
+  // mercadopago.service.js) — é por ele que reconsultamos o status depois.
+  mpPaymentId   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  paidAt        DateTime?
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("payments")
 }

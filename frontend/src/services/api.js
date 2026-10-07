@@ -197,6 +197,13 @@ export const api = {
       request(`/api/sessions/${sessionId}/results/runoff-session`, { method: 'POST' }),
   },
 
+  // Cobrança pela exportação em PDF (Etapa 12) — uma cobrança aprovada libera o
+  // download da sessão pra sempre (ver backend/src/services/payment.service.js).
+  payments: {
+    getStatus: (sessionId) => request(`/api/sessions/${sessionId}/payment`),
+    createCheckout: (sessionId) => request(`/api/sessions/${sessionId}/payment`, { method: 'POST' }),
+  },
+
   audit: {
     get: (sessionId) => request(`/api/sessions/${sessionId}/audit`),
   },

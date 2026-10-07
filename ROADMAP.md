@@ -21,7 +21,14 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
 
 ---
 
-Nenhuma etapa em andamento no momento — ver `CHANGELOG.md` para o histórico.
+### Etapa 12 — Cobrança pela exportação em PDF
+
+- [x] 12.1 — Integração com Mercado Pago (Checkout Pro), model `Payment`, gate no download do PDF
+  e tela de Resultados com o fluxo de pagamento (2026-10-07, ver `CHANGELOG.md`).
+- [ ] 12.2 — Validar o fluxo ponta a ponta com uma conta/credenciais reais do Mercado Pago
+  (sandbox): criar `MERCADOPAGO_ACCESS_TOKEN` de teste, configurar `BACKEND_URL` publicamente
+  alcançável (o webhook não funciona com `localhost`) e conferir que o webhook aprova o
+  pagamento e libera o PDF de verdade.
 
 ---
 
@@ -137,14 +144,10 @@ andamento" acima como uma Etapa nova.
   candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
   relance, principalmente em apresentação pra turma.
 - **Exportar resultado em PDF/imagem**: subiu pra "Em andamento" como Etapa 11.
-- **Cobrança pela exportação em PDF** (depende da Etapa 11 estar pronta e validada): Mercado Pago
-  (PIX/boleto/cartão) como gateway. Modelo progressivo combinado com o usuário: começar cobrando
-  por exportação avulsa (preço pequeno, baixo compromisso pra uso escolar ocasional), migrar
-  depois pra cobrança por sessão/eleição (paga uma vez por eleição, baixa quantas vezes quiser
-  depois) e, mais adiante, assinatura mensal (exportação ilimitada em todas as sessões da conta).
-  Exige peças que hoje não existem: campo de plano/entitlement em `User` (nova migração), um
-  service novo de integração com o gateway (mesmo padrão de API key via `config.js`/`.env` já
-  usado por `email.service.js`/Resend) e um gate de acesso no controller do PDF.
+- **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. Implementado só o
+  modelo "por sessão" (paga uma vez, baixa quantas vezes quiser); os próximos estágios do modelo
+  progressivo (avulso, depois assinatura mensal) ficam pra quando fizer sentido de verdade: só o
+  Mercado Pago como gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
 
 ### Notificações
 

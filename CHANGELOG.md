@@ -12,6 +12,24 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Cobrança pela exportação em PDF**: baixar o PDF da apuração (Etapa 11) agora exige uma cobrança
+  aprovada por sessão — paga uma vez, libera o download daquela sessão pra sempre. Integração com
+  o **Mercado Pago** (Checkout Pro) via chamadas diretas à API REST deles
+  (`backend/src/services/mercadopago.service.js`, com `fetch` nativo do Node — sem SDK novo como
+  dependência), no mesmo padrão de serviço externo já usado pro Resend (`email.service.js`):
+  `MERCADOPAGO_ACCESS_TOKEN`/`BACKEND_URL` opcionais na subida do servidor, só exigidas na hora de
+  criar uma cobrança de verdade. Novo model `Payment` (`prisma/schema.prisma`) guarda cada
+  tentativa (`PENDING`/`APPROVED`/`REJECTED`) por sessão; `payment.service.js` cria a preference
+  (`POST /api/sessions/:id/payment`) e expõe o status pro front (`GET /api/sessions/:id/payment`);
+  `POST /api/payments/webhook` (rota pública) recebe a notificação do Mercado Pago e sempre
+  reconsulta o pagamento na API deles antes de aprovar — nunca confia no status que vem no corpo da
+  notificação. Gate em `result.controller.js downloadPdf` (402 `PAYMENT_REQUIRED` sem pagamento
+  aprovado). Na tela de Resultados, o botão "Baixar PDF" vira "Pagar e baixar PDF" (com o preço,
+  `SESSION_RESULTS_PRICE_CENTS`, padrão R$ 9,90) enquanto a sessão não tem pagamento aprovado;
+  pagar redireciona pro Checkout Pro e a volta (`back_urls`) cai de novo em `/resultados` com
+  `?payment=success|pending|failure`, recarregando o status. **Ainda não validado ponta a ponta**:
+  depende de uma conta/credenciais reais do Mercado Pago (sandbox), que o projeto ainda não tem —
+  ver `ROADMAP.md`.
 - **Exportar resultado da apuração em PDF**: novo botão "Baixar PDF" na tela de Resultados, pra
   dar pra professora/responsável um relatório pronto pra impressão/mural da escola — hoje só dava
   pra tirar print da tela. Gerado no **backend** com `pdfkit` (puro JS, sem Chromium/Puppeteer —
