@@ -1,20 +1,64 @@
+import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
-import { COLORS, FONTS, PAGE, RANKING_COLUMNS } from './pdf-theme.js';
+import { COLORS, FONTS, LOGO_PATH, PAGE, RANKING_COLUMNS, WATERMARK_OPACITY } from './pdf-theme.js';
 
 // Único ponto do projeto que conhece `pdfkit` (mesmo princípio de resend em
 // email.service.js e @prisma/client em database/index.js).
 
+// Lida uma vez só (arquivo estático, não dado de usuário) — pdfkit também dedupe
+// por referência de buffer, então reusar a mesma constante em várias páginas não
+// duplica os bytes da logo no PDF final.
+const LOGO_BUFFER = fs.readFileSync(LOGO_PATH);
+
 const CONTENT_X = PAGE.margins.left;
 const contentWidth = (doc) => doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+// Marca d'água: desenhada por página, antes de qualquer outro conteúdo (fica
+// "atrás" de tudo, já que o PDF pinta em ordem — o que vem depois fica por cima).
+function drawWatermark(doc) {
+  const size = doc.page.width * 0.62;
+  const x = (doc.page.width - size) / 2;
+  const y = (doc.page.height - size) / 2;
+  doc.save();
+  doc.opacity(WATERMARK_OPACITY);
+  doc.image(LOGO_BUFFER, x, y, { width: size, height: size });
+  doc.restore();
+}
+
+function addWatermarkedPage(doc) {
+  doc.addPage();
+  drawWatermark(doc);
+}
 
 // Quebra de página central: nunca deixa um bloco começar sem espaço pro mínimo
 // que ele precisa (ex.: barra do cargo + cabeçalho da tabela + 3 linhas).
 function ensureSpace(doc, height) {
-  if (doc.y + height > doc.page.height - doc.page.margins.bottom) doc.addPage();
+  if (doc.y + height > doc.page.height - doc.page.margins.bottom) addWatermarkedPage(doc);
 }
 
 const initialsOf = (name) =>
   (name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
+
+// Abre cada uma das 3 partes do relatório — mesmo "índice" visual nas 3, só muda
+// a cor de destaque, pra dar ritmo e facilitar achar a seção de volta.
+function drawSectionEyebrow(doc, { kicker, title, accent }) {
+  const width = contentWidth(doc);
+  const y = doc.y;
+
+  doc
+    .font(FONTS.bold)
+    .fontSize(8.5)
+    .fillColor(accent)
+    .text(kicker.toUpperCase(), CONTENT_X, y, { width, characterSpacing: 1.2, lineBreak: false });
+  doc.rect(CONTENT_X, y + 15, 28, 3).fill(accent);
+  doc
+    .font(FONTS.bold)
+    .fontSize(19)
+    .fillColor(COLORS.foreground)
+    .text(title, CONTENT_X, y + 25, { width, height: 24, ellipsis: true });
+
+  doc.y = y + 68;
+}
 
 // Posiciona uma lista de chips com quebra de linha manual, só calculando (sem
 // desenhar) — quem chama decide o y real depois de garantir espaço na página.
@@ -76,6 +120,8 @@ function drawAvatar(doc, asset, name, x, y, diameter) {
   }
 }
 
+// ---------- Parte 1 — Detalhes da eleição ----------
+
 function drawTitleBlock(doc, report) {
   const width = contentWidth(doc);
   let y = doc.y;
@@ -91,10 +137,10 @@ function drawTitleBlock(doc, report) {
 
   doc
     .font(FONTS.bold)
-    .fontSize(20)
+    .fontSize(22)
     .fillColor(COLORS.foreground)
-    .text(report.session.name, CONTENT_X, y, { width, height: 50, ellipsis: true });
-  y += 54;
+    .text(report.session.name, CONTENT_X, y, { width, height: 54, ellipsis: true });
+  y += 58;
 
   doc
     .font(FONTS.regular)
@@ -104,7 +150,7 @@ function drawTitleBlock(doc, report) {
       width,
       lineBreak: false,
     });
-  y += 26;
+  y += 32;
 
   doc.y = y;
 }
@@ -113,35 +159,37 @@ function drawSummaryTiles(doc, summary) {
   const width = contentWidth(doc);
   const gap = 12;
   const tileWidth = (width - gap * 3) / 4;
-  const tileHeight = 56;
+  const tileHeight = 64;
   const y = doc.y;
 
   const tiles = [
-    { label: 'Cargos apurados', value: String(summary.positionsCount) },
-    { label: 'Total de votos', value: summary.totalVotes.toLocaleString('pt-BR') },
+    { label: 'Cargos apurados', value: String(summary.positionsCount), accent: COLORS.primary },
+    { label: 'Total de votos', value: summary.totalVotes.toLocaleString('pt-BR'), accent: COLORS.deepBlue },
     {
       label: 'Votos válidos',
       value: `${summary.validVotes.toLocaleString('pt-BR')} (${summary.validPercent.toFixed(1)}%)`,
+      accent: COLORS.green,
     },
-    { label: 'Candidatos', value: String(summary.candidatesCount) },
+    { label: 'Candidatos', value: String(summary.candidatesCount), accent: COLORS.accent },
   ];
 
   tiles.forEach((tile, index) => {
     const x = CONTENT_X + index * (tileWidth + gap);
     doc.roundedRect(x, y, tileWidth, tileHeight, 8).fill(COLORS.mutedSoft);
+    doc.rect(x, y, 3, tileHeight).fill(tile.accent);
     doc
       .font(FONTS.bold)
-      .fontSize(18)
+      .fontSize(20)
       .fillColor(COLORS.foreground)
-      .text(tile.value, x + 10, y + 10, { width: tileWidth - 20, height: 22, ellipsis: true });
+      .text(tile.value, x + 12, y + 12, { width: tileWidth - 22, height: 24, ellipsis: true });
     doc
       .font(FONTS.regular)
       .fontSize(9)
       .fillColor(COLORS.muted)
-      .text(tile.label, x + 10, y + 34, { width: tileWidth - 20, lineBreak: false });
+      .text(tile.label, x + 12, y + 42, { width: tileWidth - 22, height: 12, ellipsis: true });
   });
 
-  doc.y = y + tileHeight + 20;
+  doc.y = y + tileHeight + 24;
 }
 
 // Card verde (eleitos) ou âmbar (2º turno); some do relatório quando não há itens
@@ -177,6 +225,114 @@ function drawHighlightCard(doc, { title, items, accent, bg, chipBg, chipFg, rend
 
   doc.y = top + cardHeight + 12;
 }
+
+// ---------- Parte 2 — Candidatos eleitos ----------
+
+// Vitrine maior (um card por eleito, com foto grande) — página própria, em vez
+// dos chips pequenos que a Parte 1 usava antes pra misturar tudo num só lugar.
+function drawElectedShowcase(doc, report) {
+  const width = contentWidth(doc);
+  const items = report.electedChips;
+
+  if (items.length === 0) {
+    const height = 70;
+    ensureSpace(doc, height);
+    const y = doc.y;
+    doc.roundedRect(CONTENT_X, y, width, height, 8).fill(COLORS.mutedSoft);
+    doc
+      .font(FONTS.regular)
+      .fontSize(10)
+      .fillColor(COLORS.muted)
+      .text(
+        'Nenhum cargo teve candidato eleito nesta apuração — todos os cargos com 2º turno ainda aguardam a nova votação.',
+        CONTENT_X + 24,
+        y + 24,
+        { width: width - 48, align: 'center' },
+      );
+    doc.y = y + height + 16;
+    return;
+  }
+
+  // Um único eleito (comum: eleição de cargo único, tipo representante de
+  // turma) ganha um card-herói sozinho na largura toda, em vez de um card
+  // pela metade com a direita vazia.
+  if (items.length === 1) {
+    const height = 140;
+    ensureSpace(doc, height);
+    const y = doc.y;
+    drawElectedCard(doc, items[0], { x: CONTENT_X, y, width, height, photoSize: 92, nameSize: 18 });
+    doc.y = y + height + 16;
+    return;
+  }
+
+  const gap = 16;
+  const cardWidth = (width - gap) / 2;
+  const cardHeight = 108;
+
+  items.forEach((item, index) => {
+    const col = index % 2;
+    if (col === 0) ensureSpace(doc, cardHeight + gap);
+    const x = CONTENT_X + col * (cardWidth + gap);
+    const y = doc.y;
+
+    drawElectedCard(doc, item, { x, y, width: cardWidth, height: cardHeight, photoSize: 56, nameSize: 13 });
+
+    if (col === 1 || index === items.length - 1) doc.y = y + cardHeight + gap;
+  });
+}
+
+function drawElectedCard(doc, item, { x, y, width, height, photoSize, nameSize }) {
+  const photoX = 18;
+  const textX = photoX + photoSize + 16;
+  const textWidth = width - textX - 18;
+
+  doc.roundedRect(x, y, width, height, 10).fill(COLORS.white);
+  doc.roundedRect(x, y, width, height, 10).lineWidth(1).strokeColor(COLORS.border).stroke();
+  doc.rect(x, y, 5, height).fill(COLORS.green);
+
+  const c = item.candidate;
+  drawAvatar(doc, c.photoAsset, c.name, x + photoX, y + (height - photoSize) / 2, photoSize);
+
+  // Soma da pilha kicker → nome → partido → votos (ver offsets abaixo), pra
+  // centralizar o bloco de texto verticalmente dentro do card.
+  const textBlockHeight = 42 + nameSize * 2.4;
+  const blockTop = y + (height - textBlockHeight) / 2;
+  doc
+    .font(FONTS.bold)
+    .fontSize(8)
+    .fillColor(COLORS.green)
+    .text(item.positionLabel.toUpperCase(), x + textX, blockTop, {
+      width: textWidth,
+      height: 10,
+      ellipsis: true,
+      characterSpacing: 0.6,
+    });
+  doc
+    .font(FONTS.bold)
+    .fontSize(nameSize)
+    .fillColor(COLORS.foreground)
+    .text(c.name, x + textX, blockTop + 13, { width: textWidth, height: nameSize * 2.4, ellipsis: true });
+
+  const party = c.party ? `${c.party.acronym} · nº ${c.number}` : `nº ${c.number}`;
+  doc
+    .font(FONTS.regular)
+    .fontSize(9)
+    .fillColor(COLORS.muted)
+    .text(party, x + textX, blockTop + 13 + nameSize * 2.4, { width: textWidth, height: 12, ellipsis: true });
+
+  doc
+    .font(FONTS.bold)
+    .fontSize(10)
+    .fillColor(COLORS.green)
+    .text(
+      `${c.votes.toLocaleString('pt-BR')} votos · ${c.percentValid.toFixed(1)}%`,
+      x + textX,
+      blockTop + 13 + nameSize * 2.4 + 15,
+      { width: textWidth, height: 14, ellipsis: true },
+    );
+}
+
+// ---------- Parte 3 — Resultado por cargo ----------
 
 function drawRankingTable(doc, position) {
   const width = contentWidth(doc);
@@ -242,8 +398,9 @@ function drawRankingTable(doc, position) {
       .fontSize(9)
       .fillColor(COLORS.muted)
       .text(candidate.party ? candidate.party.acronym : '—', colX.party, rowY + 7, {
-        width: cols.party,
-        lineBreak: false,
+        width: cols.party - 4,
+        height: 11,
+        ellipsis: true,
       });
     doc.text(candidate.number, colX.number, rowY + 7, { width: cols.number, lineBreak: false });
     doc
@@ -404,11 +561,26 @@ function drawHowToRead(doc) {
   doc.y = ly;
 }
 
+// ---------- Cabeçalho/rodapé (todas as páginas) ----------
+
 function drawHeader(doc) {
   const width = doc.page.width;
   doc.save();
   doc.rect(0, 0, width, PAGE.headerHeight).fill(COLORS.deepBlue);
-  doc.font(FONTS.bold).fontSize(14).fillColor(COLORS.white).text('urnalab', PAGE.margins.left, 15, { lineBreak: false });
+
+  const badge = 26;
+  const badgeX = PAGE.margins.left;
+  const badgeY = (PAGE.headerHeight - badge) / 2;
+  doc.save();
+  doc.circle(badgeX + badge / 2, badgeY + badge / 2, badge / 2).clip();
+  doc.image(LOGO_BUFFER, badgeX, badgeY, { width: badge, height: badge });
+  doc.restore();
+
+  doc
+    .font(FONTS.bold)
+    .fontSize(14)
+    .fillColor(COLORS.white)
+    .text('urnalab', badgeX + badge + 8, 15, { lineBreak: false });
   doc
     .font(FONTS.regular)
     .fontSize(10)
@@ -431,7 +603,7 @@ function drawFooter(doc, report, pageNumber, pageCount) {
       `Projeto educacional — não é uma urna eletrônica oficial. Gerado em ${report.generatedAtLabel}.`,
       PAGE.margins.left,
       y + 8,
-      { width: width - PAGE.margins.left - PAGE.margins.right - 90, lineBreak: false },
+      { width: width - PAGE.margins.left - PAGE.margins.right - 90, height: 12, ellipsis: true },
     );
   doc.text(`Página ${pageNumber} de ${pageCount}`, width - PAGE.margins.right - 90, y + 8, {
     width: 90,
@@ -444,6 +616,11 @@ function drawFooter(doc, report, pageNumber, pageCount) {
 // Monta o PDF inteiro em memória antes de devolver (não streama direto pra
 // resposta HTTP) — um erro no meio ainda vira JSON normal via error-handler.js,
 // em vez de corromper uma resposta já iniciada.
+//
+// Estruturado em 3 partes, cada uma começando numa página nova (não só quando
+// o conteúdo não cabe mais): 1) detalhes da eleição, 2) vitrine dos eleitos,
+// 3) tabela de resultado por cargo — separa o "resumo pra ler rápido" dos
+// dados completos, em vez de misturar tudo em sequência.
 export function renderResultsPdf(report) {
   const doc = new PDFDocument({ size: PAGE.size, margins: PAGE.margins, bufferPages: true });
   const chunks = [];
@@ -453,21 +630,10 @@ export function renderResultsPdf(report) {
     doc.on('error', reject);
   });
 
+  drawWatermark(doc);
+  drawSectionEyebrow(doc, { kicker: 'Parte 1 de 3', title: 'Detalhes da eleição', accent: COLORS.primary });
   drawTitleBlock(doc, report);
   drawSummaryTiles(doc, report.summary);
-  drawHighlightCard(doc, {
-    title: 'ELEITOS',
-    items: report.electedChips,
-    accent: COLORS.green,
-    bg: COLORS.greenSoft,
-    chipBg: COLORS.green,
-    chipFg: COLORS.white,
-    renderLabel: (item) => {
-      const c = item.candidate;
-      const party = c.party ? `${c.party.acronym} nº${c.number}` : `nº${c.number}`;
-      return `${item.positionLabel} — ${c.name} (${party}) · ${c.votes.toLocaleString('pt-BR')} votos (${c.percentValid.toFixed(1)}%)`;
-    },
-  });
   drawHighlightCard(doc, {
     title: 'VAI PARA O 2º TURNO',
     items: report.runoffChips,
@@ -478,6 +644,12 @@ export function renderResultsPdf(report) {
     renderLabel: (item) => `${item.positionLabel} — ${item.candidates.map((c) => c.name).join(' × ')}`,
   });
 
+  addWatermarkedPage(doc);
+  drawSectionEyebrow(doc, { kicker: 'Parte 2 de 3', title: 'Candidatos eleitos', accent: COLORS.green });
+  drawElectedShowcase(doc, report);
+
+  addWatermarkedPage(doc);
+  drawSectionEyebrow(doc, { kicker: 'Parte 3 de 3', title: 'Resultado por cargo', accent: COLORS.primary });
   report.positions.forEach((position, index) => drawPositionSection(doc, position, index));
   drawHowToRead(doc);
 

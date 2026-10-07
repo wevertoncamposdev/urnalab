@@ -16,15 +16,30 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   dar pra professora/responsável um relatório pronto pra impressão/mural da escola — hoje só dava
   pra tirar print da tela. Gerado no **backend** com `pdfkit` (puro JS, sem Chromium/Puppeteer —
   imagem Docker continua enxuta), reaproveitando os dados que `resultService.getBySession` já
-  calcula (vencedores, percentuais, 2º turno), sem nenhuma lógica de apuração nova. Conteúdo:
-  instituição/sessão/data no título, resumo em cards (cargos, votos, candidatos), painel de
-  eleitos e de cargos em 2º turno, e uma seção por cargo com ranking (foto, nome, partido, votos,
-  %, barra proporcional, chip de eleito/2º turno) e barra 100% empilhada de válidos/brancos/nulos.
-  Foto só é embutida quando é um arquivo local `.jpg`/`.png` (`photoStorage.read`); `.webp`, URL
-  remota ou arquivo ausente caem pro monograma de iniciais — nunca derruba a geração do PDF. Novo
-  endpoint `GET /api/sessions/:id/results/pdf` (autenticado, mesmas travas de dono/sessão
+  calcula (vencedores, percentuais, 2º turno), sem nenhuma lógica de apuração nova.
+  Novo endpoint `GET /api/sessions/:id/results/pdf` (autenticado, mesmas travas de dono/sessão
   finalizada de `/results`); nome do arquivo decidido pelo backend
   (`apuracao-<slug-da-sessão>-<ano>.pdf`) e lido do `Content-Disposition` no frontend.
+  Relatório dividido em **3 partes, cada uma começando numa página nova** em vez de empilhar tudo
+  em sequência (`backend/src/reports/results-pdf.js`):
+  1. **Detalhes da eleição** — instituição, nome/ano da sessão, resumo em 4 cards (cargos, votos,
+     votos válidos, candidatos — cada um com uma faixa de cor diferente) e o aviso de quais cargos
+     vão pro 2º turno, se houver.
+  2. **Candidatos eleitos** — vitrine própria, maior, separada da Parte 1: um card por eleito
+     (foto grande, cargo, nome, partido/número, votos/%); um único eleito vira um card-herói na
+     largura toda, mais de um usa grade de 2 colunas (empate em 1º lugar = um card por empatado);
+     sem eleitos ainda, mostra um aviso em vez de ficar vazia.
+  3. **Resultado por cargo** — a tabela completa de ranking por cargo (foto, nome, partido,
+     número, votos, %, barra proporcional, chip de eleito/2º turno, `status INACTIVE` com sufixo)
+     e a barra 100% empilhada de válidos/brancos/nulos, fechando com "Como ler este relatório".
+
+  Cada parte abre com um cabeçalho pequeno ("Parte 1 de 3 · ...", cor própria) pra ajudar na
+  navegação. Marca d'água da logo da urnalab (bem clara, atrás do conteúdo) em toda página, e um
+  selo circular da mesma logo no cabeçalho — reaproveita o PNG que já existia em
+  `frontend/public/img/urnalab-logo.png` (copiado pra `backend/src/reports/assets/`, já que o
+  Dockerfile do backend só empacota `src`). Foto de candidato só é embutida quando é um arquivo
+  local `.jpg`/`.png` (`photoStorage.read`); `.webp`, URL remota ou arquivo ausente caem pro
+  monograma de iniciais — nunca derruba a geração do PDF.
 - **Código de votação com 4 dígitos (em vez de hash)**: o link público de votação
   (`/votar/:token`) agora usa um código curto de 4 dígitos (`generateSessionCode`, `utils/id.js`),
   fácil de digitar ou ditar em voz alta, em vez do token longo em base64url de antes. Como só há 10

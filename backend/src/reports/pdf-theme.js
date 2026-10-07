@@ -1,3 +1,11 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Mesmo arquivo usado em frontend/public/img/urnalab-logo.png (e já reaproveitado
+// em email.service.js) — copiado pra dentro de backend/src pra entrar na imagem
+// Docker do backend (o Dockerfile só copia `src`, não o projeto `frontend` inteiro).
+export const LOGO_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'urnalab-logo.png');
+
 // Mesma paleta de frontend/src/styles/globals.css, repetida em hex puro — mesmo
 // precedente de services/email.service.js (PDF também não lê CSS custom properties).
 export const COLORS = {
@@ -30,6 +38,12 @@ export const PAGE = {
   margins: { top: 110, bottom: 56, left: 40, right: 40 },
   headerHeight: 46,
 };
+
+// Marca d'água: a logo tem fundo branco (não transparente) — em opacidade baixa
+// sobre a página (também branca) o fundo literalmente some, sobra só uma
+// impressão bem fraca do contorno/ícone. Por isso dá pra usar o PNG original,
+// sem precisar de uma versão com transparência à parte.
+export const WATERMARK_OPACITY = 0.05;
 
 // Larguras de coluna da tabela de ranking — soma bate com a largura útil (515.28pt).
 export const RANKING_COLUMNS = {
