@@ -30,6 +30,17 @@ for (const name of ['RESEND_API_KEY', 'EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME']) 
   }
 }
 
+// Cobrança (Etapa 12) é opcional no geral, mas se MERCADOPAGO_ACCESS_TOKEN está
+// configurado em produção (ou seja, pagamentos de verdade estão ativos), o segredo do
+// webhook passa a ser obrigatório — mesmo "falhar alto" já aplicado a JWT_SECRET/Resend
+// acima. Sem essa checagem, validação de assinatura fica desligada silenciosamente
+// (ver mercadopago.service.js verifyWebhookSignature) até alguém notar o warning no log.
+if (isProduction && process.env.MERCADOPAGO_ACCESS_TOKEN && !process.env.MERCADOPAGO_WEBHOOK_SECRET) {
+  throw new Error(
+    '[config] MERCADOPAGO_WEBHOOK_SECRET é obrigatório em produção quando MERCADOPAGO_ACCESS_TOKEN está configurado.',
+  );
+}
+
 // FRONTEND_URL aceita uma ou mais origens separadas por vírgula — por exemplo,
 // "http://localhost:5173,http://192.168.0.10:5173" pra liberar o próprio
 // computador (localhost) e o celular (IP da rede local) ao mesmo tempo.

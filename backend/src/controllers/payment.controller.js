@@ -26,19 +26,26 @@ export const paymentController = {
   // aceita os dois formatos. Um erro aqui vira 5xx de propósito (ver error-handler.js):
   // é o sinal pro Mercado Pago reenviar a mesma notificação depois.
   async webhook({ req, res, query, body }) {
+    // IPN legado manda topic/id na query string e nunca inclui o header x-signature
+    // (esse formato não tem assinatura — só existe no webhook novo, por body). Exigir
+    // assinatura dos dois formatos rejeitaria toda notificação legada legítima assim que
+    // MERCADOPAGO_WEBHOOK_SECRET fosse configurado.
+    const isLegacyIpn = Boolean(query.topic);
     const type = query.topic ?? body?.type;
     const mpPaymentId = query.id ?? body?.data?.id;
 
     if (type === 'payment' && mpPaymentId) {
-      // Assinatura inválida não é erro 5xx (ver comentário acima): não faz sentido o
-      // Mercado Pago reenviar a mesma notificação forjada depois, então 401 encerra ali.
-      const validSignature = mercadoPagoService.verifyWebhookSignature({
-        signatureHeader: req.headers['x-signature'],
-        requestId: req.headers['x-request-id'],
-        mpPaymentId,
-      });
-      if (!validSignature) {
-        throw unauthorized('INVALID_WEBHOOK_SIGNATURE', 'Assinatura do webhook inválida.');
+      if (!isLegacyIpn) {
+        // Assinatura inválida não é erro 5xx (ver comentário acima): não faz sentido o
+        // Mercado Pago reenviar a mesma notificação forjada depois, então 401 encerra ali.
+        const validSignature = mercadoPagoService.verifyWebhookSignature({
+          signatureHeader: req.headers['x-signature'],
+          requestId: req.headers['x-request-id'],
+          mpPaymentId,
+        });
+        if (!validSignature) {
+          throw unauthorized('INVALID_WEBHOOK_SIGNATURE', 'Assinatura do webhook inválida.');
+        }
       }
 
       await paymentService.confirmPayment(mpPaymentId);

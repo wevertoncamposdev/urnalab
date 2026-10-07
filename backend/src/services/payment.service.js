@@ -92,12 +92,16 @@ export const paymentService = {
     if (!payment) return;
 
     const status = mapMercadoPagoStatus(mpPayment.status);
+    // paidAt não é sobrescrito pra null num status que não seja APPROVED: um reembolso
+    // (REFUNDED/CHARGED_BACK) deve manter registrado quando o pagamento foi aprovado
+    // originalmente, pro histórico (ver ROADMAP.md, Etapa 14/16).
+    const patch = { status, mpPaymentId: String(mpPayment.id) };
 
-    // Confere que o valor pago é mesmo o que foi cobrado antes de liberar o acesso —
-    // o preço é definido só pelo servidor ao criar a preference (ver createCheckout),
-    // então isso não é explorável hoje, mas é a trava que evita problema se um desconto
-    // ou produto com preço variável existir no futuro (ver ROADMAP.md, Etapa 15).
     if (status === PAYMENT_STATUS.APPROVED) {
+      // Confere que o valor pago é mesmo o que foi cobrado antes de liberar o acesso —
+      // o preço é definido só pelo servidor ao criar a preference (ver createCheckout),
+      // então isso não é explorável hoje, mas é a trava que evita problema se um desconto
+      // ou produto com preço variável existir no futuro (ver ROADMAP.md, Etapa 15).
       const paidAmountCents = Math.round((mpPayment.transaction_amount ?? 0) * 100);
       if (paidAmountCents !== payment.amountCents) {
         console.error(
@@ -106,13 +110,9 @@ export const paymentService = {
         );
         return;
       }
+      patch.paidAt = new Date().toISOString();
     }
 
-    // paidAt não é sobrescrito pra null num status que não seja APPROVED: um reembolso
-    // (REFUNDED/CHARGED_BACK) deve manter registrado quando o pagamento foi aprovado
-    // originalmente, pro histórico (ver ROADMAP.md, Etapa 14/16).
-    const patch = { status, mpPaymentId: String(mpPayment.id) };
-    if (status === PAYMENT_STATUS.APPROVED) patch.paidAt = new Date().toISOString();
     await paymentRepository.update(payment.id, patch);
   },
 

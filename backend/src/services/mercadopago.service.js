@@ -80,6 +80,30 @@ function verifyWebhookSignature({ signatureHeader, requestId, mpPaymentId }) {
   );
 }
 
+// Chamada HTTP comum às três operações abaixo: autentica, chama, tenta ler o corpo como
+// JSON mesmo em erro (a API do Mercado Pago manda detalhe do erro no corpo), e
+// padroniza o log + o erro lançado quando a resposta não é 2xx.
+async function callMercadoPago(path, { method = 'GET', body, errorMessage } = {}) {
+  const accessToken = requireAccessToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    console.error(`[mercadopago] erro em ${method} ${path}`, response.status, payload);
+    throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', errorMessage);
+  }
+
+  return payload;
+}
+
 export const mercadoPagoService = {
   verifyWebhookSignature,
 
@@ -87,16 +111,11 @@ export const mercadoPagoService = {
   // é o id do nosso Payment — é por ele que o webhook (ver payment.service.js) liga o
   // pagamento aprovado de volta à sessão certa.
   async createPreference({ paymentId, sessionId, title, amountCents, payerEmail }) {
-    const accessToken = requireAccessToken();
-    const backendUrl = requireBackendUrl();
+    requireBackendUrl();
 
-    const response = await fetch(`${API_URL}/checkout/preferences`, {
+    const payload = await callMercadoPago('/checkout/preferences', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+      body: {
         items: [
           {
             title,
@@ -107,21 +126,16 @@ export const mercadoPagoService = {
         ],
         payer: payerEmail ? { email: payerEmail } : undefined,
         external_reference: paymentId,
-        notification_url: `${backendUrl}/api/payments/webhook`,
+        notification_url: `${config.backendUrl}/api/payments/webhook`,
         back_urls: {
           success: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=success`,
           pending: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=pending`,
           failure: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=failure`,
         },
         ...(isLoopback(config.frontendUrl) ? {} : { auto_return: 'approved' }),
-      }),
+      },
+      errorMessage: 'Não foi possível iniciar o pagamento. Tente de novo.',
     });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      console.error('[mercadopago] erro ao criar preference', response.status, payload);
-      throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', 'Não foi possível iniciar o pagamento. Tente de novo.');
-    }
 
     return {
       preferenceId: payload.id,
@@ -129,44 +143,24 @@ export const mercadoPagoService = {
     };
   },
 
-  // Reembolso total (Etapa 14) — corpo vazio no POST já significa "devolver o valor
+  // Reembolso total (Etapa 14) — sem corpo no POST já significa "devolver o valor
   // inteiro" na API do Mercado Pago (reembolso parcial exigiria um `amount` no corpo,
   // sem uso aqui: a trava de `payment.service.js refund` é tudo ou nada, antes do
   // primeiro download). O webhook também recebe a notificação dessa mudança de status
   // depois — esta chamada só confirma a resposta síncrona da API.
   async refundPayment(mpPaymentId) {
-    const accessToken = requireAccessToken();
-
-    const response = await fetch(`${API_URL}/v1/payments/${mpPaymentId}/refunds`, {
+    return callMercadoPago(`/v1/payments/${mpPaymentId}/refunds`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      errorMessage: 'Não foi possível processar o reembolso. Tente de novo.',
     });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      console.error('[mercadopago] erro ao reembolsar pagamento', mpPaymentId, response.status, payload);
-      throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', 'Não foi possível processar o reembolso. Tente de novo.');
-    }
-
-    return payload;
   },
 
   // Reconsulta um pagamento pelo id que o Mercado Pago manda na notificação do
   // webhook — nunca confiamos no status que vem na própria notificação, só no que
   // a API devolve ao ser consultada de volta (evita falsificação do payload do webhook).
   async getPayment(mpPaymentId) {
-    const accessToken = requireAccessToken();
-
-    const response = await fetch(`${API_URL}/v1/payments/${mpPaymentId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    return callMercadoPago(`/v1/payments/${mpPaymentId}`, {
+      errorMessage: 'Não foi possível confirmar o pagamento.',
     });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      console.error('[mercadopago] erro ao consultar pagamento', mpPaymentId, response.status, payload);
-      throw serviceUnavailable('PAYMENT_GATEWAY_ERROR', 'Não foi possível confirmar o pagamento.');
-    }
-
-    return payload;
   },
 };

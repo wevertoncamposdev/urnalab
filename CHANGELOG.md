@@ -26,6 +26,20 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   `POST /api/sessions/:id/payment`. (5) Tentativas `PENDING` abandonadas (sessão nunca paga) agora
   expiram sozinhas (`paymentRepository.expireStalePending`, verificação "lazy" no início de um novo
   checkout da mesma sessão) em vez de acumular pra sempre.
+- **Correções encontradas numa revisão das Etapas 13/14**: (1) `resultController.downloadPdf`
+  gravava `downloadedAt` **antes** de gerar o PDF — se `resultsReportService.build`/
+  `renderResultsPdf` falhasse, a cobrança ficava travada pra reembolso sem o usuário ter recebido
+  nada; agora só grava depois do PDF gerado com sucesso. (2) a validação de assinatura do webhook
+  (Etapa 13) era aplicada também ao formato IPN legado (`?topic=payment&id=...`), que nunca envia
+  `x-signature` — com `MERCADOPAGO_WEBHOOK_SECRET` configurado, isso rejeitava notificações legadas
+  genuínas; o IPN legado agora fica de fora dessa checagem (sua defesa continua sendo a reconsulta
+  à API, como sempre foi). (3) sem `MERCADOPAGO_WEBHOOK_SECRET`, a assinatura falhava aberta mesmo
+  em produção, só com um aviso no log — inconsistente com o padrão já usado pra `JWT_SECRET`/Resend;
+  `config.js` agora recusa subir em produção se `MERCADOPAGO_ACCESS_TOKEN` estiver configurado sem
+  o segredo do webhook. (4) `mercadoPagoService.refundPayment` mandava `Content-Type: application/
+  json` sem nenhum corpo; removido. De quebra, as três chamadas à API do Mercado Pago
+  (`createPreference`/`getPayment`/`refundPayment`) passaram a compartilhar um único helper
+  (`callMercadoPago`) em vez de repetir o mesmo bloco de fetch/erro três vezes.
 
 ### Added
 
