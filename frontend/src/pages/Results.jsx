@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Trophy } from 'lucide-react';
+import { Download, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { PositionResult } from '@/components/results/PositionResult';
 import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { trackEvent } from '@/lib/analytics';
+import { saveBlobAsFile } from '@/lib/download';
 import { api } from '@/services/api';
 
 // Apuração por sessão: só sessões finalizadas entram na lista, como numa eleição real.
@@ -22,6 +23,7 @@ export default function Results() {
   const sessionsState = useAsync(() => api.sessions.list(), []);
   const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? '');
   const [creatingRunoff, setCreatingRunoff] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const finishedSessions = (sessionsState.data ?? []).filter((s) => s.status === 'FINISHED');
   const session = finishedSessions.find((s) => s.id === sessionId) ?? finishedSessions[0] ?? null;
@@ -75,6 +77,19 @@ export default function Results() {
     }
   }
 
+  async function downloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const { blob, fileName } = await api.results.downloadPdf(session.id);
+      saveBlobAsFile(blob, fileName);
+      trackEvent('RESULTS_PDF_DOWNLOADED', { sessionId: session.id });
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   const sessionPicker = finishedSessions.length > 1 && (
     <Select value={session.id} onValueChange={setSessionId}>
       <SelectTrigger aria-label="Sessão" className="w-56"><SelectValue /></SelectTrigger>
@@ -90,7 +105,18 @@ export default function Results() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Resultados" description={`${session.name} (${session.year})`} actions={sessionPicker}>
+      <PageHeader
+        title="Resultados"
+        description={`${session.name} (${session.year})`}
+        actions={
+          <>
+            {sessionPicker}
+            <Button type="button" variant="outline" onClick={downloadPdf} disabled={downloadingPdf}>
+              <Download /> {downloadingPdf ? 'Gerando...' : 'Baixar PDF'}
+            </Button>
+          </>
+        }
+      >
         <SessionStatusBadge status={session.status} />
       </PageHeader>
 

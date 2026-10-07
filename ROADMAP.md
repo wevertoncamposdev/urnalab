@@ -33,11 +33,16 @@ andamento" acima como uma Etapa nova.
 
 ### Produto e conteúdo educacional
 
-- **Nomear/configurar cargos livremente**: hoje `POSITION_RULES` é uma lista fixa em
-  `rules/position-rules.js`. Virar um cadastro (nome, dígitos, ordem) abriria o simulador para
-  eleições fora do modelo brasileiro (sindicato, grêmio, condomínio, etc.).
-- **Dois turnos**: regra de maioria absoluta para Presidente/Governador/Prefeito, com um segundo
-  turno entre os dois mais votados quando ninguém passa de 50% dos votos válidos.
+- **Dois turnos — casos de borda não cobertos**: a criação de sessão de 2º turno
+  (`resultService.createRunoffSession`) já funciona pro caso comum (dois candidatos mais votados,
+  sem empate), mas foi encontrada uma lista de lacunas numa revisão de código: (1) empate no 2º/3º
+  lugar é quebrado só por ordem alfabética, sem indicar que houve empate nem avançar mais de dois
+  candidatos; (2) nada impede criar mais de uma sessão de 2º turno pra mesma sessão original (não
+  há campo ligando o runoff à sessão-mãe, nem trava no backend); (3) o nome da sessão nova sempre
+  vira `"<nome> - 2º turno"`, então um 3º turno (teoricamente possível se o 2º turno também
+  empatar) viraria `"- 2º turno - 2º turno"`; (4) a cópia de candidato pro 2º turno usa
+  `candidateRepository.create` direto, sem passar pela validação de partido ativo que o resto do
+  código (`candidateService.create`) sempre aplica.
 - **Importação em massa de candidatos/partidos (CSV)**: hoje é tudo cadastro manual, um por um —
   pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa funcionalidade será um recurso premium que precisa de assinatura mensal, ou cobrança por importação.
 
@@ -131,8 +136,15 @@ andamento" acima como uma Etapa nova.
 - **Gráfico visual na apuração**: `PositionResult.jsx` já mostra uma barra de progresso por
   candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
   relance, principalmente em apresentação pra turma.
-- **Exportar resultado em PDF/imagem**: pra divulgar o resultado de uma eleição fora da
-  aplicação (mural da escola, por exemplo) — hoje só dá pra tirar print da tela.
+- **Exportar resultado em PDF/imagem**: subiu pra "Em andamento" como Etapa 11.
+- **Cobrança pela exportação em PDF** (depende da Etapa 11 estar pronta e validada): Mercado Pago
+  (PIX/boleto/cartão) como gateway. Modelo progressivo combinado com o usuário: começar cobrando
+  por exportação avulsa (preço pequeno, baixo compromisso pra uso escolar ocasional), migrar
+  depois pra cobrança por sessão/eleição (paga uma vez por eleição, baixa quantas vezes quiser
+  depois) e, mais adiante, assinatura mensal (exportação ilimitada em todas as sessões da conta).
+  Exige peças que hoje não existem: campo de plano/entitlement em `User` (nova migração), um
+  service novo de integração com o gateway (mesmo padrão de API key via `config.js`/`.env` já
+  usado por `email.service.js`/Resend) e um gate de acesso no controller do PDF.
 
 ### Notificações
 

@@ -233,6 +233,7 @@ finaliza a sessão — usando os services, como qualquer outro cliente da API.
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | GET | /api/sessions/:id/results | Apuração por cargo da sessão |
+| GET | /api/sessions/:id/results/pdf | PDF pronto pra impressão com o resultado da apuração |
 
 Assim como numa eleição real, a apuração só é publicada depois que a votação é finalizada
 (`RESULTS_NOT_AVAILABLE`, 409, em sessões `DRAFT`/`OPEN`). Por cargo, devolve o ranking de

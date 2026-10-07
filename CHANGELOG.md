@@ -12,6 +12,19 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Exportar resultado da apuração em PDF**: novo botão "Baixar PDF" na tela de Resultados, pra
+  dar pra professora/responsável um relatório pronto pra impressão/mural da escola — hoje só dava
+  pra tirar print da tela. Gerado no **backend** com `pdfkit` (puro JS, sem Chromium/Puppeteer —
+  imagem Docker continua enxuta), reaproveitando os dados que `resultService.getBySession` já
+  calcula (vencedores, percentuais, 2º turno), sem nenhuma lógica de apuração nova. Conteúdo:
+  instituição/sessão/data no título, resumo em cards (cargos, votos, candidatos), painel de
+  eleitos e de cargos em 2º turno, e uma seção por cargo com ranking (foto, nome, partido, votos,
+  %, barra proporcional, chip de eleito/2º turno) e barra 100% empilhada de válidos/brancos/nulos.
+  Foto só é embutida quando é um arquivo local `.jpg`/`.png` (`photoStorage.read`); `.webp`, URL
+  remota ou arquivo ausente caem pro monograma de iniciais — nunca derruba a geração do PDF. Novo
+  endpoint `GET /api/sessions/:id/results/pdf` (autenticado, mesmas travas de dono/sessão
+  finalizada de `/results`); nome do arquivo decidido pelo backend
+  (`apuracao-<slug-da-sessão>-<ano>.pdf`) e lido do `Content-Disposition` no frontend.
 - **Código de votação com 4 dígitos (em vez de hash)**: o link público de votação
   (`/votar/:token`) agora usa um código curto de 4 dígitos (`generateSessionCode`, `utils/id.js`),
   fácil de digitar ou ditar em voz alta, em vez do token longo em base64url de antes. Como só há 10
@@ -34,6 +47,11 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   rosto é exatamente o que é salvo. Captura agora em 480x480 (antes 320x240), ainda bem abaixo do
   limite de tamanho (`PHOTO_MAX_BYTES`, 300KB). Validado com câmeras sintéticas 16:9 e 9:16 via
   Playwright, confirmando matematicamente o recorte central nos dois sentidos.
+- **Upload de foto a partir do dispositivo**: `PhotoCaptureField.jsx` (cadastro de Pessoas) ganhou
+  um botão "Fazer upload", permitindo escolher um arquivo de imagem do computador/celular como
+  alternativa à webcam e ao link http(s) já existentes. Passa pelo mesmo recorte central quadrado
+  (480x480) e pela mesma validação de tamanho (`PHOTO_MAX_BYTES`) do restante do fluxo de foto —
+  nenhuma regra nova, só mais uma fonte de imagem de entrada.
 - **Duplicar sessão**: botão "Duplicar" em `SessionDetails.jsx` (qualquer status) abre um dialog
   (`DuplicateSessionDialog.jsx`) com nome/ano da sessão nova e a lista de candidatos **ativos**
   da sessão de origem, cada um com checkbox marcada por padrão — pensado pro caso de eleições que
