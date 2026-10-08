@@ -60,10 +60,8 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   gestão de produtos (16.2/16.3, tela `/gerenciamento/produtos`): CRUD de nome/descrição/preço/
   ativo de qualquer `Product` (`POST`/`PUT /api/admin/products`) e histórico de vendas por produto
   (`GET /api/admin/products/:id/sales`, quantidade e receita aprovadas + lista de cobranças, sem
-  nenhum dado de quem comprou). Upload do arquivo de um produto `EBOOK` ainda não existe nessa
-  tela — o corpo da requisição tem um teto de 1MB (`utils/http.js`) incompatível com um ebook de
-  verdade, e o roteador não lê `multipart/form-data`; produtos `EBOOK` continuam cadastrados via
-  `scripts/seed.js`/banco direto até isso existir.
+  nenhum dado de quem comprou) — ver também "Upload de arquivo e capa de produto" acima, que
+  completa essa tela com o upload do arquivo/capa de um produto `EBOOK`.
 - **Produtos genéricos e loja (Etapa 15)**: o sistema de cobrança deixou de ser exclusivo da
   exportação de PDF — novo model `Product` (`prisma/schema.prisma`) é o catálogo de qualquer coisa
   vendável, com preço editável em banco (não mais via env var: `SESSION_RESULTS_PRICE_CENTS` saiu
@@ -77,11 +75,13 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   PDF (`/api/sessions/:id/payment`, tela de Resultados) não mudaram por fora — o motor novo foi só
   por dentro. Nova loja (`GET /api/products`, `GET/POST /api/products/:id/payment`,
   `GET /api/products/:id/download`, página `/loja`) vende o primeiro produto "por conta" de
-  verdade: um ebook, com CTA a partir de `/sistema-eleitoral`. A área financeira (`/financeiro`,
-  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook real
-  (conteúdo, upload) ainda depende da Etapa 16 (CRUD de produto pelo admin) para ser cadastrado em
-  produção — hoje só existe um exemplo placeholder, criado pelo seed de desenvolvimento
-  (`npm run seed`, `scripts/seed.js`), pra validar o fluxo de compra/download ponta a ponta.
+  verdade: um ebook, com CTA a partir de `/sistema-eleitoral` (link/rota continuam `/loja`; o rótulo
+  no menu e o título da página viraram **"Atividades"**, mais chamativo que "Loja"). A área
+  financeira (`/financeiro`,
+  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook de exemplo
+  usado em desenvolvimento (`npm run seed`, `scripts/seed.js`) é só um placeholder — o material
+  didático real é decisão de conteúdo, não mais limitação técnica, desde que a Etapa 16 (CRUD de
+  produto pelo admin) e o upload de arquivo/capa ficaram prontos.
 
 ### Security
 

@@ -61,7 +61,7 @@ const NAV_GROUPS = [
     label: 'Conteúdo',
     items: [
       { label: 'Sistema eleitoral', to: '/sistema-eleitoral', icon: BookOpen },
-      { label: 'Loja', to: '/loja', icon: Store },
+      { label: 'Atividades', to: '/loja', icon: Store },
     ],
   },
 ];

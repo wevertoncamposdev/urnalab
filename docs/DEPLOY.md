@@ -36,6 +36,15 @@ próprio `Dockerfile` — não existe backend/frontend num único container.
    `PORT` e `HOST` **não devem ser definidos manualmente** — o Railway injeta `PORT`
    e o backend já escuta em `0.0.0.0` automaticamente quando `NODE_ENV=production`.
 
+   Opcionais, só relevantes se for usar as funcionalidades que dependem delas:
+
+   | Nome | Valor | Quando precisa |
+   | --- | --- | --- |
+   | `ADMIN_EMAIL` | e-mail de uma conta já cadastrada | Pra essa conta acessar a Área de Gerenciamento (`/gerenciamento`) — sem isso, nenhuma conta acessa |
+   | `MERCADOPAGO_ACCESS_TOKEN` | Access Token da conta Mercado Pago (painel → Suas integrações) | Pra cobrança pela exportação de PDF/loja funcionar de verdade |
+   | `MERCADOPAGO_WEBHOOK_SECRET` | assinatura secreta do webhook (painel → Webhooks) | **Obrigatório em produção assim que `MERCADOPAGO_ACCESS_TOKEN` estiver definido** — sem ele, o servidor recusa subir (erro fatal no boot, de propósito: não roda com o webhook sem validação de assinatura) |
+   | `BACKEND_URL` | URL pública deste próprio serviço (ex.: `https://urna-backend.up.railway.app`) | Pro Mercado Pago conseguir chamar o webhook de volta — não funciona com `localhost` |
+
 3. **Volume persistente** para as fotos de candidatos: Settings → Volumes → Add
    Volume, monte em `/app/data`. Sessões, votos e todo o resto já ficam no
    Postgres (persistente por natureza) — só as fotos são arquivo em disco. Sem
@@ -116,3 +125,5 @@ boa chance de funcionar lá. Ver `docker-compose.yml` para os valores de exemplo
       um domínio não verificado, o envio do código de confirmação falha silenciosamente (o
       cadastro ainda funciona, mas o e-mail nunca chega; ver `console.error` nos logs do
       backend).
+- [ ] Se for usar cobrança (`MERCADOPAGO_ACCESS_TOKEN` configurado): `MERCADOPAGO_WEBHOOK_SECRET`
+      também está configurado — sem ele, o backend se recusa a subir em produção.

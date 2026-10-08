@@ -145,8 +145,15 @@ há 10 mil combinações, a geração tenta de novo em caso de colisão (`withUn
 `session.service.js`) até achar um código livre. Enquanto a sessão está `OPEN`, o link
 `/votar/:token` do frontend vota nela sem precisar de conta; funciona bem pelo celular, e a tela da
 sessão destaca o código em si para digitação manual. Ele para de aceitar voto sozinho fora do
-estado `OPEN` — o token em si é a autorização, não há usuário por trás. O front reaproveita a mesma
-lógica da cédula (hook `useBallotFlow`) tanto na votação autenticada quanto no link público.
+estado `OPEN` — o token em si é a autorização, não há usuário por trás. É a **única** tela de
+votação do projeto (`PublicVoting.jsx`) — uma versão autenticada antiga (`/votacao`) foi removida;
+votar, mesmo testando como administrador, é sempre por este link.
+
+A tela (Etapa 17) simula o corpo físico de uma urna de verdade: visor, teclado numérico e botão
+"Confirma" reunidos num componente só (`components/voting/Urna.jsx`, fundo escuro, tela clara) —
+a foto do candidato aparece direto nessa tela assim que o número fecha. Ao lado, uma lista
+(`CandidateList.jsx`) mostra quem concorre ao cargo sendo votado agora (troca sozinha a cada
+avanço de cargo); clicar num nome mostra a proposta de governo dele.
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
@@ -155,7 +162,7 @@ lógica da cédula (hook `useBallotFlow`) tanto na votação autenticada quanto 
 | POST | /api/public/sessions/:token/votes | Registra o voto — só funciona com a sessão `OPEN` |
 
 Cada conta é isolada das demais: cargos, partidos, pessoas, candidatos, sessões e votos carregam
-um `userId`, filtrado em todo repository e service (isolamento lógico — mesmo arquivo JSON,
+um `userId`, filtrado em todo repository e service (isolamento lógico — mesmo banco Postgres,
 nunca misturando contas). Uma conta nova já nasce com os 7 cargos padrão, prontos pra editar.
 Tentar acessar um registro de outra conta responde `404` (nunca `403`, pra não revelar que existe).
 
@@ -189,8 +196,10 @@ Erros seguem `{ "success": false, "error": { "code", "message" } }`
 
 Regras principais: número do partido (1–99) e sigla são únicos; o número do candidato tem a
 quantidade de dígitos do cargo e é único por sessão + cargo (inclusive entre inativos);
-candidato inativo não recebe votos. A unicidade é checada dentro da fila do `JsonDatabase`
-(`insertUnless` / `updateUnless`), então cadastros simultâneos não geram duplicados.
+candidato inativo não recebe votos. A unicidade é garantida por constraint `UNIQUE` no Postgres
+(nunca checada "na mão" antes de gravar) — o repository só traduz a violação (`P2002`) de volta
+pro código de conflito esperado (`isUniqueViolation`/`conflictFieldFrom`, `database/index.js`),
+então cadastros simultâneos não geram duplicados.
 
 ### Foto do candidato: link ou webcam
 
@@ -199,7 +208,7 @@ O campo `photo` de `POST/PUT /api/candidates` aceita três formatos: um link `ht
 navegador, ou um caminho já salvo (`/photos/...`, quando a edição reenvia a foto sem trocá-la).
 Um data URI é decodificado e gravado em `backend/data/photos/<uuid>.<ext>` por
 `storage/photo-storage.js` — o que fica salvo no candidato é só o caminho, nunca o base64, para
-não inflar os arquivos JSON. O backend serve esses arquivos em `GET /photos/:arquivo`
+não inflar as linhas do banco. O backend serve esses arquivos em `GET /photos/:arquivo`
 (`middleware/photo-static.js`, sem depender de nenhum framework de arquivos estáticos; o nome do
 arquivo é validado contra o formato exato gerado por `photoStorage.save`, então não há risco de
 path traversal). Trocar ou remover a foto de um candidato apaga o arquivo antigo do disco depois
@@ -223,10 +232,13 @@ A checagem "sessão está `OPEN`" e a gravação do voto rodam como uma única o
 (`sessionRepository.withLock`, usada também por `sessionService.finish`), então uma finalização
 concorrente nunca deixa passar um voto depois de completada.
 
-`npm run seed [-- --voters=N] [-- --finish]` (ou `node scripts/seed.js --voters=N --finish`)
-recria `backend/data/*.json` com 3 partidos, uma sessão com 9 candidatos fictícios e,
-opcionalmente, simula N eleitores votando (válido/branco/nulo, gerador de semente fixa) e
-finaliza a sessão — usando os services, como qualquer outro cliente da API.
+`npm run seed [-- --voters=N] [-- --finish]` (ou `node scripts/seed.js --voters=N --finish`) recria
+a conta demo no Postgres (`demo@urna.local` / `demo12345`, perfil de instituição já preenchido),
+com 3 partidos, uma sessão com 9 candidatos fictícios, o produto de demonstração da Loja (ver
+"Cobrança e produtos" abaixo) e, opcionalmente, simula N eleitores votando (válido/branco/nulo,
+gerador de semente fixa) e finaliza a sessão — usando os services, como qualquer outro cliente da
+API. Idempotente: pode rodar várias vezes seguidas (apaga a conta demo anterior, se houver, antes
+de recriar — `onDelete: Cascade` em toda relação de `User` cuida do resto).
 
 ## API de resultados (Etapa 6)
 
@@ -256,5 +268,66 @@ A auditoria (também só disponível com a sessão `FINISHED`, `AUDIT_NOT_AVAILA
 reconfere cada voto, na ordem em que foi gravado, contra dois critérios independentes:
 `hashValid` (o hash bate com o conteúdo gravado) e `previousHashValid` (o `previousHash` aponta
 para o `hash` do voto anterior). Isso detecta alteração de conteúdo, remoção e reordenação de
-qualquer voto feita diretamente no arquivo JSON depois da gravação. A resposta inclui `valid`
+qualquer voto feita diretamente no banco depois da gravação. A resposta inclui `valid`
 (booleano geral) e `brokenAtIndex` (posição do primeiro voto onde a cadeia quebra, ou `null`).
+
+## Área de Gerenciamento (Etapas 9 e 16)
+
+Painel interno de métricas e suporte, visível só pra uma única conta — a configurada em
+`ADMIN_EMAIL` (`backend/.env.example`). Não existe campo de role no banco de propósito: é
+literalmente "a conta cujo e-mail bate com essa variável", nada mais. No frontend fica numa árvore
+de rotas própria, `/gerenciamento*` (Etapa 16.1), separada da área comum do usuário e com as
+páginas carregadas via `React.lazy` — o código delas nem chega a ser baixado por uma conta comum.
+No backend, cada rota é marcada com `adminOnly: true` (`utils/router.js`) e checada em
+`server.js` **antes** de qualquer handler rodar, comparando o e-mail já carimbado no próprio JWT
+(claim `email`, `auth.service.js issueToken`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao banco
+pra autorizar. Todo acesso é registrado (`AdminAccessLog`, accountability LGPD).
+
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| GET | /api/admin/overview | Métricas agregadas (contas, instituições, sessões, votos) |
+| GET | /api/admin/users | Lista contas cadastradas (e-mail mascarado, minimização de dados) |
+| GET | /api/admin/analytics/funnel | Funil de uso anônimo (ver "Analytics e feedback" abaixo) |
+| GET/PUT | /api/admin/feedback, /api/admin/feedback/:id | Lista feedback recebido e muda o status |
+| GET/POST | /api/admin/products | Lista (inclusive inativos) e cria produto (ver "Cobrança e produtos") |
+| PUT | /api/admin/products/:id | Edita nome, descrição, preço, ativo/inativo de um produto |
+| GET | /api/admin/products/:id/sales | Quantidade e receita aprovada de um produto, sem dado de quem comprou |
+
+## Analytics e feedback (Etapa 10)
+
+Funil de uso **sempre anônimo**: cada evento (`AnalyticsEvent`) carrega só um `visitorId` (UUID
+aleatório gerado no navegador, `frontend/src/lib/analytics.js`, guardado em `localStorage`), nunca
+nome ou e-mail — mesmo em contas autenticadas. `POST /api/analytics/events` é pública, sem login.
+Feedback (`Feedback`) é opcional e tem uma versão autenticada (`POST /api/feedback`, grava o
+`userId`) e uma anônima, embutida na votação pública (`POST /api/public/feedback`, sempre sem
+`userId` — mesmo que o navegador tenha feedback anterior).
+
+## Cobrança e produtos (Etapas 11 a 16)
+
+A exportação do resultado em PDF (`GET /api/sessions/:id/results/pdf`) é paga: uma cobrança
+aprovada libera o download daquela sessão pra sempre. Pagamento via **Mercado Pago** (Checkout
+Pro), chamado direto pela API REST deles (`backend/src/services/mercadopago.service.js`, com
+`fetch` nativo — sem SDK). `POST /api/payments/webhook` (rota pública) recebe a notificação de
+pagamento, valida a assinatura (`MERCADOPAGO_WEBHOOK_SECRET`, opcional mas recomendado — veja
+`backend/.env.example`) e **sempre reconsulta o pagamento na API deles** antes de aprovar, nunca
+confiando no status que vem no corpo da notificação.
+
+O sistema de cobrança é genérico: todo pagamento é de um `Product` (model único, catálogo do
+sistema). `kind` decide como o acesso é concedido — `SESSION_EXPORT` (a exportação de PDF acima,
+ligada a uma sessão) ou `EBOOK` (produto "por conta", com um arquivo fixo, liberado direto pro
+usuário sem sessão envolvida). A loja (`/loja` no frontend, menu "Atividades") vende os produtos
+`EBOOK` — hoje materiais didáticos (planos de aula de cidadania usando o UrnaLab), cadastrados e
+com arquivo/capa enviados pela Área de Gerenciamento.
+
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| GET/POST | /api/sessions/:id/payment | Status do pagamento da sessão / inicia o checkout |
+| GET | /api/payments | Histórico de cobranças da própria conta (`/financeiro` no frontend) |
+| POST | /api/payments/:id/refund | Reembolso — só antes do primeiro download do material comprado |
+| GET | /api/products | Catálogo público (produtos ativos) |
+| GET/POST | /api/products/:id/payment | Status / inicia o checkout de um produto "por conta" |
+| GET | /api/products/:id/download | Baixa o arquivo — só com pagamento aprovado |
+
+Uma cobrança nunca é reembolsável depois do primeiro download (`Payment.downloadedAt`) — senão a
+conta ficaria com o material **e** o dinheiro de volta. Preço de cada produto mora no banco
+(editável pela Área de Gerenciamento), não em variável de ambiente.

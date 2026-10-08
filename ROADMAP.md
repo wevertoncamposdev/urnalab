@@ -51,7 +51,11 @@ andamento" acima como uma Etapa nova.
   `candidateRepository.create` direto, sem passar pela validação de partido ativo que o resto do
   código (`candidateService.create`) sempre aplica.
 - **Importação em massa de candidatos/partidos (CSV)**: hoje é tudo cadastro manual, um por um —
-  pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa funcionalidade será um recurso premium que precisa de assinatura mensal, ou cobrança por importação.
+  pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa
+  funcionalidade será um recurso premium, cobrado por importação — o sistema de produtos genérico
+  (`Product`, Etapa 15) já dá a base pra isso: bastaria um novo produto `kind` "por conta" (como o
+  `EBOOK` da loja), sem precisar de assinatura mensal (que ainda não existe, ver "Resultados e
+  relatórios" abaixo).
 
 ### Contas e multiusuário
 
@@ -151,10 +155,12 @@ andamento" acima como uma Etapa nova.
   candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
   relance, principalmente em apresentação pra turma.
 - **Exportar resultado em PDF/imagem**: subiu pra "Em andamento" como Etapa 11.
-- **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. Implementado só o
-  modelo "por sessão" (paga uma vez, baixa quantas vezes quiser); os próximos estágios do modelo
-  progressivo (avulso, depois assinatura mensal) ficam pra quando fizer sentido de verdade: só o
-  Mercado Pago como gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
+- **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. O modelo "por sessão"
+  (paga uma vez, baixa quantas vezes quiser) e o sistema de cobrança genérico por trás dele (model
+  `Product`, Etapa 15) já existem — é o que a loja de materiais didáticos (Etapas 15/16) usa pra
+  vender produtos "por conta", sem sessão envolvida. O que falta de verdade é um modelo de
+  **assinatura mensal** (cobrança recorrente) — hoje só existe cobrança avulsa; Mercado Pago como
+  gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
 
 ### Notificações
 
