@@ -271,7 +271,7 @@ para o `hash` do voto anterior). Isso detecta alteração de conteúdo, remoçã
 qualquer voto feita diretamente no banco depois da gravação. A resposta inclui `valid`
 (booleano geral) e `brokenAtIndex` (posição do primeiro voto onde a cadeia quebra, ou `null`).
 
-## Área de Gerenciamento (Etapas 9, 16 e 18)
+## Área de Gerenciamento (Etapas 9, 16, 18 e 19)
 
 Painel interno de métricas e suporte, visível só pra uma única conta — a configurada em
 `ADMIN_EMAIL` (`backend/.env.example`). Não existe campo de role no banco de propósito: é
@@ -280,16 +280,26 @@ de rotas própria, `/gerenciamento*` (Etapa 16.1), separada da área comum do us
 páginas carregadas via `React.lazy` — o código delas nem chega a ser baixado por uma conta comum.
 Além da rota, a área também tem **shell visual próprio** (`AdminLayout.jsx`, Etapa 18): cabeçalho
 e navegação específicos, sem nenhum componente compartilhado com `AppLayout`/`Sidebar.jsx` da área
-comum — o menu principal nunca lista nem menciona `/gerenciamento*`, pra conta nenhuma. Isso não
-muda a autorização (que já era sólida), só elimina o acoplamento visual entre as duas áreas: uma
-mudança futura num dos dois shells não tem como vazar pro outro. No backend, cada rota é marcada
-com `adminOnly: true` (`utils/router.js`) e checada em `server.js` **antes** de qualquer handler
-rodar, comparando o e-mail já carimbado no próprio JWT (claim `email`, `auth.service.js
-issueToken`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao banco pra autorizar. Todo acesso é
-registrado (`AdminAccessLog`, accountability LGPD).
+comum — o menu principal nunca lista nem menciona `/gerenciamento*`, pra conta nenhuma. No backend,
+cada rota é marcada com `adminOnly: true` (`utils/router.js`) e checada em `server.js` **antes** de
+qualquer handler rodar, comparando o e-mail já carimbado no próprio JWT (claim `email`,
+`auth.service.js issueToken`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao banco pra autorizar.
+
+Por cima disso, a Etapa 19 adiciona uma **verificação em duas etapas**: mesmo já sendo
+`ADMIN_EMAIL`, entrar em `/gerenciamento*` exige confirmar um código de 6 dígitos mandado por
+e-mail a cada vez (`AdminVerificationGate.jsx`, mandado automaticamente ao montar
+`AdminLayout.jsx`). A confirmação devolve um token à parte — escopo `admin-verified`, 60 min de
+validade, completamente independente do JWT de login — guardado só em `sessionStorage` (nunca
+`localStorage`, então some sozinho ao fechar a aba) e enviado num header próprio
+(`X-Admin-Verification`) em toda chamada a `/api/admin/*`; sem ele, a rota responde
+`401 ADMIN_VERIFICATION_REQUIRED` (ver `server.js`). As únicas exceções são as duas rotas que
+resolvem esse próprio desafio (`/api/admin/verify/request` e `/confirm`, com
+`skipAdminVerification: true`). Todo acesso é registrado (`AdminAccessLog`, accountability LGPD).
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
+| POST | /api/admin/verify/request | Manda o código de 6 dígitos pro e-mail da conta admin |
+| POST | /api/admin/verify/confirm | Confirma o código, devolve o token `admin-verified` |
 | GET | /api/admin/overview | Métricas agregadas (contas, instituições, sessões, votos) |
 | GET | /api/admin/users | Lista contas cadastradas (e-mail mascarado, minimização de dados) |
 | GET | /api/admin/analytics/funnel | Funil de uso anônimo (ver "Analytics e feedback" abaixo) |

@@ -30,6 +30,7 @@ model User {
   passwordResetToken    PasswordResetToken?
   institutionProfile    InstitutionProfile?
   adminAccessLogs       AdminAccessLog[]
+  adminVerificationCode AdminVerificationCode?
   feedbacks             Feedback[]
   payments              Payment[]
 
@@ -63,6 +64,21 @@ model EmailVerificationCode {
   createdAt DateTime @default(now())
 
   @@map("email_verification_codes")
+}
+
+model AdminVerificationCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Segunda camada de acesso à Área de Gerenciamento (Etapa 19), além da conta já ser
+  // ADMIN_EMAIL: código de 6 dígitos mandado por e-mail, só hash sha256 guardado — mesmo
+  // desenho de EmailVerificationCode acima (ver admin.service.js).
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("admin_verification_codes")
 }
 
 model PasswordResetToken {

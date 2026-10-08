@@ -1,9 +1,15 @@
+import { randomInt, createHash } from 'node:crypto';
 import { adminRepository } from '../repositories/admin.repository.js';
+import { adminVerificationRepository } from '../repositories/admin-verification.repository.js';
 import { analyticsRepository } from '../repositories/analytics.repository.js';
 import { feedbackRepository } from '../repositories/feedback.repository.js';
+import { userRepository } from '../repositories/user.repository.js';
 import { ANALYTICS_EVENT_NAMES } from '../rules/analytics-rules.js';
+import { ADMIN_VERIFICATION_RULES } from '../rules/admin-verification-rules.js';
 import { FEEDBACK_STATUSES, FEEDBACK_TYPES } from '../rules/feedback-rules.js';
-import { badRequest, notFound } from '../utils/errors.js';
+import { badRequest, notFound, tooManyRequests } from '../utils/errors.js';
+import { signJwt } from '../utils/jwt.js';
+import { emailService } from './email.service.js';
 
 // Autorização admin (Etapa 16): toda rota `/api/admin/*` tem `adminOnly: true` (ver
 // admin.routes.js), checado em server.js antes de qualquer handler/controller/service
@@ -14,6 +20,22 @@ import { badRequest, notFound } from '../utils/errors.js';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
+
+// `scope` isola este token de qualquer outro JWT do sistema (ver issueToken em
+// auth.service.js) — mesmo que vazasse, não serve pra autenticar nada além de passar no
+// gate de verificação (server.js), e só pra quem já é ADMIN_EMAIL (checado de novo lá).
+const ADMIN_VERIFIED_SCOPE = 'admin-verified';
+
+// Mesmo desenho de generateVerificationCode/hashCode em auth.service.js: código de 6
+// dígitos (zero à esquerda), comparado só por hash sha256 — nunca guardado em texto puro.
+function generateVerificationCode() {
+  return String(randomInt(0, 10 ** ADMIN_VERIFICATION_RULES.codeLength)).padStart(
+    ADMIN_VERIFICATION_RULES.codeLength,
+    '0',
+  );
+}
+
+const hashCode = (code) => createHash('sha256').update(code).digest('hex');
 
 // Etapas do funil, na ordem em que acontecem numa eleição (ver ROADMAP.md "Validação e
 // Feedback") — PAGE_VIEW fica de fora: é o total de navegação, não uma etapa do funil.
@@ -126,7 +148,6 @@ export const adminService = {
   },
 
   async updateFeedbackStatus(userId, feedbackId, status) {
-    await requireAdmin(userId);
     if (!FEEDBACK_STATUSES.includes(status)) {
       throw badRequest('FEEDBACK_STATUS_INVALID', 'Status inválido.');
     }
@@ -136,5 +157,64 @@ export const adminService = {
 
     await adminRepository.logAccess(userId, `UPDATE_FEEDBACK_STATUS:${feedbackId}:${status}`);
     return result.record;
+  },
+
+  // Segunda camada de acesso à Área de Gerenciamento (Etapa 19) — estas duas rotas são
+  // `adminOnly: true` mas NÃO `skipAdminVerification` (ver admin.routes.js): a conta já
+  // precisa ser ADMIN_EMAIL pra sequer chegar aqui, isso só confirma posse do e-mail.
+  async requestVerification(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw notFound('USER_NOT_FOUND', 'Usuário não encontrado.');
+
+    const pending = await adminVerificationRepository.findByUserId(userId);
+    if (pending) {
+      const elapsedSeconds = (Date.now() - new Date(pending.createdAt).getTime()) / 1000;
+      if (elapsedSeconds < ADMIN_VERIFICATION_RULES.resendCooldownSeconds) {
+        throw tooManyRequests(
+          'ADMIN_VERIFICATION_RESEND_TOO_SOON',
+          'Aguarde um minuto antes de pedir um novo código.',
+        );
+      }
+    }
+
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + ADMIN_VERIFICATION_RULES.ttlMinutes * 60 * 1000);
+    await adminVerificationRepository.upsertForUser(userId, { codeHash: hashCode(code), expiresAt });
+
+    try {
+      await emailService.sendAdminVerificationCode(user.email, code);
+    } catch (error) {
+      console.error('[email] falha ao enviar código de verificação da Área de Gerenciamento', error);
+    }
+
+    await adminRepository.logAccess(userId, 'VERIFY_REQUEST');
+    return { sent: true };
+  },
+
+  async confirmVerification(userId, code) {
+    const trimmedCode = typeof code === 'string' ? code.trim() : '';
+    if (!trimmedCode) throw badRequest('VERIFICATION_CODE_REQUIRED', 'Informe o código recebido por e-mail.');
+
+    const pending = await adminVerificationRepository.findByUserId(userId);
+    if (!pending) {
+      throw badRequest('VERIFICATION_CODE_NOT_FOUND', 'Nenhum código pendente. Peça um novo código.');
+    }
+    if (new Date(pending.expiresAt) < new Date()) {
+      throw badRequest('VERIFICATION_CODE_EXPIRED', 'Esse código expirou. Peça um novo código.');
+    }
+    if (pending.attempts >= ADMIN_VERIFICATION_RULES.maxAttempts) {
+      throw badRequest('VERIFICATION_CODE_LOCKED', 'Muitas tentativas. Peça um novo código.');
+    }
+    if (hashCode(trimmedCode) !== pending.codeHash) {
+      await adminVerificationRepository.incrementAttempts(pending.id);
+      throw badRequest('VERIFICATION_CODE_INVALID', 'Código incorreto.');
+    }
+
+    await adminVerificationRepository.deleteByUserId(userId);
+    await adminRepository.logAccess(userId, 'VERIFY_CONFIRM');
+
+    const expiresInSeconds = ADMIN_VERIFICATION_RULES.verifiedTtlMinutes * 60;
+    const token = signJwt({ sub: userId, scope: ADMIN_VERIFIED_SCOPE }, { expiresInSeconds });
+    return { token, expiresInSeconds };
   },
 };

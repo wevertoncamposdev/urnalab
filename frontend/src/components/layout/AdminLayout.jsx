@@ -1,9 +1,16 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, LineChart, LogOut, MessageSquare, Package, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/branding/Logo';
+import { AdminVerificationGate } from '@/components/admin/AdminVerificationGate';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import {
+  clearAdminVerificationToken,
+  hasAdminVerificationToken,
+  setAdminVerificationRequiredHandler,
+} from '@/services/api';
 
 // Shell próprio da Área de Gerenciamento (Etapa 18) — não reaproveita AppLayout/Sidebar.jsx
 // (área comum do usuário) de propósito: nenhum componente daqui é compartilhado com a área
@@ -20,6 +27,26 @@ const ADMIN_NAV = [
 export function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  // Terceira camada por cima de RequireAdmin (Etapa 19): mesmo já sendo ADMIN_EMAIL,
+  // precisa confirmar o código mandado por e-mail a cada entrada na área — ver
+  // AdminVerificationGate. `hasAdminVerificationToken` olha o sessionStorage (válido só
+  // na aba atual); `setAdminVerificationRequiredHandler` cobre o caso do token expirar
+  // (ou ser invalidado) no meio do uso, derrubando de volta pro gate numa chamada normal.
+  const [verified, setVerified] = useState(hasAdminVerificationToken);
+
+  useEffect(() => {
+    setAdminVerificationRequiredHandler(() => setVerified(false));
+    return () => setAdminVerificationRequiredHandler(null);
+  }, []);
+
+  if (!verified) {
+    return <AdminVerificationGate email={user?.email} onVerified={() => setVerified(true)} />;
+  }
+
+  function handleLogout() {
+    clearAdminVerificationToken();
+    logout();
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/40">
@@ -55,7 +82,7 @@ export function AdminLayout() {
           <Button type="button" variant="ghost" size="sm" className="text-sidebar-foreground hover:bg-white/10 hover:text-white" onClick={() => navigate('/painel')}>
             Voltar ao painel
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-white/10 hover:text-white" onClick={logout} aria-label="Sair" title="Sair">
+          <Button type="button" variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-white/10 hover:text-white" onClick={handleLogout} aria-label="Sair" title="Sair">
             <LogOut className="size-4" />
           </Button>
         </div>

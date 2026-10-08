@@ -32,6 +32,34 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
 
 ---
 
+### Etapa 19 — Verificação em duas etapas na Área de Gerenciamento
+
+Camada extra sobre a já existente (ADMIN_EMAIL + shell próprio, Etapas 16 e 18): mesmo
+logada como a conta admin, a entrada em `/gerenciamento*` agora também exige confirmar um
+código de 6 dígitos mandado por e-mail — "algo que a conta sabe" (senha) deixa de ser
+suficiente sozinho, precisa também de "algo que só o dono do e-mail recebe".
+
+- [x] 19.1 — Backend: model `AdminVerificationCode` (mesmo desenho de
+  `EmailVerificationCode` — código só em hash sha256, expiração, limite de tentativas),
+  `POST /api/admin/verify/request` (manda o código, cooldown de reenvio) e
+  `POST /api/admin/verify/confirm` (valida e devolve um token à parte, escopo
+  `admin-verified`, válido por 60 min) — as duas únicas rotas `adminOnly` que não exigem
+  esse token pra rodar (`skipAdminVerification`, ver `utils/router.js`/`server.js`). Toda
+  outra rota `/api/admin/*` passa a exigir esse token (header `X-Admin-Verification`),
+  além do JWT normal já exigir ADMIN_EMAIL (2026-10-08, ver `CHANGELOG.md`).
+- [x] 19.2 — Frontend: `AdminVerificationGate.jsx` — ao entrar em `AdminLayout`, manda o
+  código automaticamente e pede confirmação antes de mostrar qualquer página admin; o
+  token fica só em `sessionStorage` (nunca localStorage), então expira sozinho ao fechar
+  a aba — sem sessão nova guardada no servidor pra isso (2026-10-08).
+- [ ] 19.3 — Validar o fluxo completo pela UI de verdade, logado como a conta admin real
+  (login + e-mail de verdade): o ciclo request→401 sem token→confirm→200 com token, e a
+  rejeição de token com escopo errado, já foram validados ponta a ponta por HTTP numa
+  instância descartável com `ADMIN_EMAIL` apontado pra uma conta de teste — só falta o
+  clique na tela de verdade (`AdminVerificationGate.jsx`) e o e-mail chegando na caixa de
+  entrada real, que dependem de login que a IA não tem acesso.
+
+---
+
 ## Ideias futuras
 
 Lista de possíveis próximos passos, sem compromisso nem ordem — um banco de ideias pra escolher o

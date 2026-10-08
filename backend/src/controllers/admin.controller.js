@@ -21,4 +21,12 @@ export const adminController = {
   async updateFeedbackStatus({ res, userId, params, body }) {
     sendSuccess(res, await adminService.updateFeedbackStatus(userId, params.id, body?.status));
   },
+
+  async requestVerification({ res, userId }) {
+    sendSuccess(res, await adminService.requestVerification(userId));
+  },
+
+  async confirmVerification({ res, userId, body }) {
+    sendSuccess(res, await adminService.confirmVerification(userId, body?.code));
+  },
 };

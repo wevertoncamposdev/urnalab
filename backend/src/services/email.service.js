@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { config } from '../config.js';
+import { ADMIN_VERIFICATION_RULES } from '../rules/admin-verification-rules.js';
 import { EMAIL_VERIFICATION_RULES } from '../rules/email-verification-rules.js';
 import { PASSWORD_RESET_RULES } from '../rules/password-reset-rules.js';
 
@@ -83,6 +84,32 @@ export const emailService = {
           <p style="margin:0;color:${COLORS.muted};font-size:13px;">
             Vale por ${EMAIL_VERIFICATION_RULES.ttlMinutes} minutos. Se você não pediu esse código,
             pode ignorar este e-mail.
+          </p>
+        `,
+      }),
+    });
+  },
+
+  async sendAdminVerificationCode(to, code) {
+    await resend.emails.send({
+      from: `${config.emailFromName} <${config.emailFromAddress}>`,
+      to,
+      subject: 'Código de acesso — Área de Gerenciamento',
+      html: emailLayout({
+        previewText: `Seu código de acesso: ${code}`,
+        bodyHtml: `
+          <h1 style="margin:0 0 12px;font-size:18px;color:${COLORS.deepBlue};">Acesso à Área de Gerenciamento</h1>
+          <p style="margin:0 0 20px;">Use o código abaixo para confirmar que é você entrando na área administrativa:</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+            <tr>
+              <td style="background:${COLORS.background};border:1px solid ${COLORS.border};border-radius:10px;padding:16px 24px;font-size:28px;font-weight:800;letter-spacing:8px;color:${COLORS.deepBlue};">
+                ${code}
+              </td>
+            </tr>
+          </table>
+          <p style="margin:0;color:${COLORS.muted};font-size:13px;">
+            Vale por ${ADMIN_VERIFICATION_RULES.ttlMinutes} minutos. Se você não pediu esse código,
+            alguém tentou entrar na área administrativa com sua conta — considere trocar sua senha.
           </p>
         `,
       }),

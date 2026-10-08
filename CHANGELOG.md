@@ -10,6 +10,31 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Added
+
+- **Verificação em duas etapas na Área de Gerenciamento (Etapa 19)**: além da conta já
+  precisar ser `ADMIN_EMAIL`, entrar em `/gerenciamento*` agora também exige confirmar um
+  código de 6 dígitos mandado por e-mail a cada vez. Backend: model
+  `AdminVerificationCode` (mesmo desenho de `EmailVerificationCode` — código só em hash
+  sha256, expiração de 10 min, limite de 5 tentativas), `POST /api/admin/verify/request`
+  (manda o código, cooldown de reenvio de 60s) e `POST /api/admin/verify/confirm` (valida
+  e devolve um token à parte — escopo `admin-verified`, válido por 60 min — totalmente
+  independente do JWT de login). Toda outra rota `/api/admin/*` passou a exigir esse
+  token num header próprio (`X-Admin-Verification`, checado em `server.js`), além do JWT
+  normal já exigir `ADMIN_EMAIL` — as duas rotas de verificação em si usam a nova opção
+  `skipAdminVerification` do roteador pra serem a exceção. Frontend:
+  `AdminVerificationGate.jsx` manda o código automaticamente ao entrar em `AdminLayout` e
+  bloqueia qualquer página admin até confirmar; o token fica só em `sessionStorage`
+  (nunca `localStorage`), expirando sozinho ao fechar a aba — nenhuma sessão nova
+  guardada no servidor pra isso.
+
+- **Gráfico de rosca na apuração**: `PositionResult.jsx` ganhou um gráfico de rosca (SVG puro, sem
+  lib de gráfico) com a proporção de votos válidos por candidato de cada cargo, ao lado do ranking
+  já existente — complementa a barra de progresso individual com uma visão consolidada, útil pra
+  enxergar o resultado de relance numa apresentação pra turma. Cada fatia usa uma cor da paleta da
+  identidade visual (`PositionPieChart.jsx`), e um indicador colorido foi adicionado à frente de
+  cada candidato na lista pra servir de legenda.
+
 ### Changed
 
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
@@ -23,17 +48,13 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   ao banco) no backend — essa mudança é só de acoplamento de interface: reduz o risco de uma
   alteração futura num dos dois shells vazar visualmente pro outro.
 
-### Added
-
-- **Gráfico de rosca na apuração**: `PositionResult.jsx` ganhou um gráfico de rosca (SVG puro, sem
-  lib de gráfico) com a proporção de votos válidos por candidato de cada cargo, ao lado do ranking
-  já existente — complementa a barra de progresso individual com uma visão consolidada, útil pra
-  enxergar o resultado de relance numa apresentação pra turma. Cada fatia usa uma cor da paleta da
-  identidade visual (`PositionPieChart.jsx`), e um indicador colorido foi adicionado à frente de
-  cada candidato na lista pra servir de legenda.
-
 ### Fixed
 
+- **`adminService.updateFeedbackStatus` quebrado**: chamava `requireAdmin(userId)`, uma função que
+  não existe em lugar nenhum do arquivo (nem importada) — toda atualização de status de feedback
+  pela Área de Gerenciamento derrubava com `ReferenceError`. Removida a chamada morta; a
+  autorização de verdade já acontece antes, no roteador (`adminOnly: true`), igual todo o resto
+  deste service.
 - **2º turno — casos de borda do ROADMAP**: os 4 problemas levantados numa revisão de código
   anterior, todos em `resultService.createRunoffSession`. (1) Empate no ponto de corte do 2º turno
   (ex. 2º e 3º lugar com o mesmo número de votos) não era mais indicado — `tallyPosition` só
