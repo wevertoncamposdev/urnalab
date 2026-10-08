@@ -10,6 +10,19 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Changed
+
+- **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
+  `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
+  comum do usuário — o item "Administração" que antes só aparecia no menu principal quando
+  `user.isAdmin` era verdadeiro (`Sidebar.jsx`, `ADMIN_GROUP`) foi removido de vez, pra conta
+  nenhuma. A área ganhou um shell próprio (`AdminLayout.jsx`): cabeçalho e navegação específicos
+  (Visão geral, Produtos, Analytics, Feedback), sem nenhum componente compartilhado com a área
+  comum. A autorização de verdade não mudou — continua sendo `RequireAuth`+`RequireAdmin`
+  (`App.jsx`) no frontend e `adminOnly: true` (checado contra `ADMIN_EMAIL` no JWT, sem consulta
+  ao banco) no backend — essa mudança é só de acoplamento de interface: reduz o risco de uma
+  alteração futura num dos dois shells vazar visualmente pro outro.
+
 ### Added
 
 - **Gráfico de rosca na apuração**: `PositionResult.jsx` ganhou um gráfico de rosca (SVG puro, sem

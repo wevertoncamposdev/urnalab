@@ -271,17 +271,22 @@ para o `hash` do voto anterior). Isso detecta alteração de conteúdo, remoçã
 qualquer voto feita diretamente no banco depois da gravação. A resposta inclui `valid`
 (booleano geral) e `brokenAtIndex` (posição do primeiro voto onde a cadeia quebra, ou `null`).
 
-## Área de Gerenciamento (Etapas 9 e 16)
+## Área de Gerenciamento (Etapas 9, 16 e 18)
 
 Painel interno de métricas e suporte, visível só pra uma única conta — a configurada em
 `ADMIN_EMAIL` (`backend/.env.example`). Não existe campo de role no banco de propósito: é
 literalmente "a conta cujo e-mail bate com essa variável", nada mais. No frontend fica numa árvore
 de rotas própria, `/gerenciamento*` (Etapa 16.1), separada da área comum do usuário e com as
 páginas carregadas via `React.lazy` — o código delas nem chega a ser baixado por uma conta comum.
-No backend, cada rota é marcada com `adminOnly: true` (`utils/router.js`) e checada em
-`server.js` **antes** de qualquer handler rodar, comparando o e-mail já carimbado no próprio JWT
-(claim `email`, `auth.service.js issueToken`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao banco
-pra autorizar. Todo acesso é registrado (`AdminAccessLog`, accountability LGPD).
+Além da rota, a área também tem **shell visual próprio** (`AdminLayout.jsx`, Etapa 18): cabeçalho
+e navegação específicos, sem nenhum componente compartilhado com `AppLayout`/`Sidebar.jsx` da área
+comum — o menu principal nunca lista nem menciona `/gerenciamento*`, pra conta nenhuma. Isso não
+muda a autorização (que já era sólida), só elimina o acoplamento visual entre as duas áreas: uma
+mudança futura num dos dois shells não tem como vazar pro outro. No backend, cada rota é marcada
+com `adminOnly: true` (`utils/router.js`) e checada em `server.js` **antes** de qualquer handler
+rodar, comparando o e-mail já carimbado no próprio JWT (claim `email`, `auth.service.js
+issueToken`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao banco pra autorizar. Todo acesso é
+registrado (`AdminAccessLog`, accountability LGPD).
 
 | Método | Rota | Descrição |
 | --- | --- | --- |

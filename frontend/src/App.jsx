@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
+import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { useAuth } from '@/hooks/useAuth';
@@ -122,8 +123,10 @@ export default function App() {
 
         {/* Área de Gerenciamento (Etapa 16.1): árvore de rotas própria, separada da
             comum acima — guarda (RequireAuth + RequireAdmin) resolvida antes de
-            qualquer página admin ser montada ou seu código sequer baixado (lazy). */}
-        <Route element={<RequireAuth><RequireAdmin><AppLayout /></RequireAdmin></RequireAuth>}>
+            qualquer página admin ser montada ou seu código sequer baixado (lazy).
+            Shell próprio (AdminLayout, Etapa 18): não reaproveita AppLayout/Sidebar.jsx
+            da área comum, pra zero acoplamento visual entre as duas áreas. */}
+        <Route element={<RequireAuth><RequireAdmin><AdminLayout /></RequireAdmin></RequireAuth>}>
           <Route
             path="gerenciamento"
             element={<Suspense fallback={<AdminPageFallback />}><Admin /></Suspense>}
