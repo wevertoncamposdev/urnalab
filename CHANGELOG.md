@@ -10,6 +10,8 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+## [0.14.0] — 2026-10-08
+
 ### Added
 
 - **Urna simulada na tela de votação (Etapa 17)**: `BallotCard` + `VoteKeypad` + botão "Confirma"
