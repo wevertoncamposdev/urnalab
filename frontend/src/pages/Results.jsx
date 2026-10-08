@@ -204,14 +204,24 @@ export default function Results() {
       <ConfirmDialog
         open={showChargeDialog}
         onOpenChange={setShowChargeDialog}
-        title="Exportar resultado em PDF"
+        title={(<>Exportar resultado em PDF <hr /></>)}
         description={
-          paymentState.data
-            ? `Essa sessão ainda não tem a exportação liberada. Ao confirmar, você será ` +
-              `redirecionado ao Mercado Pago pra pagar ${formatCents(paymentState.data.priceCents)} — ` +
-              `um pagamento único que libera o download do PDF dessa sessão pra sempre, quantas ` +
-              `vezes quiser.`
-            : ''
+          paymentState.data ? (
+            <>
+              Essa sessão ainda não tem a exportação liberada.<br /><br />
+              Pra gerar e baixar o relatório
+              completo em PDF, é necessário um{' '}
+              <strong className="text-foreground">
+                pagamento único de {formatCents(paymentState.data.priceCents)}
+              </strong>. <br /> <br />
+              Depois da confirmação, o PDF fica{' '}
+              <strong className="text-foreground">liberado para sempre</strong> nessa sessão e você pode
+              baixe quantas vezes quiser. <br /> <br />
+              Você será direcionado ao{' '}
+              <strong className="text-foreground">Mercado Pago</strong> para concluir o pagamento
+              com segurança.
+            </>
+          ) : ''
         }
         confirmLabel={paymentState.data ? `Pagar ${formatCents(paymentState.data.priceCents)}` : 'Pagar'}
         onConfirm={() => {
