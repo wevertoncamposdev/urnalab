@@ -192,13 +192,30 @@ export default function PublicVoting() {
           CONTAINER,
         )}
       >
-        <PositionStepper positions={positions} currentIndex={index} />
+        {/* Mesmas duas colunas da área de baixo (texto à esquerda, acompanhando a colinha;
+            tabs à direita, acompanhando a urna) — `flex-col-reverse` + `md:grid` reaproveita o
+            mesmo truque da área de baixo pra também inverter a ordem no celular (tabs antes do
+            aviso, por DOM o aviso vem primeiro mas visualmente some por último). */}
+        <div className="flex flex-col-reverse gap-2 md:grid md:grid-cols-[1fr_380px] md:items-center md:gap-6">
+          <Badge
+            variant="accent"
+            className="w-fit items-start gap-1.5 rounded-xl px-3 py-1.5 text-left leading-snug"
+          >
+            <GraduationCap className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              Projeto educacional feito para promover cidadania nas escolas — não é uma urna
+              eletrônica oficial.
+            </span>
+          </Badge>
+
+          <PositionStepper positions={positions} currentIndex={index} />
+        </div>
 
         {/* Duas colunas (Etapa 17): lista dos candidatos do cargo atual de um lado, a urna
-            simulada do outro — no celular, a urna (com o aviso educacional logo acima) vem
-            primeiro (`flex-col-reverse`: é a interação principal), o select + detalhes do
-            candidato depois. `items-stretch` pra coluna da esquerda acompanhar a altura da
-            urna em vez de sobrar espaço vazio do lado dela. */}
+            simulada do outro — no celular, a urna vem primeiro (`flex-col-reverse`: é a
+            interação principal), o select + detalhes do candidato depois. `items-stretch` pra
+            coluna da esquerda acompanhar a altura da urna em vez de sobrar espaço vazio do lado
+            dela. */}
         <div className="flex flex-1 flex-col-reverse gap-3 md:grid md:min-h-0 md:grid-cols-[1fr_380px] md:items-stretch md:gap-6">
           <CandidateList
             positionLabel={rule.label}
@@ -207,18 +224,7 @@ export default function PublicVoting() {
             onSelect={setSelectedCandidateId}
           />
 
-          <div className="flex flex-col gap-2 md:min-h-0 md:overflow-y-auto">
-            <Badge
-              variant="accent"
-              className="mx-auto w-fit items-start gap-1.5 rounded-xl px-3 py-1.5 text-center leading-snug"
-            >
-              <GraduationCap className="mt-0.5 size-3.5 shrink-0" />
-              <span>
-                Projeto educacional feito para promover cidadania nas escolas — não é uma urna
-                eletrônica oficial.
-              </span>
-            </Badge>
-
+          <div className="md:min-h-0 md:overflow-y-auto">
             <Urna
               positionLabel={rule.label}
               digits={digits}

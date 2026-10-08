@@ -49,8 +49,11 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   `md:h-screen md:overflow-hidden` — no desktop a página não rola mais; se o conteúdo não couber
   (viewport muito baixo), só a coluna específica (colinha ou urna) rola internamente, mantendo o
   resto fixo. O aviso "Projeto educacional... não é uma urna eletrônica oficial", que antes
-  ficava solto no rodapé da página, virou um badge logo acima da urna. No mobile a ordem
-  continua urna → select → detalhes do candidato (`flex-col-reverse`).
+  ficava solto no rodapé da página, virou um badge — mas não mais dentro da coluna da urna (onde
+  tinha gerado um scroll interno ali); agora divide a linha dos tabs de cargo ali em cima com o
+  mesmo layout de duas colunas de baixo: o aviso à esquerda, acompanhando a colinha, os tabs à
+  direita, acompanhando a urna. No mobile a ordem continua tabs → aviso → urna → select →
+  detalhes do candidato (`flex-col-reverse` nas duas linhas).
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
   `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
   comum do usuário — o item "Administração" que antes só aparecia no menu principal quando
