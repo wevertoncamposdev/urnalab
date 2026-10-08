@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Check, CheckCircle2, Hourglass, Maximize, Minimize, Users, Vote } from 'lucide-react';
+import { Check, CheckCircle2, Hourglass, Maximize, Minimize, Vote } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { PostVoteFeedback } from '@/components/feedback/PostVoteFeedback';
-import { BallotCard } from '@/components/voting/BallotCard';
-import { CandidatePreviewPanel } from '@/components/voting/CandidatePreviewPanel';
-import { VoteKeypad } from '@/components/voting/VoteKeypad';
+import { CandidateList } from '@/components/voting/CandidateList';
+import { Urna } from '@/components/voting/Urna';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PositionResult } from '@/components/results/PositionResult';
@@ -20,7 +17,6 @@ import { useAsync } from '@/hooks/useAsync';
 import { useBallotFlow } from '@/hooks/useBallotFlow';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { trackEvent } from '@/lib/analytics';
-import { pluralize } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
@@ -60,6 +56,13 @@ export default function PublicVoting() {
     setSelectedCandidateId('');
     ballot.resetBallot();
   }
+
+  // A lista de candidatos (coluna 1) troca de cargo junto com a urna — sem
+  // isso, a proposta selecionada do cargo anterior ficaria "vazando" pro
+  // próximo cargo depois de avançar.
+  useEffect(() => {
+    setSelectedCandidateId('');
+  }, [index]);
 
   const showResults = info?.status === 'FINISHED' || closed;
   const resultsState = useAsync(
@@ -165,15 +168,11 @@ export default function PublicVoting() {
     );
   }
 
-  // Candidatos de todos os cargos, agrupados na ordem da sessão — alimenta o
-  // seletor de consulta da coluna 1 (independente do cargo sendo votado agora).
-  const candidatesByPosition = positions.flatMap((p) =>
-    (candidatesState.data ?? [])
-      .filter((c) => c.position === p.code)
-      .sort((a, b) => a.number.localeCompare(b.number))
-      .map((c) => ({ ...c, positionLabel: p.label })),
-  );
-  const selectedCandidate = candidatesByPosition.find((c) => c.id === selectedCandidateId) ?? null;
+  // Só os candidatos do cargo sendo votado agora — a lista (coluna 1) troca
+  // sozinha a cada avanço de cargo, junto com a urna.
+  const currentCandidates = (candidatesState.data ?? [])
+    .filter((c) => c.position === rule.code)
+    .sort((a, b) => a.number.localeCompare(b.number));
 
   return (
     <div className={PAGE_BG}>
@@ -182,74 +181,31 @@ export default function PublicVoting() {
       <main className={cn('mx-auto flex flex-col gap-4 px-3 py-4 md:gap-6 md:px-4 md:py-6', CONTAINER)}>
         <PositionStepper positions={positions} currentIndex={index} />
 
-        <div className="flex flex-col gap-3 md:grid md:grid-cols-[320px_1fr_300px] md:items-start md:gap-6">
-          <div className="order-3 flex flex-col gap-3 md:order-1">
-            <Card>
-              <CardContent className="flex flex-col gap-4 p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="size-4 shrink-0" />
-                  {pluralize(candidatesByPosition.length, 'candidato', 'candidatos')} nesta eleição
-                </div>
+        {/* Duas colunas (Etapa 17): lista dos candidatos do cargo atual de um lado, a urna
+            simulada do outro — no celular, a urna vem primeiro (`flex-col-reverse`: é a
+            interação principal), a lista depois. `items-stretch` pra lista acompanhar a
+            altura da urna em vez de sobrar espaço vazio do lado dela. */}
+        <div className="flex flex-col-reverse gap-3 md:grid md:grid-cols-[1fr_380px] md:items-stretch md:gap-6">
+          <CandidateList
+            positionLabel={rule.label}
+            candidates={currentCandidates}
+            selectedId={selectedCandidateId}
+            onSelect={setSelectedCandidateId}
+          />
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="candidate-lookup" className="text-xs font-medium text-muted-foreground">
-                    Consultar proposta de um candidato
-                  </label>
-                  <Select
-                    value={selectedCandidateId}
-                    onValueChange={setSelectedCandidateId}
-                    disabled={candidatesByPosition.length === 0}
-                  >
-                    <SelectTrigger id="candidate-lookup">
-                      <SelectValue placeholder={candidatesByPosition.length === 0 ? 'Nenhum candidato cadastrado' : 'Selecione um candidato'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {candidatesByPosition.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.positionLabel} — {c.number} {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedCandidate && (
-                  <div className="flex flex-col gap-2 rounded-r-lg border-l-4 border-primary/50 bg-muted/50 p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CandidateAvatar name={selectedCandidate.name} photo={selectedCandidate.photo} />
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{selectedCandidate.name}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {selectedCandidate.party && `${selectedCandidate.party.acronym} (${selectedCandidate.party.number}) • `}
-                          nº {selectedCandidate.number}
-                        </div>
-                      </div>
-                    </div>
-                    {selectedCandidate.governmentProposal ? (
-                      <p className="whitespace-pre-wrap">{selectedCandidate.governmentProposal}</p>
-                    ) : (
-                      <p className="text-muted-foreground">Este candidato não cadastrou uma proposta de governo.</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="order-2 flex flex-col gap-3 md:gap-4">
-            <BallotCard positionLabel={rule.label} digits={digits} digitsRequired={rule.digits} blank={blank} />
-            <VoteKeypad onDigit={ballot.pressDigit} onClear={ballot.clearEntry} onBlank={ballot.pressBlank} disabled={submitting} />
-            <p className="hidden text-center text-xs text-muted-foreground md:block">
-              Também dá para digitar no teclado e confirmar com Enter.
-            </p>
-            <Button className="h-11 text-base md:h-12" disabled={!ready || submitting} onClick={ballot.confirmVote}>
-              {submitting ? 'Confirmando...' : 'Confirma'}
-            </Button>
-          </div>
-
-          <div className="order-1 md:order-3">
-            <CandidatePreviewPanel blank={blank} lookup={lookup} />
-          </div>
+          <Urna
+            positionLabel={rule.label}
+            digits={digits}
+            digitsRequired={rule.digits}
+            blank={blank}
+            lookup={lookup}
+            onDigit={ballot.pressDigit}
+            onClear={ballot.clearEntry}
+            onBlank={ballot.pressBlank}
+            onConfirm={ballot.confirmVote}
+            ready={ready}
+            submitting={submitting}
+          />
         </div>
       </main>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { ChevronDown, Maximize, Minimize } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { BookOpen, ChevronDown, Maximize, Minimize } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -233,6 +233,20 @@ export default function ElectoralSystem() {
               </CardContent>
             </Card>
           )}
+
+          <Card className="mx-auto w-full max-w-3xl">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+              <div className="flex items-center gap-3">
+                <BookOpen className="size-5 shrink-0 text-primary" />
+                <span className="text-sm text-muted-foreground">
+                  Planos de aula de cidadania pra usar em sala, com o UrnaLab, estão na loja.
+                </span>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/loja">Ver materiais</Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           <div className="flex justify-center pt-2">
             <Button

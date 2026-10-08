@@ -22,6 +22,12 @@ export const resultController = {
 
     const report = await resultsReportService.build(params.id, userId);
     const buffer = await renderResultsPdf(report);
+
+    // Trava do reembolso (ver payment.service.js refund) só é gravada depois que o PDF
+    // foi gerado com sucesso — se build/render falhar antes daqui, a cobrança continua
+    // reembolsável (o usuário não recebeu nada ainda).
+    await paymentService.markDownloaded(params.id, userId);
+
     sendPdfDownload(res, buffer, report.fileName);
   },
 };

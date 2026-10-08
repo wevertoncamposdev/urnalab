@@ -202,6 +202,19 @@ export const api = {
   payments: {
     getStatus: (sessionId) => request(`/api/sessions/${sessionId}/payment`),
     createCheckout: (sessionId) => request(`/api/sessions/${sessionId}/payment`, { method: 'POST' }),
+    // Área financeira (Etapa 14): histórico de todas as cobranças da conta e reembolso
+    // (só antes do primeiro download — ver backend/src/services/payment.service.js refund).
+    listMine: () => request('/api/payments'),
+    refund: (id) => request(`/api/payments/${id}/refund`, { method: 'POST' }),
+  },
+
+  // Loja de produtos "por conta" (Etapa 15.3) — hoje só ebooks; a exportação de PDF por
+  // sessão continua em api.payments acima.
+  products: {
+    list: () => request('/api/products'),
+    getStatus: (id) => request(`/api/products/${id}/payment`),
+    createCheckout: (id) => request(`/api/products/${id}/payment`, { method: 'POST' }),
+    download: (id) => requestFile(`/api/products/${id}/download`),
   },
 
   audit: {
@@ -209,7 +222,8 @@ export const api = {
   },
 
   // Área de Gerenciamento: só a conta ADMIN_EMAIL (ver backend/src/config.js) recebe
-  // respostas de sucesso aqui — qualquer outra conta recebe 403 (ver admin.service.js).
+  // respostas de sucesso aqui — qualquer outra conta recebe 403, verificado no roteador
+  // (`adminOnly: true`, Etapa 16), antes de qualquer rota destas rodar.
   admin: {
     overview: () => request('/api/admin/overview'),
     users: (params) => request(`/api/admin/users${toQuery(params)}`),
@@ -219,6 +233,14 @@ export const api = {
     feedback: {
       list: (params) => request(`/api/admin/feedback${toQuery(params)}`),
       updateStatus: (id, status) => request(`/api/admin/feedback/${id}`, { method: 'PUT', body: { status } }),
+    },
+    // CRUD de produtos (Etapa 16.2) e histórico de vendas (16.3) — catálogo completo
+    // (inclusive inativos), diferente de api.products (storefront pública).
+    products: {
+      list: () => request('/api/admin/products'),
+      create: (data) => request('/api/admin/products', { method: 'POST', body: data }),
+      update: (id, data) => request(`/api/admin/products/${id}`, { method: 'PUT', body: data }),
+      sales: (id) => request(`/api/admin/products/${id}/sales`),
     },
   },
 

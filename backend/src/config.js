@@ -30,6 +30,17 @@ for (const name of ['RESEND_API_KEY', 'EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME']) 
   }
 }
 
+// Cobrança (Etapa 12) é opcional no geral, mas se MERCADOPAGO_ACCESS_TOKEN está
+// configurado em produção (ou seja, pagamentos de verdade estão ativos), o segredo do
+// webhook passa a ser obrigatório — mesmo "falhar alto" já aplicado a JWT_SECRET/Resend
+// acima. Sem essa checagem, validação de assinatura fica desligada silenciosamente
+// (ver mercadopago.service.js verifyWebhookSignature) até alguém notar o warning no log.
+if (isProduction && process.env.MERCADOPAGO_ACCESS_TOKEN && !process.env.MERCADOPAGO_WEBHOOK_SECRET) {
+  throw new Error(
+    '[config] MERCADOPAGO_WEBHOOK_SECRET é obrigatório em produção quando MERCADOPAGO_ACCESS_TOKEN está configurado.',
+  );
+}
+
 // FRONTEND_URL aceita uma ou mais origens separadas por vírgula — por exemplo,
 // "http://localhost:5173,http://192.168.0.10:5173" pra liberar o próprio
 // computador (localhost) e o celular (IP da rede local) ao mesmo tempo.
@@ -65,11 +76,14 @@ export const config = {
   // sem isso configurado; só payment.service.js recusa a operação (ver mercadopago.service.js)
   // se faltar o access token na hora de criar uma cobrança de verdade.
   mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null,
+  // Segredo usado para validar a assinatura (header x-signature) das notificações do
+  // webhook — painel do Mercado Pago, na mesma tela onde fica o notification_url. Também
+  // opcional: sem ele, a assinatura não é checada (mesmo comportamento de antes), só com
+  // um aviso no log; configurado, qualquer notificação sem assinatura válida é rejeitada
+  // (ver mercadopago.service.js verifyWebhookSignature).
+  mercadoPagoWebhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || null,
   // URL pública do backend (ex.: https://urnalab-api.up.railway.app) — necessária pro
   // Mercado Pago notificar pagamentos (webhook), já que FRONTEND_URL é a origem do front,
   // não a do backend. Mesmo status de opcional: só exigida ao criar uma cobrança.
   backendUrl: process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/+$/, '') : null,
-  // Preço (em centavos) de liberar o PDF de uma sessão finalizada. Uma cobrança aprovada
-  // libera download ilimitado daquela sessão (ver docs/ROADMAP.md, Etapa 12).
-  sessionResultsPriceCents: Number(process.env.SESSION_RESULTS_PRICE_CENTS) || 990,
 };

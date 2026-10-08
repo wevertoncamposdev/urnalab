@@ -11,6 +11,7 @@ import { registerPartyRoutes } from './party.routes.js';
 import { registerPaymentRoutes } from './payment.routes.js';
 import { registerPersonRoutes } from './person.routes.js';
 import { registerPositionRoutes } from './position.routes.js';
+import { registerProductRoutes } from './product.routes.js';
 import { registerPublicRoutes } from './public.routes.js';
 import { registerResultRoutes } from './result.routes.js';
 import { registerSessionRoutes } from './session.routes.js';
@@ -29,6 +30,7 @@ export function createRouter() {
   registerVoteRoutes(router);
   registerResultRoutes(router);
   registerPaymentRoutes(router);
+  registerProductRoutes(router);
   registerAuditRoutes(router);
   registerPublicRoutes(router);
   registerAdminRoutes(router);

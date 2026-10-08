@@ -1,12 +1,16 @@
-import { config } from '../config.js';
 import { adminRepository } from '../repositories/admin.repository.js';
 import { analyticsRepository } from '../repositories/analytics.repository.js';
 import { feedbackRepository } from '../repositories/feedback.repository.js';
-import { userRepository } from '../repositories/user.repository.js';
 import { ANALYTICS_EVENT_NAMES } from '../rules/analytics-rules.js';
 import { FEEDBACK_STATUSES, FEEDBACK_TYPES } from '../rules/feedback-rules.js';
-import { badRequest, forbidden, notFound } from '../utils/errors.js';
+import { badRequest, notFound } from '../utils/errors.js';
 
+// Autorização admin (Etapa 16): toda rota `/api/admin/*` tem `adminOnly: true` (ver
+// admin.routes.js), checado em server.js antes de qualquer handler/controller/service
+// rodar — comparando o e-mail do token com ADMIN_EMAIL, sem consulta ao banco. Não
+// existe campo de role no banco de propósito (ver ROADMAP.md "Área de Gerenciamento").
+// Métodos aqui não revalidam isso — só logam o acesso (`adminRepository.logAccess`,
+// accountability LGPD).
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -21,17 +25,6 @@ function resolvePagination({ page, pageSize } = {}) {
   return { take, currentPage, skip: (currentPage - 1) * take };
 }
 
-// Única autorização admin do sistema: o e-mail da conta logada precisa bater com
-// ADMIN_EMAIL (ver config.js) — sem isso, nenhuma conta entra aqui. Não existe
-// campo de role no banco de propósito (ver ROADMAP.md "Área de Gerenciamento").
-async function requireAdmin(userId) {
-  const user = await userRepository.findById(userId);
-  if (!user || !config.adminEmail || user.email.toLowerCase() !== config.adminEmail) {
-    throw forbidden('ADMIN_ONLY', 'Acesso restrito à administração do sistema.');
-  }
-  return user;
-}
-
 // Minimização de dados (LGPD): a listagem mostra o nome mas nunca o e-mail completo
 // de outra conta — só o suficiente pra identificar/contar, não pra ter o contato.
 function maskEmail(email) {
@@ -44,8 +37,6 @@ function maskEmail(email) {
 
 export const adminService = {
   async getOverview(userId) {
-    await requireAdmin(userId);
-
     const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS);
     const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS);
 
@@ -65,8 +56,6 @@ export const adminService = {
   },
 
   async listUsers(userId, pagination) {
-    await requireAdmin(userId);
-
     const { take, currentPage, skip } = resolvePagination(pagination);
     const { users, total } = await adminRepository.listUsers({ skip, take });
     await adminRepository.logAccess(userId, `LIST_USERS:page=${currentPage}`);
@@ -93,8 +82,6 @@ export const adminService = {
   // visitorId anônimo (ver AnalyticsEvent). Abandono é calculado no frontend a partir da
   // diferença entre etapas consecutivas.
   async getFunnel(userId) {
-    await requireAdmin(userId);
-
     const steps = await Promise.all(
       FUNNEL_STEPS.map(async (name) => ({
         name,
@@ -112,8 +99,6 @@ export const adminService = {
   },
 
   async listFeedback(userId, { type, status, ...pagination } = {}) {
-    await requireAdmin(userId);
-
     const { take, currentPage, skip } = resolvePagination(pagination);
     const { feedbacks, total } = await feedbackRepository.listPaged({
       skip,

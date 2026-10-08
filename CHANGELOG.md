@@ -12,6 +12,121 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Urna simulada na tela de votação (Etapa 17)**: `BallotCard` + `VoteKeypad` + botão "Confirma"
+  avulsos viraram um componente só, `Urna` (`components/voting/Urna.jsx`), estilizado como o corpo
+  físico de uma urna de verdade — fundo azul-marinho (`bg-sidebar`), tela clara e teclado dentro do
+  próprio corpo. A tela da urna mostra os dígitos enquanto o eleitor digita e, assim que o número
+  fecha, troca pra foto/nome do candidato (ou o aviso de voto nulo) **direto nela**, igual uma urna
+  de verdade — antes a foto só aparecia num painel lateral separado. Esse veredito (branco/
+  carregando/encontrado/nulo) ficou num util compartilhado (`lib/candidate-preview.js`
+  `getCandidatePreviewState`), pra não duplicar a mesma lógica em cada lugar que precisa mostrar
+  esse status. `PublicVoting.jsx` passou de três colunas (consulta de proposta / cédula+teclado /
+  preview) pra duas: a `Urna` de um lado, e do outro um novo componente `CandidateList`
+  (`components/voting/CandidateList.jsx`) — lista os candidatos do **cargo sendo votado agora**
+  (não mais todos os cargos misturados num `Select`), trocando sozinha a cada avanço de cargo;
+  clicar num nome expande a proposta de governo ali mesmo na lista, substituindo tanto o antigo
+  painel de preview quanto o `Select` de consulta por um elemento só. No celular, a urna vem
+  primeiro (é a interação principal), a lista depois. `BallotCard.jsx` e `CandidatePreviewPanel.jsx`
+  saíram do projeto, função absorvida pela `Urna`/`CandidateList`. `VoteKeypad` não precisou de
+  nenhum ajuste visual: os botões de dígito (fundo branco) já liam bem como teclas físicas claras
+  sobre o corpo escuro.
+- **Upload de arquivo e capa de produto pela Área de Gerenciamento**: fechava dois itens do
+  `ROADMAP.md` levantados na revisão da Etapa 16. (1) `/gerenciamento/produtos` agora faz upload de
+  verdade do PDF de um produto `EBOOK` (campo `file`, data URI, decodificado e gravado por
+  `storage/product-file-storage.js`) — antes só dava pra cadastrar via `scripts/seed.js`/banco
+  direto. Corpo da requisição de criar/editar produto ganhou um teto maior
+  (`PRODUCT_FILE_LIMITS.requestBodyMaxBytes`, 21MB) só nessas duas rotas — `maxBodyBytes` virou uma
+  opção por rota no roteador (`utils/router.js`/`utils/http.js readJsonBody`), em vez de aumentar o
+  teto padrão de 1MB pra toda a API. Arquivo do ebook tem seu próprio teto, bem mais generoso
+  (`PRODUCT_FILE_LIMITS.ebookMaxBytes`, 15MB) — bem acima do antigo limite de 1MB que tornava
+  qualquer ebook de verdade inviável. (2) Novo campo `Product.coverImage` — uma capa pública
+  (reaproveitando `photo-storage.js`, mesmo armazenamento das fotos de candidato, servida sem gate
+  nenhum) que aparece na loja (`/loja`) como pré-visualização do produto antes da compra; o arquivo
+  pago em si continua só liberado depois do pagamento aprovado. Com isso, a conta admin já pode
+  cadastrar o material didático de verdade (substituindo o placeholder do seed) quando tiver o
+  conteúdo pronto — decisão de conteúdo, não mais limitação técnica.
+- **Área de Gerenciamento: rota própria e gestão de produtos (Etapa 16)**: a Área de Gerenciamento
+  saiu de `/admin*` (dentro da árvore de rotas comum do usuário) para `/gerenciamento*`, numa árvore
+  de rotas própria no React Router (`App.jsx`), com as páginas (`Admin`, `AdminAnalytics`,
+  `AdminFeedback`, nova `AdminProducts`) carregadas via `React.lazy` — o código delas não é mais
+  baixado por uma conta comum, só por quem de fato navega pra lá e já passou pelo guard
+  (`RequireAuth` + `RequireAdmin`). No backend, a autorização admin deixou de ser checada dentro de
+  cada método de `admin.service.js` (uma consulta ao banco por chamada) e passou pro roteador: toda
+  rota `/api/admin/*` agora tem `adminOnly: true` (`utils/router.js`), verificado em `server.js`
+  antes de qualquer handler/controller/service rodar, comparando o e-mail já carimbado no token
+  (`auth.service.js issueToken`, novo claim `email`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao
+  banco. **Importante**: tokens emitidos antes deste deploy não têm esse claim — a conta admin
+  precisa logar de novo uma vez pra o acesso à Área de Gerenciamento voltar a funcionar. Nova
+  gestão de produtos (16.2/16.3, tela `/gerenciamento/produtos`): CRUD de nome/descrição/preço/
+  ativo de qualquer `Product` (`POST`/`PUT /api/admin/products`) e histórico de vendas por produto
+  (`GET /api/admin/products/:id/sales`, quantidade e receita aprovadas + lista de cobranças, sem
+  nenhum dado de quem comprou). Upload do arquivo de um produto `EBOOK` ainda não existe nessa
+  tela — o corpo da requisição tem um teto de 1MB (`utils/http.js`) incompatível com um ebook de
+  verdade, e o roteador não lê `multipart/form-data`; produtos `EBOOK` continuam cadastrados via
+  `scripts/seed.js`/banco direto até isso existir.
+- **Produtos genéricos e loja (Etapa 15)**: o sistema de cobrança deixou de ser exclusivo da
+  exportação de PDF — novo model `Product` (`prisma/schema.prisma`) é o catálogo de qualquer coisa
+  vendável, com preço editável em banco (não mais via env var: `SESSION_RESULTS_PRICE_CENTS` saiu
+  de `config.js`). `Payment` passou a referenciar um `productId` (antes só `sessionId`); o campo
+  `kind` do produto decide como o acesso é concedido depois de aprovado
+  (`payment.service.js scopeForProduct`): `SESSION_EXPORT` continua exigindo uma sessão finalizada
+  da própria conta (`sessionId` obrigatório) — é o que a exportação de PDF sempre foi, migrado pra
+  esse model pela própria migração (`20261007234700_add_products`, que já cria o produto
+  `session-export` com R$ 9,90); `EBOOK` libera direto pro `userId`, sem sessão, com um arquivo
+  fixo (`Product.fileKey`, `storage/product-file-storage.js`). As rotas e o front da exportação de
+  PDF (`/api/sessions/:id/payment`, tela de Resultados) não mudaram por fora — o motor novo foi só
+  por dentro. Nova loja (`GET /api/products`, `GET/POST /api/products/:id/payment`,
+  `GET /api/products/:id/download`, página `/loja`) vende o primeiro produto "por conta" de
+  verdade: um ebook, com CTA a partir de `/sistema-eleitoral`. A área financeira (`/financeiro`,
+  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook real
+  (conteúdo, upload) ainda depende da Etapa 16 (CRUD de produto pelo admin) para ser cadastrado em
+  produção — hoje só existe um exemplo placeholder, criado pelo seed de desenvolvimento
+  (`npm run seed`, `scripts/seed.js`), pra validar o fluxo de compra/download ponta a ponta.
+
+### Security
+
+- **Cobrança pela exportação em PDF — reforço de segurança (Etapa 13)**: levantado numa revisão de
+  código da Etapa 12. (1) `POST /api/payments/webhook` agora valida a assinatura
+  (`x-signature`/`x-request-id`) da notificação do Mercado Pago, via
+  `MERCADOPAGO_WEBHOOK_SECRET` (opcional — sem ela, o comportamento é o mesmo de antes, só com um
+  aviso no log); a reconsulta à API deles antes de aprovar (já existente) continua sendo a fonte de
+  verdade do status, a assinatura só evita gastar essa chamada com notificação forjada. (2)
+  `payment.service.js confirmPayment` agora revalida `transaction_amount` contra o `amountCents`
+  cobrado antes de aprovar um pagamento. (3) `mapMercadoPagoStatus` (`payment-rules.js`) passa a
+  reconhecer `refunded`/`charged_back` como estados próprios (`REFUNDED`/`CHARGED_BACK`) em vez de
+  cair genericamente em `PENDING` — e `paidAt` não é mais apagado nessa transição, preservando
+  quando o pagamento foi aprovado originalmente. (4) Rate limit (10 por 15 min, por IP) em
+  `POST /api/sessions/:id/payment`. (5) Tentativas `PENDING` abandonadas (sessão nunca paga) agora
+  expiram sozinhas (`paymentRepository.expireStalePending`, verificação "lazy" no início de um novo
+  checkout da mesma sessão) em vez de acumular pra sempre.
+- **Correções encontradas numa revisão das Etapas 13/14**: (1) `resultController.downloadPdf`
+  gravava `downloadedAt` **antes** de gerar o PDF — se `resultsReportService.build`/
+  `renderResultsPdf` falhasse, a cobrança ficava travada pra reembolso sem o usuário ter recebido
+  nada; agora só grava depois do PDF gerado com sucesso. (2) a validação de assinatura do webhook
+  (Etapa 13) era aplicada também ao formato IPN legado (`?topic=payment&id=...`), que nunca envia
+  `x-signature` — com `MERCADOPAGO_WEBHOOK_SECRET` configurado, isso rejeitava notificações legadas
+  genuínas; o IPN legado agora fica de fora dessa checagem (sua defesa continua sendo a reconsulta
+  à API, como sempre foi). (3) sem `MERCADOPAGO_WEBHOOK_SECRET`, a assinatura falhava aberta mesmo
+  em produção, só com um aviso no log — inconsistente com o padrão já usado pra `JWT_SECRET`/Resend;
+  `config.js` agora recusa subir em produção se `MERCADOPAGO_ACCESS_TOKEN` estiver configurado sem
+  o segredo do webhook. (4) `mercadoPagoService.refundPayment` mandava `Content-Type: application/
+  json` sem nenhum corpo; removido. De quebra, as três chamadas à API do Mercado Pago
+  (`createPreference`/`getPayment`/`refundPayment`) passaram a compartilhar um único helper
+  (`callMercadoPago`) em vez de repetir o mesmo bloco de fetch/erro três vezes.
+
+### Added
+
+- **Área financeira do usuário e reembolso (Etapa 14)**: nova página `/financeiro` (link na
+  sidebar, grupo "Conta") lista o histórico de cobranças da própria conta — sessão, data, valor,
+  status e se já foi baixado (`GET /api/payments`, `paymentRepository.findByUser`). Uma cobrança
+  `APPROVED` ainda não baixada ganha um botão "Solicitar reembolso"
+  (`POST /api/payments/:id/refund`, via `mercadoPagoService.refundPayment`); **regra de negócio
+  inegociável**: depois do primeiro download do PDF (`Payment.downloadedAt`, gravado por
+  `resultController.downloadPdf` no primeiro acesso bem-sucedido), o reembolso não fica mais
+  disponível nem no backend nem na tela — sem essa trava a conta ficaria com o PDF **e** o
+  dinheiro de volta. Na tela de Resultados, o botão "Pagar R$ X e baixar PDF" virou um "Exportar"
+  com ícone de cadeado que abre um diálogo explicando a cobrança (o que libera, que vale pra
+  sempre, o valor, que é processado pelo Mercado Pago) antes de redirecionar ao checkout.
 - **Cobrança pela exportação em PDF**: baixar o PDF da apuração (Etapa 11) agora exige uma cobrança
   aprovada por sessão — paga uma vez, libera o download daquela sessão pra sempre. Integração com
   o **Mercado Pago** (Checkout Pro) via chamadas diretas à API REST deles
@@ -221,6 +336,23 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   perfil incompleto no menu do usuário e o aviso de perfil pendente no `/perfil` deixaram de usar
   a cor de erro. E-mails transacionais (confirmação de e-mail, redefinição de senha) ganharam
   layout com cabeçalho, wordmark e rodapé institucional, seguindo a mesma paleta do site.
+
+### Fixed
+
+- **`scripts/seed.js` quebrado desde a Etapa 8.3**: `npm run seed` falhava com
+  `INSTITUTION_PROFILE_REQUIRED` ao criar a sessão demo — o script nunca foi atualizado depois que
+  perfil de instituição passou a ser exigido antes de criar uma sessão. Mais dois problemas
+  apareceram ao corrigir isso: (1) a conta demo, criada via `authService.register`, nunca era
+  confirmada (`emailVerifiedAt` nulo) — uma segunda execução do seed caía em
+  `authService.login`, que exige e-mail confirmado, e falhava com `EMAIL_NOT_VERIFIED`; agora o
+  script confirma a conta direto no banco (não passa pelo Resend, então não faz sentido exigir o
+  fluxo real de confirmação aqui). (2) o script nunca limpava os dados da execução anterior no
+  Postgres — só zerava uns arquivos `.json` que não são mais lidos por nada desde a migração para
+  o Postgres —, então a segunda execução sempre falhava tentando recriar os mesmos partidos
+  (mesmo número/sigla) para uma conta que já os tinha. `clearPreviousDemoData` agora apaga a conta
+  demo de uma execução anterior (se houver) antes de recriar tudo — o `onDelete: Cascade` em toda
+  relação de `User` já leva partidos/pessoas/candidatos/sessões/votos/pagamentos junto. Rodar
+  `npm run seed` várias vezes seguidas agora é seguro.
 
 ## [0.13.0] — 2026-10-03
 
