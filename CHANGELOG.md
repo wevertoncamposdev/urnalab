@@ -37,15 +37,20 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Changed
 
-- **"Colinha" da votação com dialog de proposta e select de altura fixa (Etapas 21 e 22)**:
-  levantado num Teste de Usabilidade em Campos. A área de consulta dos candidatos na tela de
-  votação (`CandidateList.jsx`) trocou a lista rolável de candidatos por um `select`
-  (`components/ui/select.jsx`) — o card não estica mais a tela quando o cargo tem muitos
-  candidatos, já que o campo tem altura fixa independente da quantidade de opções. Escolher um
-  candidato no select abre um dialog com foto grande, nome, partido/número e a proposta de
-  governo formatada para leitura — reaproveitando (e melhorando: foto maior, layout em linha,
-  texto maior) o `CandidateProposalDialog.jsx` que já existia na Área de Gerenciamento, agora
-  compartilhado entre as duas telas.
+- **"Colinha" da votação com select de altura fixa e detalhes em destaque, tela sem scroll no
+  desktop (Etapas 21 e 22)**: levantado num Teste de Usabilidade em Campos. A área de consulta
+  dos candidatos na tela de votação (`CandidateList.jsx`) trocou a lista rolável de candidatos
+  por um `select` (`components/ui/select.jsx`) — o card não estica mais a tela quando o cargo
+  tem muitos candidatos, já que o campo tem altura fixa independente da quantidade de opções.
+  Escolher um candidato no select preenche, no próprio card (sem dialog — o espaço que sobrava
+  vazio abaixo do select passou a ser usado), foto grande e número em destaque (a identificação
+  mais importante na hora de votar) seguidos da proposta de governo, com scroll só daquele bloco
+  se o texto for longo. A tela de votação inteira (`PublicVoting.jsx`) ganhou também
+  `md:h-screen md:overflow-hidden` — no desktop a página não rola mais; se o conteúdo não couber
+  (viewport muito baixo), só a coluna específica (colinha ou urna) rola internamente, mantendo o
+  resto fixo. O aviso "Projeto educacional... não é uma urna eletrônica oficial", que antes
+  ficava solto no rodapé da página, virou um badge logo acima da urna. No mobile a ordem
+  continua urna → select → detalhes do candidato (`flex-col-reverse`).
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
   `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
   comum do usuário — o item "Administração" que antes só aparecia no menu principal quando

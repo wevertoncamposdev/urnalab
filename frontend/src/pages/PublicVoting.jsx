@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Check, CheckCircle2, Hourglass, Maximize, Minimize, Vote } from 'lucide-react';
+import { Check, CheckCircle2, GraduationCap, Hourglass, Maximize, Minimize, Vote } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +21,14 @@ import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
-const PAGE_BG = 'min-h-screen bg-gradient-to-b from-primary/5 via-background to-background';
+const PAGE_BG = 'flex min-h-screen flex-col bg-gradient-to-b from-primary/5 via-background to-background';
+// Só a tela de votação em si (urna + colinha) trava o scroll no desktop — fica
+// montada numa sala de aula/projetor, então a página inteira precisa caber na
+// tela sem rolar; quem precisar de mais espaço (proposta longa, por exemplo)
+// rola dentro do próprio cartão, não a página. As outras telas que usam
+// PublicShell (resultado, erro, "ainda não abriu" etc.) continuam com scroll
+// normal — o resultado de uma eleição com muitos cargos pode ser bem longo.
+const VOTING_PAGE_BG = cn(PAGE_BG, 'md:h-screen md:overflow-hidden');
 // Mais largo que o max-w-6xl padrão do resto do app de propósito: esta é a tela
 // que fica aberta em tela cheia/projetor da sala, então aproveitar mais a
 // largura (em vez de sobrar moldura vazia nas laterais) importa mais aqui.
@@ -175,17 +183,23 @@ export default function PublicVoting() {
     .sort((a, b) => a.number.localeCompare(b.number));
 
   return (
-    <div className={PAGE_BG}>
+    <div className={VOTING_PAGE_BG}>
       <PublicHeader sessionName={info.name} sessionYear={info.year} />
 
-      <main className={cn('mx-auto flex flex-col gap-4 px-3 py-4 md:gap-6 md:px-4 md:py-6', CONTAINER)}>
+      <main
+        className={cn(
+          'mx-auto flex w-full flex-1 flex-col gap-4 px-3 py-4 md:min-h-0 md:gap-4 md:overflow-hidden md:px-4 md:py-6',
+          CONTAINER,
+        )}
+      >
         <PositionStepper positions={positions} currentIndex={index} />
 
         {/* Duas colunas (Etapa 17): lista dos candidatos do cargo atual de um lado, a urna
-            simulada do outro — no celular, a urna vem primeiro (`flex-col-reverse`: é a
-            interação principal), a lista depois. `items-stretch` pra lista acompanhar a
-            altura da urna em vez de sobrar espaço vazio do lado dela. */}
-        <div className="flex flex-col-reverse gap-3 md:grid md:grid-cols-[1fr_380px] md:items-stretch md:gap-6">
+            simulada do outro — no celular, a urna (com o aviso educacional logo acima) vem
+            primeiro (`flex-col-reverse`: é a interação principal), o select + detalhes do
+            candidato depois. `items-stretch` pra coluna da esquerda acompanhar a altura da
+            urna em vez de sobrar espaço vazio do lado dela. */}
+        <div className="flex flex-1 flex-col-reverse gap-3 md:grid md:min-h-0 md:grid-cols-[1fr_380px] md:items-stretch md:gap-6">
           <CandidateList
             positionLabel={rule.label}
             candidates={currentCandidates}
@@ -193,23 +207,34 @@ export default function PublicVoting() {
             onSelect={setSelectedCandidateId}
           />
 
-          <Urna
-            positionLabel={rule.label}
-            digits={digits}
-            digitsRequired={rule.digits}
-            blank={blank}
-            lookup={lookup}
-            onDigit={ballot.pressDigit}
-            onClear={ballot.clearEntry}
-            onBlank={ballot.pressBlank}
-            onConfirm={ballot.confirmVote}
-            ready={ready}
-            submitting={submitting}
-          />
+          <div className="flex flex-col gap-2 md:min-h-0 md:overflow-y-auto">
+            <Badge
+              variant="accent"
+              className="mx-auto w-fit items-start gap-1.5 rounded-xl px-3 py-1.5 text-center leading-snug"
+            >
+              <GraduationCap className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                Projeto educacional feito para promover cidadania nas escolas — não é uma urna
+                eletrônica oficial.
+              </span>
+            </Badge>
+
+            <Urna
+              positionLabel={rule.label}
+              digits={digits}
+              digitsRequired={rule.digits}
+              blank={blank}
+              lookup={lookup}
+              onDigit={ballot.pressDigit}
+              onClear={ballot.clearEntry}
+              onBlank={ballot.pressBlank}
+              onConfirm={ballot.confirmVote}
+              ready={ready}
+              submitting={submitting}
+            />
+          </div>
         </div>
       </main>
-
-      <PublicFooter />
     </div>
   );
 }
@@ -244,16 +269,6 @@ function PublicHeader({ sessionName, sessionYear }) {
         </div>
       </div>
     </header>
-  );
-}
-
-function PublicFooter() {
-  return (
-    <footer className={cn('mx-auto px-3 pb-6 pt-2 text-center md:px-4', CONTAINER)}>
-      <p className="text-xs text-muted-foreground">
-        Projeto educacional feito para promover cidadania nas escolas — não é uma urna eletrônica oficial.
-      </p>
-    </footer>
   );
 }
 
@@ -296,7 +311,6 @@ function PublicShell({ title, subtitle, children }) {
       <main className="mx-auto flex max-w-2xl flex-col gap-3 px-3 py-8 md:gap-4 md:px-6">
         {children}
       </main>
-      <PublicFooter />
     </div>
   );
 }
