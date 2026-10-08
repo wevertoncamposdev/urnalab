@@ -50,6 +50,12 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Fixed
 
+- **CORS bloqueava toda chamada à API depois de verificar a Área de Gerenciamento**: o header
+  `X-Admin-Verification` (Etapa 19, ver acima) não estava na lista `Access-Control-Allow-Headers`
+  de `middleware/cors.js` — assim que o token de verificação passava a existir, o navegador
+  bloqueava **qualquer** requisição (não só as de `/api/admin/*`, já que `api.js` manda esse header
+  em toda chamada quando o token existe) por causa do preflight CORS reprovado, antes mesmo dela
+  sair. Corrigido adicionando o header na lista.
 - **`adminService.updateFeedbackStatus` quebrado**: chamava `requireAdmin(userId)`, uma função que
   não existe em lugar nenhum do arquivo (nem importada) — toda atualização de status de feedback
   pela Área de Gerenciamento derrubava com `ReferenceError`. Removida a chamada morta; a
