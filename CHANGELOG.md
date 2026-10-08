@@ -285,6 +285,23 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   a cor de erro. E-mails transacionais (confirmação de e-mail, redefinição de senha) ganharam
   layout com cabeçalho, wordmark e rodapé institucional, seguindo a mesma paleta do site.
 
+### Fixed
+
+- **`scripts/seed.js` quebrado desde a Etapa 8.3**: `npm run seed` falhava com
+  `INSTITUTION_PROFILE_REQUIRED` ao criar a sessão demo — o script nunca foi atualizado depois que
+  perfil de instituição passou a ser exigido antes de criar uma sessão. Mais dois problemas
+  apareceram ao corrigir isso: (1) a conta demo, criada via `authService.register`, nunca era
+  confirmada (`emailVerifiedAt` nulo) — uma segunda execução do seed caía em
+  `authService.login`, que exige e-mail confirmado, e falhava com `EMAIL_NOT_VERIFIED`; agora o
+  script confirma a conta direto no banco (não passa pelo Resend, então não faz sentido exigir o
+  fluxo real de confirmação aqui). (2) o script nunca limpava os dados da execução anterior no
+  Postgres — só zerava uns arquivos `.json` que não são mais lidos por nada desde a migração para
+  o Postgres —, então a segunda execução sempre falhava tentando recriar os mesmos partidos
+  (mesmo número/sigla) para uma conta que já os tinha. `clearPreviousDemoData` agora apaga a conta
+  demo de uma execução anterior (se houver) antes de recriar tudo — o `onDelete: Cascade` em toda
+  relação de `User` já leva partidos/pessoas/candidatos/sessões/votos/pagamentos junto. Rodar
+  `npm run seed` várias vezes seguidas agora é seguro.
+
 ## [0.13.0] — 2026-10-03
 
 ### Added

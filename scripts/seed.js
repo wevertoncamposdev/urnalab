@@ -1,11 +1,14 @@
-// Preenche backend/data/*.json com uma eleição fictícia para testes manuais.
-// Usa os services (não grava JSON direto), então passa pelas mesmas validações da API.
+// Preenche o banco (Postgres, via Prisma) com uma eleição fictícia para testes manuais.
+// Usa os services (não grava no banco direto), então passa pelas mesmas validações da API.
 // Uso: node scripts/seed.js [--voters=N] [--finish]
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../backend/src/config.js';
+import { prisma } from '../backend/src/database/index.js';
 import { authService } from '../backend/src/services/auth.service.js';
+import { institutionProfileService } from '../backend/src/services/institution-profile.service.js';
 import { sessionService } from '../backend/src/services/session.service.js';
+import { userRepository } from '../backend/src/repositories/user.repository.js';
 import { partyService } from '../backend/src/services/party.service.js';
 import { personService } from '../backend/src/services/person.service.js';
 import { candidateService } from '../backend/src/services/candidate.service.js';
@@ -17,6 +20,14 @@ import { buildPlaceholderPdf } from '../backend/src/reports/placeholder-pdf.js';
 // Conta fixa só para o seed: cada conta tem seus próprios dados agora (multiusuário),
 // então o seed precisa de um "dono" — reaproveita a mesma conta a cada execução.
 const SEED_ACCOUNT = { name: 'Demo', email: 'demo@urna.local', password: 'demo12345' };
+
+// Perfil de instituição exigido antes de criar qualquer sessão (ver session.service.js
+// create) desde a Etapa 8.3 — o seed nunca tinha sido atualizado pra isso.
+const SEED_INSTITUTION = {
+  name: 'Escola Demo',
+  address: 'Rua das Eleições, 100',
+  contact: '(11) 99999-0000',
+};
 
 const PARTIES = [
   { name: 'Partido ABC', acronym: 'ABC', number: 10 },
@@ -61,29 +72,41 @@ function parseArgs(argv) {
   };
 }
 
-// Primeira vez: cria a conta demo (e já ganha os cargos padrão). Nas próximas,
-// só entra nela — assim o seed continua idempotente mesmo rodando várias vezes.
+// Primeira vez: cria a conta demo (e já ganha os cargos padrão). Nas próximas, só entra
+// nela — assim o seed continua idempotente mesmo rodando várias vezes. authService.login
+// exige e-mail confirmado (fluxo normal, com código por e-mail via Resend) — o seed não
+// passa por esse fluxo, então confirma direto no banco se a conta já existir sem isso.
 async function ensureSeedUser() {
   try {
     const { user } = await authService.register(SEED_ACCOUNT);
-    return user;
+    // register() nunca verifica (é o fluxo normal, por código enviado por e-mail) —
+    // confirma direto aqui, já que o seed não passa pelo Resend.
+    return userRepository.markEmailVerified(user.id);
   } catch (error) {
-    if (error.code === 'USER_EMAIL_ALREADY_EXISTS') {
-      const { user } = await authService.login({ email: SEED_ACCOUNT.email, password: SEED_ACCOUNT.password });
-      return user;
-    }
-    throw error;
+    if (error.code !== 'USER_EMAIL_ALREADY_EXISTS') throw error;
   }
+
+  const existing = await userRepository.findByEmail(SEED_ACCOUNT.email);
+  return existing.emailVerifiedAt ? existing : userRepository.markEmailVerified(existing.id);
 }
 
-async function clearData() {
-  await fs.mkdir(config.dataPath, { recursive: true });
-  await Promise.all(
-    ['sessions', 'parties', 'people', 'candidates', 'votes'].map((name) =>
-      fs.writeFile(path.join(config.dataPath, `${name}.json`), '[]\n', 'utf-8'),
-    ),
-  );
-  // Sem pessoas antigas, as fotos que elas tinham em disco ficariam órfãs.
+// Idempotente (upsertForUser) — roda em todo `npm run seed`, não só na primeira vez.
+async function ensureSeedInstitutionProfile(userId) {
+  return institutionProfileService.save(SEED_INSTITUTION, userId);
+}
+
+// Apaga a conta demo de uma execução anterior (se houver) antes de recriar tudo do
+// zero — `onDelete: Cascade` em toda relação de User (ver prisma/schema.prisma) já leva
+// partidos/pessoas/candidatos/sessões/votos/pagamentos junto, então não precisa apagar
+// tabela por tabela. Sem isso, a segunda execução do seed sempre falhava: `createParties`
+// tentava recriar os mesmos partidos (mesmo número/sigla) pra uma conta que já os tinha,
+// batendo na constraint `@@unique([userId, number])`.
+async function clearPreviousDemoData() {
+  const existing = await userRepository.findByEmail(SEED_ACCOUNT.email);
+  if (existing) await prisma.user.delete({ where: { id: existing.id } });
+
+  // As fotos de candidatos antigos (arquivo em disco, não cascateia com o delete acima)
+  // ficariam órfãs sem isso.
   await fs.rm(path.join(config.dataPath, 'photos'), { recursive: true, force: true });
 }
 
@@ -166,8 +189,9 @@ async function castVotes(sessionId, voters, random, userId) {
 async function main() {
   const { voters, finish } = parseArgs(process.argv.slice(2));
 
-  await clearData();
+  await clearPreviousDemoData();
   const user = await ensureSeedUser();
+  await ensureSeedInstitutionProfile(user.id);
   const ebookProduct = await ensureDemoEbookProduct();
   const partiesByAcronym = await createParties(user.id);
 
