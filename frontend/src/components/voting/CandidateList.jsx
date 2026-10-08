@@ -1,75 +1,81 @@
-import { MousePointerClick, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Users } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
-import { Badge } from '@/components/ui/badge';
+import { CandidateProposalDialog } from '@/components/candidates/CandidateProposalDialog';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pluralize } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
-// Lista dos candidatos do cargo sendo votado agora (atualiza sozinha quando o
-// índice do cargo avança, ver PublicVoting.jsx) — faz o papel que antes era de
-// dois elementos separados (painel de status do candidato digitado + select de
-// consulta de proposta): aqui dá pra ver quem concorre e clicar pra ler a
-// proposta, tudo num lugar só. O status do número digitado (achou/não achou/
-// branco) já aparece direto na tela da urna (ver Urna.jsx), não precisa mais
-// duplicar aqui.
+// A "colinha": consulta dos candidatos do cargo sendo votado agora (atualiza
+// sozinha quando o índice do cargo avança, ver PublicVoting.jsx). Usa um
+// `select` (Etapa 22) em vez de uma lista — assim o card tem altura fixa
+// independente de quantos candidatos concorrem, sem esticar a tela da urna
+// ao lado. Escolher um candidato aqui abre o dialog com foto grande e a
+// proposta completa (Etapa 21).
 export function CandidateList({ positionLabel, candidates, selectedId, onSelect }) {
+  const [viewing, setViewing] = useState(null);
   const selected = candidates.find((c) => c.id === selectedId) ?? null;
 
+  function handleSelect(id) {
+    onSelect(id);
+    setViewing(candidates.find((c) => c.id === id) ?? null);
+  }
+
   return (
-    <Card className="flex h-full flex-col overflow-hidden p-0">
-      <div className="flex flex-col gap-1.5 border-b p-4">
+    <Card className="flex h-full flex-col gap-4 p-4">
+      <div className="flex flex-col gap-1.5">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Candidatos a
         </span>
         <span className="font-heading text-lg font-semibold">{positionLabel}</span>
-        <Badge variant="accent" className="w-fit">
-          <MousePointerClick className="size-3" /> Clique no candidato para ver a proposta
-        </Badge>
       </div>
 
       {candidates.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
           <Users className="size-8" />
           <p className="text-sm">Nenhum candidato cadastrado para este cargo</p>
         </div>
       ) : (
-        <ul className="flex-1 divide-y overflow-y-auto">
-          {candidates.map((candidate) => (
-            <li key={candidate.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(candidate.id === selectedId ? '' : candidate.id)}
-                className={cn(
-                  'flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/60',
-                  selectedId === candidate.id && 'bg-primary/5',
-                )}
-              >
-                <CandidateAvatar name={candidate.name} photo={candidate.photo} className="size-11 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{candidate.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    nº {candidate.number}
-                    {candidate.party && ` • ${candidate.party.acronym} (${candidate.party.number})`}
-                  </p>
-                </div>
-              </button>
-              {selected?.id === candidate.id && (
-                <div className="border-t bg-muted/40 p-3 text-sm">
-                  {candidate.governmentProposal ? (
-                    <p className="whitespace-pre-wrap">{candidate.governmentProposal}</p>
-                  ) : (
-                    <p className="text-muted-foreground">Este candidato não cadastrou uma proposta de governo.</p>
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <Select value={selectedId || undefined} onValueChange={handleSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="Escolha um candidato para consultar a proposta" />
+            </SelectTrigger>
+            <SelectContent>
+              {candidates.map((candidate) => (
+                <SelectItem key={candidate.id} value={candidate.id}>
+                  nº {candidate.number} — {candidate.name}
+                  {candidate.party && ` (${candidate.party.acronym})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {selected && (
+            <button
+              type="button"
+              onClick={() => setViewing(selected)}
+              className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/60"
+            >
+              <CandidateAvatar name={selected.name} photo={selected.photo} className="size-12 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{selected.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  nº {selected.number}
+                  {selected.party && ` • ${selected.party.acronym} (${selected.party.number})`}
+                </p>
+              </div>
+              <Eye className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+          )}
+        </>
       )}
 
-      <p className="border-t p-3 text-center text-xs text-muted-foreground">
+      <p className="mt-auto text-center text-xs text-muted-foreground">
         {pluralize(candidates.length, 'candidato', 'candidatos')}
       </p>
+
+      <CandidateProposalDialog candidate={viewing} onOpenChange={(open) => !open && setViewing(null)} />
     </Card>
   );
 }

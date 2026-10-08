@@ -37,6 +37,15 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Changed
 
+- **"Colinha" da votação com dialog de proposta e select de altura fixa (Etapas 21 e 22)**:
+  levantado num Teste de Usabilidade em Campos. A área de consulta dos candidatos na tela de
+  votação (`CandidateList.jsx`) trocou a lista rolável de candidatos por um `select`
+  (`components/ui/select.jsx`) — o card não estica mais a tela quando o cargo tem muitos
+  candidatos, já que o campo tem altura fixa independente da quantidade de opções. Escolher um
+  candidato no select abre um dialog com foto grande, nome, partido/número e a proposta de
+  governo formatada para leitura — reaproveitando (e melhorando: foto maior, layout em linha,
+  texto maior) o `CandidateProposalDialog.jsx` que já existia na Área de Gerenciamento, agora
+  compartilhado entre as duas telas.
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
   `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
   comum do usuário — o item "Administração" que antes só aparecia no menu principal quando
