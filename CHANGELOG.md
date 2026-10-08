@@ -10,6 +10,15 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Added
+
+- **Gráfico de rosca na apuração**: `PositionResult.jsx` ganhou um gráfico de rosca (SVG puro, sem
+  lib de gráfico) com a proporção de votos válidos por candidato de cada cargo, ao lado do ranking
+  já existente — complementa a barra de progresso individual com uma visão consolidada, útil pra
+  enxergar o resultado de relance numa apresentação pra turma. Cada fatia usa uma cor da paleta da
+  identidade visual (`PositionPieChart.jsx`), e um indicador colorido foi adicionado à frente de
+  cada candidato na lista pra servir de legenda.
+
 ### Fixed
 
 - **2º turno — casos de borda do ROADMAP**: os 4 problemas levantados numa revisão de código

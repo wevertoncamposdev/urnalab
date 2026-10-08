@@ -141,9 +141,6 @@ andamento" acima como uma Etapa nova.
 
 ### Resultados e relatórios
 
-- **Gráfico visual na apuração**: `PositionResult.jsx` já mostra uma barra de progresso por
-  candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
-  relance, principalmente em apresentação pra turma.
 - **Exportar resultado em PDF/imagem**: subiu pra "Em andamento" como Etapa 11.
 - **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. O modelo "por sessão"
   (paga uma vez, baixa quantas vezes quiser) e o sistema de cobrança genérico por trás dele (model
