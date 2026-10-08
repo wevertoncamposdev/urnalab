@@ -17,15 +17,19 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   físico de uma urna de verdade — fundo azul-marinho (`bg-sidebar`), tela clara e teclado dentro do
   próprio corpo. A tela da urna mostra os dígitos enquanto o eleitor digita e, assim que o número
   fecha, troca pra foto/nome do candidato (ou o aviso de voto nulo) **direto nela**, igual uma urna
-  de verdade — antes a foto só aparecia no painel lateral. Esse veredito (branco/carregando/
-  encontrado/nulo) foi extraído pra um util compartilhado (`lib/candidate-preview.js`
-  `getCandidatePreviewState`) usado tanto pela `Urna` quanto pelo `CandidatePreviewPanel` já
-  existente, pra não duplicar a mesma lógica em dois lugares com visuais diferentes.
-  `PublicVoting.jsx` passou de três colunas (consulta de proposta / cédula+teclado / preview) pra
-  duas: visualização do candidato (preview grande + consulta de proposta) de um lado, a `Urna` do
-  outro — no celular, a urna vem primeiro (é a interação principal). `BallotCard.jsx` saiu do
-  projeto, função absorvida pela tela da urna. `VoteKeypad` não precisou de nenhum ajuste visual:
-  os botões de dígito (fundo branco) já liam bem como teclas físicas claras sobre o corpo escuro.
+  de verdade — antes a foto só aparecia num painel lateral separado. Esse veredito (branco/
+  carregando/encontrado/nulo) ficou num util compartilhado (`lib/candidate-preview.js`
+  `getCandidatePreviewState`), pra não duplicar a mesma lógica em cada lugar que precisa mostrar
+  esse status. `PublicVoting.jsx` passou de três colunas (consulta de proposta / cédula+teclado /
+  preview) pra duas: a `Urna` de um lado, e do outro um novo componente `CandidateList`
+  (`components/voting/CandidateList.jsx`) — lista os candidatos do **cargo sendo votado agora**
+  (não mais todos os cargos misturados num `Select`), trocando sozinha a cada avanço de cargo;
+  clicar num nome expande a proposta de governo ali mesmo na lista, substituindo tanto o antigo
+  painel de preview quanto o `Select` de consulta por um elemento só. No celular, a urna vem
+  primeiro (é a interação principal), a lista depois. `BallotCard.jsx` e `CandidatePreviewPanel.jsx`
+  saíram do projeto, função absorvida pela `Urna`/`CandidateList`. `VoteKeypad` não precisou de
+  nenhum ajuste visual: os botões de dígito (fundo branco) já liam bem como teclas físicas claras
+  sobre o corpo escuro.
 - **Upload de arquivo e capa de produto pela Área de Gerenciamento**: fechava dois itens do
   `ROADMAP.md` levantados na revisão da Etapa 16. (1) `/gerenciamento/produtos` agora faz upload de
   verdade do PDF de um produto `EBOOK` (campo `file`, data URI, decodificado e gravado por
