@@ -37,6 +37,30 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Changed
 
+- **"Colinha" da votação com select de altura fixa e detalhes em destaque, tela sem scroll no
+  desktop (Etapas 21 e 22)**: levantado num Teste de Usabilidade em Campos. A área de consulta
+  dos candidatos na tela de votação (`CandidateList.jsx`) trocou a lista rolável de candidatos
+  por um `select` (`components/ui/select.jsx`) — o card não estica mais a tela quando o cargo
+  tem muitos candidatos, já que o campo tem altura fixa independente da quantidade de opções.
+  Escolher um candidato no select preenche, no próprio card (sem dialog — o espaço que sobrava
+  vazio abaixo do select passou a ser usado), foto grande e número em destaque (a identificação
+  mais importante na hora de votar) seguidos da proposta de governo, com scroll só daquele bloco
+  se o texto for longo. A tela de votação inteira (`PublicVoting.jsx`) ganhou também
+  `md:h-screen md:overflow-hidden` — no desktop a página não rola mais; se o conteúdo não couber
+  (viewport muito baixo), só a coluna específica (colinha ou urna) rola internamente, mantendo o
+  resto fixo. O aviso "Projeto educacional... não é uma urna eletrônica oficial", que antes
+  ficava solto no rodapé da página, virou um badge — mas não mais dentro da coluna da urna (onde
+  tinha gerado um scroll interno ali); agora divide a linha dos tabs de cargo ali em cima com o
+  mesmo layout de duas colunas de baixo: o aviso à esquerda, acompanhando a colinha, os tabs à
+  direita, acompanhando a urna. No mobile a ordem continua tabs → aviso → urna → select →
+  detalhes do candidato (`flex-col-reverse` nas duas linhas).
+- **Corpo da urna (visor, teclado e "Confirma") com tamanho dinâmico conforme a altura da tela**:
+  `Urna.jsx` e `VoteKeypad.jsx` trocaram alturas fixas (`h-11`, `h-14`, `min-h-[170px]`...) por
+  `flex-1`/`grid-rows-[repeat(4,minmax(0,1fr))]` — visor e teclado agora dividem exatamente a
+  altura que a coluna da urna tiver disponível (que no desktop já é travada pelo viewport, ver
+  acima), cada um só com um `min-h` pequeno como piso. Antes disso tinha sobrado espaço suficiente
+  ali pra gerar um scroll interno na urna; agora ela sempre cabe inteira, ficando maior em telas
+  altas e menor em telas baixas, sem precisar do fallback de scroll por coluna.
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
   `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
   comum do usuário — o item "Administração" que antes só aparecia no menu principal quando

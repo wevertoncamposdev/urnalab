@@ -60,6 +60,45 @@ suficiente sozinho, precisa também de "algo que só o dono do e-mail recebe".
 
 ---
 
+### Etapa 20 — Cadastro de candidatura por link público
+
+Hoje toda candidatura é cadastrada manualmente por quem administra a sessão. Igual já existe
+para a votação (link público de votar), a ideia é gerar também um link público de candidatura:
+o próprio candidato entra, se cadastra e já envia a proposta num formulário único (pessoa +
+candidatura ao mesmo tempo, não dois passos separados). Depois quem criou a sessão analisa cada
+candidatura recebida e marca como apta ou inapta.
+
+Levantado no Teste de Usabilidade em Campos de 2026-10-08.
+
+- [ ] 20.1 — Backend: rota pública de candidatura (ex.: `POST /api/public/candidacy/:sessionId` ou
+  por token de sessão, seguindo o padrão do link público de votação) que recebe dados da pessoa
+  (nome, foto) e da candidatura (cargo, partido, número, proposta) numa única submissão e cria os
+  dois registros. Candidatura entra com um status (ex.: `PENDENTE`/`APTO`/`INAPTO`).
+- [ ] 20.2 — Backend: rota admin para listar candidaturas pendentes de uma sessão e aprovar/reprovar
+  cada uma (`PATCH` de status), visível só pra quem é dono da sessão.
+- [ ] 20.3 — Frontend: página pública de cadastro de candidatura (formulário único, acessível pelo
+  link gerado na sessão), reaproveitando o layout/padrão da página pública de votação.
+- [ ] 20.4 — Frontend: tela de gestão de candidaturas na Área de Gerenciamento da sessão, pra listar
+  as pendentes e aprovar/reprovar, com o link público de candidatura disponível pra copiar/compartilhar.
+
+---
+
+### Etapa 23 — Apresentação automática dos candidatos com Text-to-Speech
+
+Tela nova que mostra os candidatos de uma sessão um por vez, em um card grande, lendo em voz alta
+(TTS) o nome, número e a proposta de cada candidato — pensada pra ser usada antes da votação,
+como forma de apresentação dos candidatos pro eleitorado.
+
+Levantado no Teste de Usabilidade em Campos de 2026-10-08.
+
+- [ ] 23.1 — Frontend: tela de apresentação (ex.: `/apresentacao/:sessionId`) que percorre os
+  candidatos de uma sessão um a um, em card grande (foto, nome, número, proposta).
+- [ ] 23.2 — Integração com Web Speech API (`speechSynthesis`) pra ler em voz alta nome, número e
+  proposta de cada candidato ao exibir o card, avançando pro próximo automaticamente (ou com
+  controle manual de avançar/pausar).
+
+---
+
 ## Ideias futuras
 
 Lista de possíveis próximos passos, sem compromisso nem ordem — um banco de ideias pra escolher o
