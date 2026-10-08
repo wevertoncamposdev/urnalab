@@ -1,5 +1,6 @@
-import { Users } from 'lucide-react';
+import { MousePointerClick, Users } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { pluralize } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -16,11 +17,14 @@ export function CandidateList({ positionLabel, candidates, selectedId, onSelect 
 
   return (
     <Card className="flex h-full flex-col overflow-hidden p-0">
-      <div className="flex flex-col gap-0.5 border-b p-4">
+      <div className="flex flex-col gap-1.5 border-b p-4">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Candidatos a
         </span>
         <span className="font-heading text-lg font-semibold">{positionLabel}</span>
+        <Badge variant="accent" className="w-fit">
+          <MousePointerClick className="size-3" /> Clique no candidato para ver a proposta
+        </Badge>
       </div>
 
       {candidates.length === 0 ? (
@@ -64,7 +68,7 @@ export function CandidateList({ positionLabel, candidates, selectedId, onSelect 
       )}
 
       <p className="border-t p-3 text-center text-xs text-muted-foreground">
-        {pluralize(candidates.length, 'candidato', 'candidatos')} • clique num nome pra ver a proposta
+        {pluralize(candidates.length, 'candidato', 'candidatos')}
       </p>
     </Card>
   );
