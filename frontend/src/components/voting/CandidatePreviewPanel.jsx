@@ -2,6 +2,7 @@ import { Frown, UserRound, Vote } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getCandidatePreviewState } from '@/lib/candidate-preview';
 import { cn } from '@/lib/utils';
 
 const PHOTO_SIZE = 'size-14 shrink-0 text-lg md:size-40 md:text-4xl';
@@ -13,11 +14,12 @@ const PLACEHOLDER_CIRCLE =
 // ao lado da cédula, como o monitor separado de uma urna real. O anel colorido
 // (verde/coral/amarelo) dá o mesmo veredito da cor sem precisar ler o texto.
 export function CandidatePreviewPanel({ blank, lookup }) {
+  const state = getCandidatePreviewState({ blank, lookup });
   let content;
   let eyebrow = null;
   let ringClass = 'ring-0';
 
-  if (blank) {
+  if (state.kind === 'blank') {
     eyebrow = 'Voto em branco';
     ringClass = 'ring-[3px] ring-accent/40';
     content = (
@@ -28,11 +30,11 @@ export function CandidatePreviewPanel({ blank, lookup }) {
         <p className="text-base font-semibold md:text-lg">Voto em branco</p>
       </>
     );
-  } else if (lookup?.loading) {
+  } else if (state.kind === 'loading') {
     eyebrow = 'Consultando...';
     content = <Skeleton className="size-14 shrink-0 rounded-full md:size-40" />;
-  } else if (lookup?.result?.status === 'FOUND') {
-    const { candidate } = lookup.result;
+  } else if (state.kind === 'found') {
+    const { candidate } = state;
     eyebrow = 'Seu voto vai para';
     ringClass = 'ring-[3px] ring-success/40';
     content = (
@@ -46,7 +48,7 @@ export function CandidatePreviewPanel({ blank, lookup }) {
         </div>
       </>
     );
-  } else if (lookup?.result?.status === 'NOT_FOUND') {
+  } else if (state.kind === 'not-found') {
     eyebrow = 'Atenção';
     ringClass = 'ring-[3px] ring-coral/40';
     content = (
@@ -58,7 +60,7 @@ export function CandidatePreviewPanel({ blank, lookup }) {
         </div>
       </>
     );
-  } else if (lookup?.result?.status === 'INACTIVE') {
+  } else if (state.kind === 'inactive') {
     eyebrow = 'Atenção';
     ringClass = 'ring-[3px] ring-coral/40';
     content = (

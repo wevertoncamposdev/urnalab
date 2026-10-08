@@ -12,6 +12,20 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Urna simulada na tela de votação (Etapa 17)**: `BallotCard` + `VoteKeypad` + botão "Confirma"
+  avulsos viraram um componente só, `Urna` (`components/voting/Urna.jsx`), estilizado como o corpo
+  físico de uma urna de verdade — fundo azul-marinho (`bg-sidebar`), tela clara e teclado dentro do
+  próprio corpo. A tela da urna mostra os dígitos enquanto o eleitor digita e, assim que o número
+  fecha, troca pra foto/nome do candidato (ou o aviso de voto nulo) **direto nela**, igual uma urna
+  de verdade — antes a foto só aparecia no painel lateral. Esse veredito (branco/carregando/
+  encontrado/nulo) foi extraído pra um util compartilhado (`lib/candidate-preview.js`
+  `getCandidatePreviewState`) usado tanto pela `Urna` quanto pelo `CandidatePreviewPanel` já
+  existente, pra não duplicar a mesma lógica em dois lugares com visuais diferentes.
+  `PublicVoting.jsx` passou de três colunas (consulta de proposta / cédula+teclado / preview) pra
+  duas: visualização do candidato (preview grande + consulta de proposta) de um lado, a `Urna` do
+  outro — no celular, a urna vem primeiro (é a interação principal). `BallotCard.jsx` saiu do
+  projeto, função absorvida pela tela da urna. `VoteKeypad` não precisou de nenhum ajuste visual:
+  os botões de dígito (fundo branco) já liam bem como teclas físicas claras sobre o corpo escuro.
 - **Upload de arquivo e capa de produto pela Área de Gerenciamento**: fechava dois itens do
   `ROADMAP.md` levantados na revisão da Etapa 16. (1) `/gerenciamento/produtos` agora faz upload de
   verdade do PDF de um produto `EBOOK` (campo `file`, data URI, decodificado e gravado por

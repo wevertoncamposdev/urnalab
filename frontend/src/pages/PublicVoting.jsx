@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { PostVoteFeedback } from '@/components/feedback/PostVoteFeedback';
-import { BallotCard } from '@/components/voting/BallotCard';
 import { CandidatePreviewPanel } from '@/components/voting/CandidatePreviewPanel';
-import { VoteKeypad } from '@/components/voting/VoteKeypad';
+import { Urna } from '@/components/voting/Urna';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PositionResult } from '@/components/results/PositionResult';
@@ -182,8 +181,13 @@ export default function PublicVoting() {
       <main className={cn('mx-auto flex flex-col gap-4 px-3 py-4 md:gap-6 md:px-4 md:py-6', CONTAINER)}>
         <PositionStepper positions={positions} currentIndex={index} />
 
-        <div className="flex flex-col gap-3 md:grid md:grid-cols-[320px_1fr_300px] md:items-start md:gap-6">
-          <div className="order-3 flex flex-col gap-3 md:order-1">
+        {/* Duas colunas (Etapa 17): visualização de candidatos (preview grande + consulta de
+            proposta) de um lado, a urna simulada do outro — no celular, a urna vem primeiro
+            (`flex-col-reverse`: é a interação principal), a visualização depois. */}
+        <div className="flex flex-col-reverse gap-3 md:grid md:grid-cols-[1fr_380px] md:items-start md:gap-6">
+          <div className="flex flex-col gap-3 md:gap-4">
+            <CandidatePreviewPanel blank={blank} lookup={lookup} />
+
             <Card>
               <CardContent className="flex flex-col gap-4 p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -236,20 +240,19 @@ export default function PublicVoting() {
             </Card>
           </div>
 
-          <div className="order-2 flex flex-col gap-3 md:gap-4">
-            <BallotCard positionLabel={rule.label} digits={digits} digitsRequired={rule.digits} blank={blank} />
-            <VoteKeypad onDigit={ballot.pressDigit} onClear={ballot.clearEntry} onBlank={ballot.pressBlank} disabled={submitting} />
-            <p className="hidden text-center text-xs text-muted-foreground md:block">
-              Também dá para digitar no teclado e confirmar com Enter.
-            </p>
-            <Button className="h-11 text-base md:h-12" disabled={!ready || submitting} onClick={ballot.confirmVote}>
-              {submitting ? 'Confirmando...' : 'Confirma'}
-            </Button>
-          </div>
-
-          <div className="order-1 md:order-3">
-            <CandidatePreviewPanel blank={blank} lookup={lookup} />
-          </div>
+          <Urna
+            positionLabel={rule.label}
+            digits={digits}
+            digitsRequired={rule.digits}
+            blank={blank}
+            lookup={lookup}
+            onDigit={ballot.pressDigit}
+            onClear={ballot.clearEntry}
+            onBlank={ballot.pressBlank}
+            onConfirm={ballot.confirmVote}
+            ready={ready}
+            submitting={submitting}
+          />
         </div>
       </main>
 
