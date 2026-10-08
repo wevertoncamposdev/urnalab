@@ -54,6 +54,13 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   mesmo layout de duas colunas de baixo: o aviso à esquerda, acompanhando a colinha, os tabs à
   direita, acompanhando a urna. No mobile a ordem continua tabs → aviso → urna → select →
   detalhes do candidato (`flex-col-reverse` nas duas linhas).
+- **Corpo da urna (visor, teclado e "Confirma") com tamanho dinâmico conforme a altura da tela**:
+  `Urna.jsx` e `VoteKeypad.jsx` trocaram alturas fixas (`h-11`, `h-14`, `min-h-[170px]`...) por
+  `flex-1`/`grid-rows-[repeat(4,minmax(0,1fr))]` — visor e teclado agora dividem exatamente a
+  altura que a coluna da urna tiver disponível (que no desktop já é travada pelo viewport, ver
+  acima), cada um só com um `min-h` pequeno como piso. Antes disso tinha sobrado espaço suficiente
+  ali pra gerar um scroll interno na urna; agora ela sempre cabe inteira, ficando maior em telas
+  altas e menor em telas baixas, sem precisar do fallback de scroll por coluna.
 - **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
   `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
   comum do usuário — o item "Administração" que antes só aparecia no menu principal quando

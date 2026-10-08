@@ -203,7 +203,7 @@ export default function PublicVoting() {
           >
             <GraduationCap className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              Projeto educacional feito para promover cidadania nas escolas — não é uma urna
+              Projeto educacional feito para promover cidadania nas escolas. Não se trata de uma urna
               eletrônica oficial.
             </span>
           </Badge>

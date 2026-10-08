@@ -92,6 +92,12 @@ function UrnaScreen({ positionLabel, digits, digitsRequired, blank, lookup }) {
 // inteiro da urna; VoteKeypad não precisou de nenhum ajuste visual pra sentar em
 // cima dele: os botões de dígito (`variant="outline"`, fundo branco) já leem bem
 // como teclas físicas claras sobre o corpo escuro.
+//
+// `h-full` + visor/teclado em `flex-1`: a urna preenche exatamente a altura que
+// a coluna tiver disponível (no desktop essa altura já é travada pelo viewport,
+// ver VOTING_PAGE_BG em PublicVoting.jsx) — em vez de alturas fixas que podiam
+// não caber, visor e teclado crescem/encolhem juntos conforme a tela, cada um
+// com um `min-h` só como piso pra não sumir de vez numa janela bem baixa.
 export function Urna({
   positionLabel,
   digits,
@@ -106,24 +112,20 @@ export function Urna({
   submitting,
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[28px] bg-sidebar p-3 shadow-lg md:gap-4 md:p-4">
-      <div className="flex min-h-[170px] items-center justify-center rounded-2xl bg-white p-4 md:min-h-[200px] md:p-6">
+    <div className="flex h-full min-h-0 flex-col gap-2 rounded-[28px] bg-sidebar p-3 shadow-lg md:gap-3 md:p-4">
+      <div className="flex min-h-[96px] flex-1 items-center justify-center overflow-y-auto rounded-2xl bg-white p-3 md:min-h-[120px] md:p-4">
         <UrnaScreen positionLabel={positionLabel} digits={digits} digitsRequired={digitsRequired} blank={blank} lookup={lookup} />
       </div>
 
       <VoteKeypad onDigit={onDigit} onClear={onClear} onBlank={onBlank} disabled={submitting} />
 
       <Button
-        className="h-11 bg-success text-base text-white hover:bg-success/90 md:h-12"
+        className="h-9 shrink-0 bg-success text-sm text-white hover:bg-success/90 md:h-11 md:text-base"
         disabled={!ready || submitting}
         onClick={onConfirm}
       >
         {submitting ? 'Confirmando...' : 'Confirma'}
       </Button>
-
-      <p className="text-center text-xs text-white/50">
-        Também dá para digitar no teclado e confirmar com Enter.
-      </p>
     </div>
   );
 }
