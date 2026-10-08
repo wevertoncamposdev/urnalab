@@ -32,6 +32,34 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
 
 ---
 
+### Etapa 19 — Verificação em duas etapas na Área de Gerenciamento
+
+Camada extra sobre a já existente (ADMIN_EMAIL + shell próprio, Etapas 16 e 18): mesmo
+logada como a conta admin, a entrada em `/gerenciamento*` agora também exige confirmar um
+código de 6 dígitos mandado por e-mail — "algo que a conta sabe" (senha) deixa de ser
+suficiente sozinho, precisa também de "algo que só o dono do e-mail recebe".
+
+- [x] 19.1 — Backend: model `AdminVerificationCode` (mesmo desenho de
+  `EmailVerificationCode` — código só em hash sha256, expiração, limite de tentativas),
+  `POST /api/admin/verify/request` (manda o código, cooldown de reenvio) e
+  `POST /api/admin/verify/confirm` (valida e devolve um token à parte, escopo
+  `admin-verified`, válido por 60 min) — as duas únicas rotas `adminOnly` que não exigem
+  esse token pra rodar (`skipAdminVerification`, ver `utils/router.js`/`server.js`). Toda
+  outra rota `/api/admin/*` passa a exigir esse token (header `X-Admin-Verification`),
+  além do JWT normal já exigir ADMIN_EMAIL (2026-10-08, ver `CHANGELOG.md`).
+- [x] 19.2 — Frontend: `AdminVerificationGate.jsx` — ao entrar em `AdminLayout`, manda o
+  código automaticamente e pede confirmação antes de mostrar qualquer página admin; o
+  token fica só em `sessionStorage` (nunca localStorage), então expira sozinho ao fechar
+  a aba — sem sessão nova guardada no servidor pra isso (2026-10-08).
+- [ ] 19.3 — Validar o fluxo completo pela UI de verdade, logado como a conta admin real
+  (login + e-mail de verdade): o ciclo request→401 sem token→confirm→200 com token, e a
+  rejeição de token com escopo errado, já foram validados ponta a ponta por HTTP numa
+  instância descartável com `ADMIN_EMAIL` apontado pra uma conta de teste — só falta o
+  clique na tela de verdade (`AdminVerificationGate.jsx`) e o e-mail chegando na caixa de
+  entrada real, que dependem de login que a IA não tem acesso.
+
+---
+
 ## Ideias futuras
 
 Lista de possíveis próximos passos, sem compromisso nem ordem — um banco de ideias pra escolher o
@@ -40,18 +68,12 @@ andamento" acima como uma Etapa nova.
 
 ### Produto e conteúdo educacional
 
-- **Dois turnos — casos de borda não cobertos**: a criação de sessão de 2º turno
-  (`resultService.createRunoffSession`) já funciona pro caso comum (dois candidatos mais votados,
-  sem empate), mas foi encontrada uma lista de lacunas numa revisão de código: (1) empate no 2º/3º
-  lugar é quebrado só por ordem alfabética, sem indicar que houve empate nem avançar mais de dois
-  candidatos; (2) nada impede criar mais de uma sessão de 2º turno pra mesma sessão original (não
-  há campo ligando o runoff à sessão-mãe, nem trava no backend); (3) o nome da sessão nova sempre
-  vira `"<nome> - 2º turno"`, então um 3º turno (teoricamente possível se o 2º turno também
-  empatar) viraria `"- 2º turno - 2º turno"`; (4) a cópia de candidato pro 2º turno usa
-  `candidateRepository.create` direto, sem passar pela validação de partido ativo que o resto do
-  código (`candidateService.create`) sempre aplica.
 - **Importação em massa de candidatos/partidos (CSV)**: hoje é tudo cadastro manual, um por um —
-  pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa funcionalidade será um recurso premium que precisa de assinatura mensal, ou cobrança por importação.
+  pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa
+  funcionalidade será um recurso premium, cobrado por importação — o sistema de produtos genérico
+  (`Product`, Etapa 15) já dá a base pra isso: bastaria um novo produto `kind` "por conta" (como o
+  `EBOOK` da loja), sem precisar de assinatura mensal (que ainda não existe, ver "Resultados e
+  relatórios" abaixo).
 
 ### Contas e multiusuário
 
@@ -147,14 +169,13 @@ andamento" acima como uma Etapa nova.
 
 ### Resultados e relatórios
 
-- **Gráfico visual na apuração**: `PositionResult.jsx` já mostra uma barra de progresso por
-  candidato; um gráfico de pizza/barras consolidado por cargo ajudaria a enxergar o resultado de
-  relance, principalmente em apresentação pra turma.
 - **Exportar resultado em PDF/imagem**: subiu pra "Em andamento" como Etapa 11.
-- **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. Implementado só o
-  modelo "por sessão" (paga uma vez, baixa quantas vezes quiser); os próximos estágios do modelo
-  progressivo (avulso, depois assinatura mensal) ficam pra quando fizer sentido de verdade: só o
-  Mercado Pago como gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
+- **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. O modelo "por sessão"
+  (paga uma vez, baixa quantas vezes quiser) e o sistema de cobrança genérico por trás dele (model
+  `Product`, Etapa 15) já existem — é o que a loja de materiais didáticos (Etapas 15/16) usa pra
+  vender produtos "por conta", sem sessão envolvida. O que falta de verdade é um modelo de
+  **assinatura mensal** (cobrança recorrente) — hoje só existe cobrança avulsa; Mercado Pago como
+  gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
 
 ### Notificações
 

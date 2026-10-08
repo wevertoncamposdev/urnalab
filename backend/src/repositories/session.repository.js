@@ -35,6 +35,12 @@ export const sessionRepository = {
     return prisma.session.count();
   },
 
+  // Usado por resultService.createRunoffSession pra impedir criar mais de uma sessão
+  // de 2º turno pra mesma sessão origem — `null` se nenhuma ainda existir.
+  async findRunoffOf(sourceSessionId) {
+    return serializeDates(await prisma.session.findFirst({ where: { runoffOfSessionId: sourceSessionId } }));
+  },
+
   // Dá exclusividade sobre sessões para quem precisa checar e agir atomicamente
   // em relação a um update/finish concorrente (ver vote.service). `read()` dá
   // uma leitura fresca de todas as sessões, igual ao contrato antigo do

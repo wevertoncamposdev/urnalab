@@ -57,6 +57,24 @@ async function handleRequest(req, res) {
         if (!config.adminEmail || email !== config.adminEmail) {
           return sendError(res, 403, 'ADMIN_ONLY', 'Acesso restrito à administração do sistema.');
         }
+
+        // Segunda camada (Etapa 19): além da conta ser ADMIN_EMAIL, exige um token à
+        // parte (header X-Admin-Verification) emitido só depois de confirmar o código
+        // mandado por e-mail (ver admin.service.js confirmVerification) — nunca o mesmo
+        // token do Authorization acima. `skipAdminVerification` é a saída usada só
+        // pelas duas rotas que resolvem esse desafio.
+        if (!match.skipAdminVerification) {
+          const verificationToken = req.headers['x-admin-verification'];
+          const verificationPayload = typeof verificationToken === 'string' ? verifyJwt(verificationToken) : null;
+          if (verificationPayload?.scope !== 'admin-verified' || verificationPayload.sub !== userId) {
+            return sendError(
+              res,
+              401,
+              'ADMIN_VERIFICATION_REQUIRED',
+              'Confirme o código enviado por e-mail para continuar.',
+            );
+          }
+        }
       }
     }
 

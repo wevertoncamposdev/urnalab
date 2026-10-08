@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 const TOKEN_KEY = 'urna:authToken';
+const ADMIN_VERIFICATION_KEY = 'urna:adminVerificationToken';
 
 // Fotos capturadas pela câmera voltam da API como um caminho relativo (/photos/...),
 // servido pelo próprio backend; links externos (https://...) já são absolutos.
@@ -21,10 +22,23 @@ function readStoredToken() {
   }
 }
 
+function readStoredAdminVerificationToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_VERIFICATION_KEY);
+  } catch {
+    return null;
+  }
+}
+
 // Lido na carga do módulo (não num efeito do React), pra já estar disponível
 // antes de qualquer provider montar e disparar a primeira requisição.
 let authToken = readStoredToken();
 let onUnauthorized = null;
+// Segunda camada da Área de Gerenciamento (Etapa 19) — de propósito em sessionStorage, não
+// localStorage: expira sozinho ao fechar a aba, sem precisar de lógica própria de logout
+// (ver admin.service.js confirmVerification, AdminLayout.jsx).
+let adminVerificationToken = readStoredAdminVerificationToken();
+let onAdminVerificationRequired = null;
 
 export function setAuthToken(token) {
   authToken = token;
@@ -44,10 +58,37 @@ export function clearAuthToken() {
   }
 }
 
+export function setAdminVerificationToken(token) {
+  adminVerificationToken = token;
+  try {
+    sessionStorage.setItem(ADMIN_VERIFICATION_KEY, token);
+  } catch {
+    // Sem sessionStorage: só não sobrevive a um reload da aba.
+  }
+}
+
+export function clearAdminVerificationToken() {
+  adminVerificationToken = null;
+  try {
+    sessionStorage.removeItem(ADMIN_VERIFICATION_KEY);
+  } catch {
+    // ok
+  }
+}
+
+export const hasAdminVerificationToken = () => Boolean(adminVerificationToken);
+
 // AuthProvider registra aqui o que fazer quando qualquer requisição volta 401
 // (token ausente/expirado) — evita checar isso em cada tela separadamente.
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
+}
+
+// AdminLayout registra aqui o que fazer quando uma chamada a /api/admin/* volta
+// ADMIN_VERIFICATION_REQUIRED (token de verificação ausente/expirado no meio do uso) —
+// mesmo princípio do onUnauthorized acima, só que pra essa segunda camada.
+export function setAdminVerificationRequiredHandler(handler) {
+  onAdminVerificationRequired = handler;
 }
 
 export const hasAuthToken = () => Boolean(authToken);
@@ -69,6 +110,7 @@ async function request(path, { method = 'GET', body } = {}) {
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(adminVerificationToken ? { 'X-Admin-Verification': adminVerificationToken } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -80,7 +122,12 @@ async function request(path, { method = 'GET', body } = {}) {
 
   if (!response.ok || !payload?.success) {
     const error = payload?.error;
-    if (response.status === 401) onUnauthorized?.();
+    if (response.status === 401 && error?.code === 'ADMIN_VERIFICATION_REQUIRED') {
+      clearAdminVerificationToken();
+      onAdminVerificationRequired?.();
+    } else if (response.status === 401) {
+      onUnauthorized?.();
+    }
     throw new ApiError(
       error?.code ?? 'UNKNOWN_ERROR',
       error?.message ?? 'Erro inesperado.',
@@ -225,6 +272,13 @@ export const api = {
   // respostas de sucesso aqui — qualquer outra conta recebe 403, verificado no roteador
   // (`adminOnly: true`, Etapa 16), antes de qualquer rota destas rodar.
   admin: {
+    // Segunda camada de acesso (Etapa 19): código de 6 dígitos mandado pro e-mail da
+    // conta admin — confirmar devolve o token guardado em sessionStorage (ver
+    // setAdminVerificationToken) e enviado como header em toda chamada admin.* acima.
+    verify: {
+      request: () => request('/api/admin/verify/request', { method: 'POST' }),
+      confirm: (code) => request('/api/admin/verify/confirm', { method: 'POST', body: { code } }),
+    },
     overview: () => request('/api/admin/overview'),
     users: (params) => request(`/api/admin/users${toQuery(params)}`),
     analytics: {

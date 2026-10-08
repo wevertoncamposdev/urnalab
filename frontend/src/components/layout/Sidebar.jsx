@@ -7,10 +7,6 @@ import {
   Flag,
   IdCard,
   LayoutDashboard,
-  LineChart,
-  MessageSquare,
-  Package,
-  ShieldAlert,
   ShieldCheck,
   Store,
   Wallet,
@@ -18,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/branding/Logo';
 import { Wordmark } from '@/components/branding/Wordmark';
-import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 // Agrupado por momento do fluxo (não por ordem alfabética ou de criação): visão geral
@@ -61,34 +56,20 @@ const NAV_GROUPS = [
     label: 'Conteúdo',
     items: [
       { label: 'Sistema eleitoral', to: '/sistema-eleitoral', icon: BookOpen },
-      { label: 'Loja', to: '/loja', icon: Store },
+      { label: 'Atividades', to: '/loja', icon: Store },
     ],
   },
 ];
 
-// Só aparece pra ADMIN_EMAIL (ver backend/src/config.js) — qualquer outra conta nem
-// sabe que essa rota existe (ver App.jsx, RequireAdmin, e user.isAdmin em useAuth).
-// Rota própria /gerenciamento* (Etapa 16.1), separada da árvore comum acima.
-const ADMIN_GROUP = {
-  label: 'Administração',
-  items: [
-    { label: 'Área de Gerenciamento', to: '/gerenciamento', icon: ShieldAlert },
-    { label: 'Produtos', to: '/gerenciamento/produtos', icon: Package },
-    { label: 'Analytics', to: '/gerenciamento/analytics', icon: LineChart },
-    { label: 'Feedback', to: '/gerenciamento/feedback', icon: MessageSquare },
-  ],
-};
-
-function useNavGroups() {
-  const { user } = useAuth();
-  return user?.isAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
-}
-
+// A Área de Gerenciamento (/gerenciamento*, Etapa 16) nunca aparece aqui, pra conta
+// nenhuma — ela tem shell próprio (AdminLayout.jsx, Etapa 18), sem nenhum componente
+// compartilhado com a área comum. Reduz o acoplamento entre as duas: um bug ou mudança
+// futura num dos dois não tem como vazar visualmente pro outro.
 function NavItem({ label, to, icon: Icon, accent }) {
   return (
     <NavLink
       to={to}
-      end={to === '/painel' || to === '/gerenciamento'}
+      end={to === '/painel'}
       className={({ isActive }) =>
         cn(
           'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -118,7 +99,6 @@ function NavItem({ label, to, icon: Icon, accent }) {
 }
 
 export function Sidebar({ collapsed }) {
-  const navGroups = useNavGroups();
   if (collapsed) return null;
 
   return (
@@ -132,7 +112,7 @@ export function Sidebar({ collapsed }) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pb-4" aria-label="Principal">
-        {navGroups.map((group, index) => (
+        {NAV_GROUPS.map((group, index) => (
           <div key={group.label ?? `group-${index}`} className="flex flex-col gap-1">
             {group.label && (
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
@@ -156,17 +136,16 @@ export function Sidebar({ collapsed }) {
 // Navegação compacta para telas pequenas (a sidebar fica oculta abaixo de md):
 // mesma ordem dos grupos, com um separador sutil entre eles.
 export function MobileNav() {
-  const navGroups = useNavGroups();
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-b bg-card px-3 py-2 md:hidden" aria-label="Principal">
-      {navGroups.map((group, groupIndex) => (
+      {NAV_GROUPS.map((group, groupIndex) => (
         <div key={group.label ?? `mgroup-${groupIndex}`} className="flex items-center gap-1">
           {groupIndex > 0 && <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />}
           {group.items.map(({ label, to, icon: Icon, accent }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === '/painel' || to === '/gerenciamento'}
+              end={to === '/painel'}
               className={({ isActive }) =>
                 cn(
                   'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm',

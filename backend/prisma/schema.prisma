@@ -30,6 +30,7 @@ model User {
   passwordResetToken    PasswordResetToken?
   institutionProfile    InstitutionProfile?
   adminAccessLogs       AdminAccessLog[]
+  adminVerificationCode AdminVerificationCode?
   feedbacks             Feedback[]
   payments              Payment[]
 
@@ -63,6 +64,21 @@ model EmailVerificationCode {
   createdAt DateTime @default(now())
 
   @@map("email_verification_codes")
+}
+
+model AdminVerificationCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Segunda camada de acesso à Área de Gerenciamento (Etapa 19), além da conta já ser
+  // ADMIN_EMAIL: código de 6 dígitos mandado por e-mail, só hash sha256 guardado — mesmo
+  // desenho de EmailVerificationCode acima (ver admin.service.js).
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("admin_verification_codes")
 }
 
 model PasswordResetToken {
@@ -139,12 +155,20 @@ model Session {
   createdAt   DateTime  @default(now())
   startedAt   DateTime?
   finishedAt  DateTime?
+  // Preenchido só em sessões criadas por resultService.createRunoffSession — aponta pra
+  // sessão do 1º turno que originou esta. Usado pra impedir criar mais de um 2º turno
+  // pra mesma sessão origem (ver result.service.js createRunoffSession) — uma eventual
+  // sessão de 3º turno (se o 2º turno também empatar) aponta pro 2º turno, não pro 1º.
+  runoffOfSessionId String?
+  runoffOf          Session?  @relation("SessionRunoff", fields: [runoffOfSessionId], references: [id], onDelete: SetNull)
+  runoffSessions    Session[] @relation("SessionRunoff")
 
   candidates Candidate[]
   votes      Vote[]
   payments   Payment[]
 
   @@index([userId])
+  @@index([runoffOfSessionId])
   @@map("sessions")
 }
 

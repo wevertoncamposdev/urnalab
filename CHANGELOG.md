@@ -12,6 +12,81 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Verificação em duas etapas na Área de Gerenciamento (Etapa 19)**: além da conta já
+  precisar ser `ADMIN_EMAIL`, entrar em `/gerenciamento*` agora também exige confirmar um
+  código de 6 dígitos mandado por e-mail a cada vez. Backend: model
+  `AdminVerificationCode` (mesmo desenho de `EmailVerificationCode` — código só em hash
+  sha256, expiração de 10 min, limite de 5 tentativas), `POST /api/admin/verify/request`
+  (manda o código, cooldown de reenvio de 60s) e `POST /api/admin/verify/confirm` (valida
+  e devolve um token à parte — escopo `admin-verified`, válido por 60 min — totalmente
+  independente do JWT de login). Toda outra rota `/api/admin/*` passou a exigir esse
+  token num header próprio (`X-Admin-Verification`, checado em `server.js`), além do JWT
+  normal já exigir `ADMIN_EMAIL` — as duas rotas de verificação em si usam a nova opção
+  `skipAdminVerification` do roteador pra serem a exceção. Frontend:
+  `AdminVerificationGate.jsx` manda o código automaticamente ao entrar em `AdminLayout` e
+  bloqueia qualquer página admin até confirmar; o token fica só em `sessionStorage`
+  (nunca `localStorage`), expirando sozinho ao fechar a aba — nenhuma sessão nova
+  guardada no servidor pra isso.
+
+- **Gráfico de rosca na apuração**: `PositionResult.jsx` ganhou um gráfico de rosca (SVG puro, sem
+  lib de gráfico) com a proporção de votos válidos por candidato de cada cargo, ao lado do ranking
+  já existente — complementa a barra de progresso individual com uma visão consolidada, útil pra
+  enxergar o resultado de relance numa apresentação pra turma. Cada fatia usa uma cor da paleta da
+  identidade visual (`PositionPieChart.jsx`), e um indicador colorido foi adicionado à frente de
+  cada candidato na lista pra servir de legenda.
+
+### Changed
+
+- **Área de Gerenciamento com shell próprio, sem ligação visual com a área comum (Etapa 18)**:
+  `/gerenciamento*` deixou de renderizar dentro do `AppLayout`/`Sidebar.jsx` usado pela área
+  comum do usuário — o item "Administração" que antes só aparecia no menu principal quando
+  `user.isAdmin` era verdadeiro (`Sidebar.jsx`, `ADMIN_GROUP`) foi removido de vez, pra conta
+  nenhuma. A área ganhou um shell próprio (`AdminLayout.jsx`): cabeçalho e navegação específicos
+  (Visão geral, Produtos, Analytics, Feedback), sem nenhum componente compartilhado com a área
+  comum. A autorização de verdade não mudou — continua sendo `RequireAuth`+`RequireAdmin`
+  (`App.jsx`) no frontend e `adminOnly: true` (checado contra `ADMIN_EMAIL` no JWT, sem consulta
+  ao banco) no backend — essa mudança é só de acoplamento de interface: reduz o risco de uma
+  alteração futura num dos dois shells vazar visualmente pro outro.
+
+### Fixed
+
+- **CORS bloqueava toda chamada à API depois de verificar a Área de Gerenciamento**: o header
+  `X-Admin-Verification` (Etapa 19, ver acima) não estava na lista `Access-Control-Allow-Headers`
+  de `middleware/cors.js` — assim que o token de verificação passava a existir, o navegador
+  bloqueava **qualquer** requisição (não só as de `/api/admin/*`, já que `api.js` manda esse header
+  em toda chamada quando o token existe) por causa do preflight CORS reprovado, antes mesmo dela
+  sair. Corrigido adicionando o header na lista.
+- **`adminService.updateFeedbackStatus` quebrado**: chamava `requireAdmin(userId)`, uma função que
+  não existe em lugar nenhum do arquivo (nem importada) — toda atualização de status de feedback
+  pela Área de Gerenciamento derrubava com `ReferenceError`. Removida a chamada morta; a
+  autorização de verdade já acontece antes, no roteador (`adminOnly: true`), igual todo o resto
+  deste service.
+- **2º turno — casos de borda do ROADMAP**: os 4 problemas levantados numa revisão de código
+  anterior, todos em `resultService.createRunoffSession`. (1) Empate no ponto de corte do 2º turno
+  (ex. 2º e 3º lugar com o mesmo número de votos) não era mais indicado — `tallyPosition` só
+  desempatava por ordem alfabética do nome antes de `resolveOutcome` decidir quem avança; agora
+  todo mundo empatado no ponto de corte entra junto (podendo passar de 2 candidatos), e o resultado
+  carrega `runoff.tied: true` — `PositionResult.jsx` mostra "Empate" na tela quando isso acontece.
+  (2) Nada impedia criar mais de uma sessão de 2º turno pra mesma sessão origem — novo campo
+  `Session.runoffOfSessionId` (auto-relação, migração `20261008040650_add_session_runoff_link`) liga
+  a sessão nova à sessão que a originou; `createRunoffSession` agora recusa
+  (`409 RUNOFF_ALREADY_EXISTS`) se já existir uma. (3) O nome da sessão nova sempre virava
+  `"<nome> - 2º turno"`, então um eventual 3º turno (se o 2º turno também empatar — agora possível
+  de verdade, ver item 1) ficaria `"- 2º turno - 2º turno"`; `nextRoundName` troca o sufixo de turno
+  em vez de só concatenar mais um, virando `"- 3º turno"` corretamente. (4) A cópia de candidato pro
+  2º turno usava `candidateRepository.create` direto, pulando a validação de partido ativo que
+  `candidateService.create` sempre aplica — agora os partidos de todos os classificados são
+  conferidos **antes** de criar a sessão nova (`409 RUNOFF_PARTY_INACTIVE` se algum estiver
+  inativo), evitando tanto o problema original quanto uma sessão criada pela metade.
+- **Proposta de governo não copiada pro 2º turno / sessão duplicada**: verificado e confirmado que
+  **já estava corrigido** (commit anterior a esta revisão) — testado de ponta a ponta criando um
+  empate real, gerando o 2º turno e duplicando a sessão: a proposta de cada candidato chega
+  corretamente nos dois fluxos. Nenhuma mudança de código necessária aqui.
+
+## [0.14.0] — 2026-10-08
+
+### Added
+
 - **Urna simulada na tela de votação (Etapa 17)**: `BallotCard` + `VoteKeypad` + botão "Confirma"
   avulsos viraram um componente só, `Urna` (`components/voting/Urna.jsx`), estilizado como o corpo
   físico de uma urna de verdade — fundo azul-marinho (`bg-sidebar`), tela clara e teclado dentro do
@@ -60,10 +135,8 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   gestão de produtos (16.2/16.3, tela `/gerenciamento/produtos`): CRUD de nome/descrição/preço/
   ativo de qualquer `Product` (`POST`/`PUT /api/admin/products`) e histórico de vendas por produto
   (`GET /api/admin/products/:id/sales`, quantidade e receita aprovadas + lista de cobranças, sem
-  nenhum dado de quem comprou). Upload do arquivo de um produto `EBOOK` ainda não existe nessa
-  tela — o corpo da requisição tem um teto de 1MB (`utils/http.js`) incompatível com um ebook de
-  verdade, e o roteador não lê `multipart/form-data`; produtos `EBOOK` continuam cadastrados via
-  `scripts/seed.js`/banco direto até isso existir.
+  nenhum dado de quem comprou) — ver também "Upload de arquivo e capa de produto" acima, que
+  completa essa tela com o upload do arquivo/capa de um produto `EBOOK`.
 - **Produtos genéricos e loja (Etapa 15)**: o sistema de cobrança deixou de ser exclusivo da
   exportação de PDF — novo model `Product` (`prisma/schema.prisma`) é o catálogo de qualquer coisa
   vendável, com preço editável em banco (não mais via env var: `SESSION_RESULTS_PRICE_CENTS` saiu
@@ -77,11 +150,13 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   PDF (`/api/sessions/:id/payment`, tela de Resultados) não mudaram por fora — o motor novo foi só
   por dentro. Nova loja (`GET /api/products`, `GET/POST /api/products/:id/payment`,
   `GET /api/products/:id/download`, página `/loja`) vende o primeiro produto "por conta" de
-  verdade: um ebook, com CTA a partir de `/sistema-eleitoral`. A área financeira (`/financeiro`,
-  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook real
-  (conteúdo, upload) ainda depende da Etapa 16 (CRUD de produto pelo admin) para ser cadastrado em
-  produção — hoje só existe um exemplo placeholder, criado pelo seed de desenvolvimento
-  (`npm run seed`, `scripts/seed.js`), pra validar o fluxo de compra/download ponta a ponta.
+  verdade: um ebook, com CTA a partir de `/sistema-eleitoral` (link/rota continuam `/loja`; o rótulo
+  no menu e o título da página viraram **"Atividades"**, mais chamativo que "Loja"). A área
+  financeira (`/financeiro`,
+  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook de exemplo
+  usado em desenvolvimento (`npm run seed`, `scripts/seed.js`) é só um placeholder — o material
+  didático real é decisão de conteúdo, não mais limitação técnica, desde que a Etapa 16 (CRUD de
+  produto pelo admin) e o upload de arquivo/capa ficaram prontos.
 
 ### Security
 

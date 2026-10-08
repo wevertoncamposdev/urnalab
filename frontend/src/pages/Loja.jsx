@@ -82,7 +82,7 @@ export default function Loja() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Loja" description="Materiais didáticos pra usar em sala com o UrnaLab." />
+      <PageHeader title="Atividades" description="Materiais didáticos pra usar em sala com o UrnaLab." />
 
       {!productsState.data ? (
         <Skeleton className="h-48" />

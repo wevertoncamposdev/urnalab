@@ -2,10 +2,27 @@ import { adminController } from '../controllers/admin.controller.js';
 import { productController } from '../controllers/product.controller.js';
 import { PRODUCT_FILE_LIMITS } from '../rules/product-rules.js';
 
+const FIFTEEN_MIN = 15 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
+
 // Autenticação exige login (nenhuma rota aqui é `public`); a autorização admin em si
 // (ADMIN_EMAIL) é checada no roteador/server.js (`adminOnly: true`, Etapa 16) — antes de
 // qualquer handler destas rotas rodar, sem consulta ao banco (ver utils/router.js).
 export function registerAdminRoutes(router) {
+  // Segunda camada de acesso (Etapa 19): código de verificação por e-mail. Únicas rotas
+  // `adminOnly` com `skipAdminVerification: true` — são elas que resolvem esse desafio,
+  // não podem exigir o próprio resultado dele pra rodar.
+  router.post('/api/admin/verify/request', adminController.requestVerification, {
+    adminOnly: true,
+    skipAdminVerification: true,
+    rateLimit: { windowMs: ONE_HOUR, max: 5 },
+  });
+  router.post('/api/admin/verify/confirm', adminController.confirmVerification, {
+    adminOnly: true,
+    skipAdminVerification: true,
+    rateLimit: { windowMs: FIFTEEN_MIN, max: 10 },
+  });
+
   router.get('/api/admin/overview', adminController.overview, { adminOnly: true });
   router.get('/api/admin/users', adminController.listUsers, { adminOnly: true });
   router.get('/api/admin/analytics/funnel', adminController.funnel, { adminOnly: true });

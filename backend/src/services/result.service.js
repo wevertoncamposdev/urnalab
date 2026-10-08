@@ -5,10 +5,23 @@ import { positionRepository } from '../repositories/position.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
 import { voteRepository } from '../repositories/vote.repository.js';
 import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
+import { PARTY_STATUS } from '../rules/party-rules.js';
 import { SESSION_STATUS } from '../rules/session-rules.js';
 import { VOTE_TYPE } from '../rules/vote-rules.js';
 import { conflict, notFound } from '../utils/errors.js';
 import { sessionService, withUniqueSessionCode } from './session.service.js';
+
+// "<nome> - 2º turno" vira "<nome> - 3º turno" num eventual 3º turno (se o 2º turno
+// também empatar), em vez de empilhar "- 2º turno - 2º turno" — troca o sufixo de
+// turno em vez de só concatenar mais um.
+const ROUND_SUFFIX_PATTERN = /\s*-\s*(\d+)º turno$/i;
+
+function nextRoundName(name) {
+  const match = ROUND_SUFFIX_PATTERN.exec(name);
+  if (!match) return `${name} - 2º turno`;
+  const nextRound = Number(match[1]) + 1;
+  return `${name.slice(0, match.index)} - ${nextRound}º turno`;
+}
 
 async function findSessionOrFail(id, userId) {
   const session = await sessionRepository.findById(id);
@@ -48,7 +61,15 @@ function resolveOutcome(ranked, validVotes, twoRoundEnabled) {
     return { winners: ranked.filter((c) => c.votes === topVotes).map((c) => c.id), runoff: null };
   }
 
-  return { winners: [], runoff: { candidateIds: [ranked[0].id, ranked[1].id] } };
+  // Corte normal é o 2º lugar — mas se o número de votos do 2º lugar empatar com
+  // o 3º (ou mais), `tallyPosition` já tinha resolvido isso só por ordem
+  // alfabética do nome, escondendo o empate. Aqui, todo mundo empatado no ponto
+  // de corte avança junto (podendo passar de 2 candidatos pro 2º turno), e
+  // `tied` sinaliza que houve empate de verdade — ver PositionResult.jsx.
+  const cutoffVotes = ranked[1].votes;
+  const candidateIds = ranked.filter((c) => c.votes >= cutoffVotes && c.votes > 0).map((c) => c.id);
+
+  return { winners: [], runoff: { candidateIds, tied: candidateIds.length > 2 } };
 }
 
 // Apura um cargo: ranking de candidatos (só entre votos válidos) e totais de votos
@@ -158,11 +179,22 @@ export const resultService = {
   },
 
   // Monta a sessão do 2º turno: mesmo(s) cargo(s) que não tiveram maioria
-  // absoluta no 1º turno, já com a candidatura dos dois mais votados de cada um
-  // (reaproveitando pessoa, partido e número — só o vínculo com a sessão é novo).
+  // absoluta no 1º turno, já com a candidatura dos classificados de cada um
+  // (reaproveitando pessoa, partido e número — só o vínculo com a sessão é novo;
+  // em caso de empate no ponto de corte, mais de dois candidatos podem entrar —
+  // ver resolveOutcome). Uma sessão só pode gerar um 2º turno; se o 2º turno
+  // também empatar, essa mesma função cria um "3º turno" a partir dele.
   async createRunoffSession(id, userId) {
     const session = await findSessionOrFail(id, userId);
     requireFinished(session);
+
+    const existingRunoff = await sessionRepository.findRunoffOf(session.id);
+    if (existingRunoff) {
+      throw conflict(
+        'RUNOFF_ALREADY_EXISTS',
+        `Esta sessão já tem uma sessão de 2º turno criada: "${existingRunoff.name}".`,
+      );
+    }
 
     const { candidates, positions } = await tallySession(session);
     const runoffPositions = positions.filter((p) => p.runoff);
@@ -170,14 +202,34 @@ export const resultService = {
       throw conflict('RUNOFF_NOT_NEEDED', 'Nenhum cargo desta sessão precisa de 2º turno.');
     }
 
+    // Confere os partidos de todos os classificados ANTES de criar a sessão nova —
+    // se algum foi desativado depois do 1º turno, falha aqui (sessão nenhuma fica
+    // pela metade) em vez de copiar o candidato sem essa checagem, como acontecia
+    // antes (candidateRepository.create direto pulava a validação que
+    // candidateService.create sempre aplica).
+    const originalsById = new Map(candidates.map((c) => [c.id, c]));
+    const partyIds = new Set(
+      runoffPositions.flatMap((p) => p.runoff.candidateIds.map((cid) => originalsById.get(cid).partyId)),
+    );
+    for (const partyId of partyIds) {
+      const party = await partyRepository.findById(partyId);
+      if (!party || party.status !== PARTY_STATUS.ACTIVE) {
+        throw conflict(
+          'RUNOFF_PARTY_INACTIVE',
+          'O partido de um dos classificados ao 2º turno está inativo — reative-o antes de criar a sessão.',
+        );
+      }
+    }
+
     const newSession = await withUniqueSessionCode((publicToken) =>
       sessionRepository.create({
-        name: `${session.name} - 2º turno`,
+        name: nextRoundName(session.name),
         year: session.year,
         positions: runoffPositions.map((p) => p.code),
         userId,
         publicToken,
         status: SESSION_STATUS.DRAFT,
+        runoffOfSessionId: session.id,
         createdAt: new Date().toISOString(),
         startedAt: null,
         finishedAt: null,
@@ -186,7 +238,7 @@ export const resultService = {
 
     for (const position of runoffPositions) {
       for (const candidateId of position.runoff.candidateIds) {
-        const original = candidates.find((c) => c.id === candidateId);
+        const original = originalsById.get(candidateId);
         await candidateRepository.create({
           sessionId: newSession.id,
           partyId: original.partyId,
