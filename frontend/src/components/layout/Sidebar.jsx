@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LineChart,
   MessageSquare,
+  Package,
   ShieldAlert,
   ShieldCheck,
   Store,
@@ -67,12 +68,14 @@ const NAV_GROUPS = [
 
 // Só aparece pra ADMIN_EMAIL (ver backend/src/config.js) — qualquer outra conta nem
 // sabe que essa rota existe (ver App.jsx, RequireAdmin, e user.isAdmin em useAuth).
+// Rota própria /gerenciamento* (Etapa 16.1), separada da árvore comum acima.
 const ADMIN_GROUP = {
   label: 'Administração',
   items: [
-    { label: 'Área de Gerenciamento', to: '/admin', icon: ShieldAlert },
-    { label: 'Analytics', to: '/admin/analytics', icon: LineChart },
-    { label: 'Feedback', to: '/admin/feedback', icon: MessageSquare },
+    { label: 'Área de Gerenciamento', to: '/gerenciamento', icon: ShieldAlert },
+    { label: 'Produtos', to: '/gerenciamento/produtos', icon: Package },
+    { label: 'Analytics', to: '/gerenciamento/analytics', icon: LineChart },
+    { label: 'Feedback', to: '/gerenciamento/feedback', icon: MessageSquare },
   ],
 };
 
@@ -85,7 +88,7 @@ function NavItem({ label, to, icon: Icon, accent }) {
   return (
     <NavLink
       to={to}
-      end={to === '/painel' || to === '/admin'}
+      end={to === '/painel' || to === '/gerenciamento'}
       className={({ isActive }) =>
         cn(
           'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -163,7 +166,7 @@ export function MobileNav() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/painel' || to === '/admin'}
+              end={to === '/painel' || to === '/gerenciamento'}
               className={({ isActive }) =>
                 cn(
                   'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm',

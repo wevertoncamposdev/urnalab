@@ -1,13 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { useAuth } from '@/hooks/useAuth';
 import { trackEvent } from '@/lib/analytics';
-import Admin from '@/pages/Admin';
-import AdminAnalytics from '@/pages/AdminAnalytics';
-import AdminFeedback from '@/pages/AdminFeedback';
 import Audit from '@/pages/Audit';
 import Candidates from '@/pages/Candidates';
 import ConfirmEmail from '@/pages/ConfirmEmail';
@@ -31,6 +28,18 @@ import SessionDetails from '@/pages/SessionDetails';
 import Sessions from '@/pages/Sessions';
 import SessionWizard from '@/pages/SessionWizard';
 import Timeline from '@/pages/Timeline';
+
+// Área de Gerenciamento (Etapa 16.1) — lazy: o código dessas páginas nem chega a ser
+// baixado por uma conta comum, só por quem de fato navega pra /gerenciamento (e só
+// depois do gate de RequireAdmin abaixo já ter deixado passar).
+const Admin = lazy(() => import('@/pages/Admin'));
+const AdminAnalytics = lazy(() => import('@/pages/AdminAnalytics'));
+const AdminFeedback = lazy(() => import('@/pages/AdminFeedback'));
+const AdminProducts = lazy(() => import('@/pages/AdminProducts'));
+
+function AdminPageFallback() {
+  return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
+}
 
 // PAGE_VIEW a cada navegação (ver lib/analytics.js) — primeiro disparo leva o
 // document.referrer (origem de fora do app); os seguintes não, já que a navegação
@@ -109,9 +118,28 @@ export default function App() {
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
           <Route path="loja" element={<Loja />} />
           <Route path="linha-do-tempo" element={<Timeline />} />
-          <Route path="admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
-          <Route path="admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
-          <Route path="admin/feedback" element={<RequireAdmin><AdminFeedback /></RequireAdmin>} />
+        </Route>
+
+        {/* Área de Gerenciamento (Etapa 16.1): árvore de rotas própria, separada da
+            comum acima — guarda (RequireAuth + RequireAdmin) resolvida antes de
+            qualquer página admin ser montada ou seu código sequer baixado (lazy). */}
+        <Route element={<RequireAuth><RequireAdmin><AppLayout /></RequireAdmin></RequireAuth>}>
+          <Route
+            path="gerenciamento"
+            element={<Suspense fallback={<AdminPageFallback />}><Admin /></Suspense>}
+          />
+          <Route
+            path="gerenciamento/analytics"
+            element={<Suspense fallback={<AdminPageFallback />}><AdminAnalytics /></Suspense>}
+          />
+          <Route
+            path="gerenciamento/feedback"
+            element={<Suspense fallback={<AdminPageFallback />}><AdminFeedback /></Suspense>}
+          />
+          <Route
+            path="gerenciamento/produtos"
+            element={<Suspense fallback={<AdminPageFallback />}><AdminProducts /></Suspense>}
+          />
         </Route>
       </Routes>
       <AnalyticsPageViewTracker />

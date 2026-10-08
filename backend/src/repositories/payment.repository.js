@@ -1,4 +1,4 @@
-import { prisma, serializeDates } from '../database/index.js';
+import { prisma, serializeAll, serializeDates } from '../database/index.js';
 
 export const paymentRepository = {
   async create(data) {
@@ -56,5 +56,14 @@ export const paymentRepository = {
   // refund` depois usa pra travar reembolso de quem já baixou o material.
   async markDownloaded(id) {
     await prisma.payment.updateMany({ where: { id, downloadedAt: null }, data: { downloadedAt: new Date() } });
+  },
+
+  // Histórico de vendas de um produto pro admin (Etapa 16.3) — todas as cobranças,
+  // qualquer conta, sem nenhum dado de quem comprou (minimização de dados — ver
+  // adminService.listUsers pro mesmo princípio aplicado a contas).
+  async findAllByProduct(productId) {
+    return serializeAll(
+      await prisma.payment.findMany({ where: { productId }, orderBy: { createdAt: 'desc' } }),
+    );
   },
 };

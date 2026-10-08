@@ -1,11 +1,13 @@
 // Roteador mínimo: converte "/api/sessions/:id" em regex e extrai os parâmetros.
 // `public: true` marca uma rota que não exige login; `rateLimit: { windowMs, max }`
 // aplica um limite por IP (ver middleware/rate-limit.js e server.js) — toda rota
-// protegida exige login por padrão, nenhuma tem rate limit por padrão.
+// protegida exige login por padrão, nenhuma tem rate limit por padrão. `adminOnly: true`
+// (Etapa 16) exige que o e-mail do token bata com ADMIN_EMAIL (ver server.js) — rejeitado
+// ali mesmo, antes do handler/controller/service rodarem, sem nenhuma consulta ao banco.
 export class Router {
   #routes = [];
 
-  add(method, pattern, handler, { public: isPublic = false, rateLimit = null } = {}) {
+  add(method, pattern, handler, { public: isPublic = false, rateLimit = null, adminOnly = false } = {}) {
     const keys = [];
     const source = pattern.replace(/:([A-Za-z]+)/g, (_, key) => {
       keys.push(key);
@@ -18,6 +20,7 @@ export class Router {
       handler,
       public: isPublic,
       rateLimit,
+      adminOnly,
     });
   }
 
@@ -36,7 +39,13 @@ export class Router {
       route.keys.forEach((key, i) => {
         params[key] = decodeURIComponent(found[i + 1]);
       });
-      return { handler: route.handler, params, public: route.public, rateLimit: route.rateLimit };
+      return {
+        handler: route.handler,
+        params,
+        public: route.public,
+        rateLimit: route.rateLimit,
+        adminOnly: route.adminOnly,
+      };
     }
     return null;
   }

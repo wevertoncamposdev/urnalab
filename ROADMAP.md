@@ -30,24 +30,6 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
   alcançável (o webhook não funciona com `localhost`) e conferir que o webhook aprova o
   pagamento e libera o PDF de verdade.
 
-### Etapa 16 — Área de Gerenciamento: rota própria e gestão de produtos
-
-Depende do model `Product` (Etapa 15, concluída — ver `CHANGELOG.md`) existir pra ter o que
-gerenciar; a rota própria (16.1) pode ser feita antes, independente do resto. Hoje o único jeito
-de cadastrar um produto novo (ex. o ebook de verdade, substituindo o placeholder do seed de
-desenvolvimento) é direto no banco — essa Etapa é o que resolve isso de vez.
-
-- [ ] 16.1 — Mover a Área de Gerenciamento pra uma rota própria, separada da árvore de rotas comum
-  do usuário (hoje é `/admin*` dentro do mesmo app, com a checagem de `ADMIN_EMAIL` feita dentro de
-  `admin.service.js` a cada chamada) — objetivo é reduzir a superfície de acesso e evitar que
-  qualquer requisição de cliente comum passe perto do código de autorização admin.
-- [ ] 16.2 — CRUD de `Product` (Etapa 15) pelo admin: criar/editar preço, nome, descrição, ativar
-  ou desativar um produto.
-- [ ] 16.3 — Histórico de vendas por produto (quantidade, receita, status de cada pagamento) —
-  reaproveita o `Payment` generalizado (Etapa 15).
-- [ ] 16.4 — Manter e reorganizar o que já existe hoje (`overview`, `users`, `analytics/funnel`,
-  `feedback`) dentro dessa área revisada, sem perder nenhuma funcionalidade atual.
-
 ---
 
 ## Ideias futuras

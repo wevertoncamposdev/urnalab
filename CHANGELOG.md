@@ -12,6 +12,25 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Área de Gerenciamento: rota própria e gestão de produtos (Etapa 16)**: a Área de Gerenciamento
+  saiu de `/admin*` (dentro da árvore de rotas comum do usuário) para `/gerenciamento*`, numa árvore
+  de rotas própria no React Router (`App.jsx`), com as páginas (`Admin`, `AdminAnalytics`,
+  `AdminFeedback`, nova `AdminProducts`) carregadas via `React.lazy` — o código delas não é mais
+  baixado por uma conta comum, só por quem de fato navega pra lá e já passou pelo guard
+  (`RequireAuth` + `RequireAdmin`). No backend, a autorização admin deixou de ser checada dentro de
+  cada método de `admin.service.js` (uma consulta ao banco por chamada) e passou pro roteador: toda
+  rota `/api/admin/*` agora tem `adminOnly: true` (`utils/router.js`), verificado em `server.js`
+  antes de qualquer handler/controller/service rodar, comparando o e-mail já carimbado no token
+  (`auth.service.js issueToken`, novo claim `email`) contra `ADMIN_EMAIL` — sem nenhuma consulta ao
+  banco. **Importante**: tokens emitidos antes deste deploy não têm esse claim — a conta admin
+  precisa logar de novo uma vez pra o acesso à Área de Gerenciamento voltar a funcionar. Nova
+  gestão de produtos (16.2/16.3, tela `/gerenciamento/produtos`): CRUD de nome/descrição/preço/
+  ativo de qualquer `Product` (`POST`/`PUT /api/admin/products`) e histórico de vendas por produto
+  (`GET /api/admin/products/:id/sales`, quantidade e receita aprovadas + lista de cobranças, sem
+  nenhum dado de quem comprou). Upload do arquivo de um produto `EBOOK` ainda não existe nessa
+  tela — o corpo da requisição tem um teto de 1MB (`utils/http.js`) incompatível com um ebook de
+  verdade, e o roteador não lê `multipart/form-data`; produtos `EBOOK` continuam cadastrados via
+  `scripts/seed.js`/banco direto até isso existir.
 - **Produtos genéricos e loja (Etapa 15)**: o sistema de cobrança deixou de ser exclusivo da
   exportação de PDF — novo model `Product` (`prisma/schema.prisma`) é o catálogo de qualquer coisa
   vendável, com preço editável em banco (não mais via env var: `SESSION_RESULTS_PRICE_CENTS` saiu

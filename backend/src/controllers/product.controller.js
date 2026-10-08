@@ -34,4 +34,22 @@ export const productController = {
 
     sendPdfDownload(res, buffer, `${slug}.pdf`);
   },
+
+  // Área de Gerenciamento (Etapa 16.2/16.3) — rotas registradas com `adminOnly: true`
+  // em admin.routes.js.
+  async adminList({ res, userId }) {
+    sendSuccess(res, await productService.listAll(userId));
+  },
+
+  async adminCreate({ res, userId, body }) {
+    sendSuccess(res, await productService.create(body, userId), 201);
+  },
+
+  async adminUpdate({ res, userId, params, body }) {
+    sendSuccess(res, await productService.update(params.id, body, userId));
+  },
+
+  async adminSales({ res, userId, params }) {
+    sendSuccess(res, await productService.salesFor(params.id, userId));
+  },
 };

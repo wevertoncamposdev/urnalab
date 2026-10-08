@@ -46,6 +46,18 @@ async function handleRequest(req, res) {
         return sendError(res, 401, 'UNAUTHORIZED', 'Faça login para continuar.');
       }
       userId = payload.sub;
+
+      // Gate da Área de Gerenciamento (Etapa 16) direto aqui, antes de qualquer
+      // handler/controller/service rodar — só compara o e-mail já carimbado no token
+      // (ver auth.service.js issueToken) contra ADMIN_EMAIL, sem nenhuma consulta ao
+      // banco. Mesmo código/mensagem que admin.service.js sempre usou, pra não mudar o
+      // que o frontend recebe.
+      if (match.adminOnly) {
+        const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : null;
+        if (!config.adminEmail || email !== config.adminEmail) {
+          return sendError(res, 403, 'ADMIN_ONLY', 'Acesso restrito à administração do sistema.');
+        }
+      }
     }
 
     const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);

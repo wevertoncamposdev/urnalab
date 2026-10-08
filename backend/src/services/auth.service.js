@@ -83,8 +83,11 @@ async function sanitize(user) {
   };
 }
 
+// `email` no token (Etapa 16) é o que permite o gate de admin em server.js rodar sem
+// nenhuma consulta ao banco — seguro porque o app não tem troca de e-mail (só
+// cadastro/login), então o claim nunca fica desatualizado em relação à conta.
 function issueToken(user) {
-  return signJwt({ sub: user.id });
+  return signJwt({ sub: user.id, email: user.email });
 }
 
 // Guardado como string (zero à esquerda, mesmo motivo do número de candidato — ver

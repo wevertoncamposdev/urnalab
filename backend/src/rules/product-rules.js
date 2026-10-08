@@ -12,3 +12,9 @@ export const PRODUCT_KIND = Object.freeze({
 // ambiente desde a Etapa 12. Referenciado direto por id em vez de consultado por slug
 // a cada chamada (payment.service.js getStatus/isPaid/createCheckout/markDownloaded).
 export const SESSION_EXPORT_PRODUCT_ID = 'session-export';
+
+// Validação do CRUD de produto pelo admin (Etapa 16.2, ver product.service.js).
+export const PRODUCT_LIMITS = Object.freeze({
+  nameMaxLength: 120,
+  descriptionMaxLength: 500,
+});
