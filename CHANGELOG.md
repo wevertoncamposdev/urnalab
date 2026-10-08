@@ -10,6 +10,27 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Added
+
+- **Produtos genéricos e loja (Etapa 15)**: o sistema de cobrança deixou de ser exclusivo da
+  exportação de PDF — novo model `Product` (`prisma/schema.prisma`) é o catálogo de qualquer coisa
+  vendável, com preço editável em banco (não mais via env var: `SESSION_RESULTS_PRICE_CENTS` saiu
+  de `config.js`). `Payment` passou a referenciar um `productId` (antes só `sessionId`); o campo
+  `kind` do produto decide como o acesso é concedido depois de aprovado
+  (`payment.service.js scopeForProduct`): `SESSION_EXPORT` continua exigindo uma sessão finalizada
+  da própria conta (`sessionId` obrigatório) — é o que a exportação de PDF sempre foi, migrado pra
+  esse model pela própria migração (`20261007234700_add_products`, que já cria o produto
+  `session-export` com R$ 9,90); `EBOOK` libera direto pro `userId`, sem sessão, com um arquivo
+  fixo (`Product.fileKey`, `storage/product-file-storage.js`). As rotas e o front da exportação de
+  PDF (`/api/sessions/:id/payment`, tela de Resultados) não mudaram por fora — o motor novo foi só
+  por dentro. Nova loja (`GET /api/products`, `GET/POST /api/products/:id/payment`,
+  `GET /api/products/:id/download`, página `/loja`) vende o primeiro produto "por conta" de
+  verdade: um ebook, com CTA a partir de `/sistema-eleitoral`. A área financeira (`/financeiro`,
+  Etapa 14) agora mostra o produto de cada cobrança, não só a sessão. O produto ebook real
+  (conteúdo, upload) ainda depende da Etapa 16 (CRUD de produto pelo admin) para ser cadastrado em
+  produção — hoje só existe um exemplo placeholder, criado pelo seed de desenvolvimento
+  (`npm run seed`, `scripts/seed.js`), pra validar o fluxo de compra/download ponta a ponta.
+
 ### Security
 
 - **Cobrança pela exportação em PDF — reforço de segurança (Etapa 13)**: levantado numa revisão de

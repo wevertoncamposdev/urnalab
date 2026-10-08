@@ -252,16 +252,47 @@ model Feedback {
   @@map("feedbacks")
 }
 
-// Cobrança pela exportação em PDF do resultado (Etapa 12) — modelo "por sessão": uma
-// cobrança aprovada libera o PDF daquela sessão pra sempre, quantas vezes quiser baixar
-// (ver payment.service.js). Sem sessionId @unique de propósito: uma tentativa rejeitada
-// ou pendente não pode travar uma nova tentativa de pagamento pra mesma sessão.
+// Catálogo de produtos vendáveis (Etapa 15) — cada cobrança (`Payment`) é sempre de um
+// `Product`. `kind` decide como o acesso é concedido depois de aprovado (ver
+// payment.service.js scopeForProduct): "SESSION_EXPORT" exige `sessionId` (acesso ligado
+// à sessão, qualquer PDF gerado na hora); "EBOOK" é "por conta" — libera pro `userId`
+// direto, sem sessão envolvida, e tem um arquivo fixo (`fileKey`, ver
+// storage/product-file-storage.js). O produto `session-export` (slug fixo) é criado pela
+// própria migração — é catálogo do sistema, não dado de usuário.
+model Product {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String
+  kind        String
+  priceCents  Int
+  active      Boolean  @default(true)
+  // Só produtos "EBOOK" têm arquivo fixo — "SESSION_EXPORT" gera o PDF na hora
+  // (ver reports/results-pdf.js), não tem nada pra guardar aqui.
+  fileKey     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments Payment[]
+
+  @@map("products")
+}
+
+// Cobrança por um produto (Etapa 12 criou só pra exportação de PDF; Etapa 15
+// generalizou pra qualquer `Product`) — uma cobrança aprovada libera o produto pra
+// sempre (ver payment.service.js). Sem índice único em (productId, sessionId)/
+// (productId, userId) de propósito: uma tentativa rejeitada ou pendente não pode travar
+// uma nova tentativa de pagamento pro mesmo produto.
 model Payment {
   id            String    @id @default(uuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId     String
-  session       Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  // Só preenchido pra produtos "por sessão" (ver Product.kind) — "por conta" (ebook)
+  // fica null, o acesso é só pelo userId.
+  sessionId     String?
+  session       Session?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   amountCents   Int
   status        String    @default("PENDING")
   // Id da preference criada no Mercado Pago (Checkout Pro) — usado pra montar o
@@ -273,12 +304,13 @@ model Payment {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   paidAt        DateTime?
-  // Primeiro download do PDF depois de aprovado (Etapa 14) — trava de reembolso: uma
-  // vez preenchido, `payment.service.js refund` não deixa mais reembolsar essa cobrança
-  // (senão o usuário ficaria com o PDF e o dinheiro de volta).
+  // Primeiro download/acesso ao produto depois de aprovado (Etapa 14) — trava de
+  // reembolso: uma vez preenchido, `payment.service.js refund` não deixa mais
+  // reembolsar essa cobrança (senão a conta fica com o produto e o dinheiro de volta).
   downloadedAt  DateTime?
 
   @@index([userId])
   @@index([sessionId])
+  @@index([productId])
   @@map("payments")
 }

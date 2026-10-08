@@ -3,4 +3,5 @@ dist
 .env
 *.tmp
 backend/data/photos
+backend/data/products
 backend/data/*.json

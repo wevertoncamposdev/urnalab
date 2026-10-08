@@ -86,7 +86,4 @@ export const config = {
   // Mercado Pago notificar pagamentos (webhook), já que FRONTEND_URL é a origem do front,
   // não a do backend. Mesmo status de opcional: só exigida ao criar uma cobrança.
   backendUrl: process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/+$/, '') : null,
-  // Preço (em centavos) de liberar o PDF de uma sessão finalizada. Uma cobrança aprovada
-  // libera download ilimitado daquela sessão (ver docs/ROADMAP.md, Etapa 12).
-  sessionResultsPriceCents: Number(process.env.SESSION_RESULTS_PRICE_CENTS) || 990,
 };

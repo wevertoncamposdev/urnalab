@@ -11,6 +11,7 @@ import {
   MessageSquare,
   ShieldAlert,
   ShieldCheck,
+  Store,
   Wallet,
   Wand2,
 } from 'lucide-react';
@@ -59,6 +60,7 @@ const NAV_GROUPS = [
     label: 'Conteúdo',
     items: [
       { label: 'Sistema eleitoral', to: '/sistema-eleitoral', icon: BookOpen },
+      { label: 'Loja', to: '/loja', icon: Store },
     ],
   },
 ];

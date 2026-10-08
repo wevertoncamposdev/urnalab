@@ -30,25 +30,12 @@ Status possíveis: `planejado` (ainda não começou) · `em andamento` · `concl
   alcançável (o webhook não funciona com `localhost`) e conferir que o webhook aprova o
   pagamento e libera o PDF de verdade.
 
-### Etapa 15 — Produtos genéricos (reaproveitar o sistema de pagamento)
-
-- [ ] 15.1 — Model `Product` (nome, descrição, tipo — ex. `SESSION_EXPORT`, `EBOOK` —, preço em
-  centavos, ativo/inativo), gerenciado pelo admin (ver Etapa 16), substituindo a env var
-  `SESSION_RESULTS_PRICE_CENTS` fixa por um preço editável em banco. A exportação de PDF por
-  sessão se torna o primeiro `Product` (migração de dado único, sem precisar recriar nada).
-- [ ] 15.2 — Generalizar `Payment` pra referenciar um `productId` (hoje é só sessão): produtos
-  "por sessão" continuam exigindo `sessionId`; produtos "por conta" (ex. ebook) liberam acesso
-  direto pro `userId`, sem sessão envolvida. Avaliar se isso é um campo opcional em `Payment` ou um
-  novo model de concessão de acesso (`Purchase`/`Entitlement`) por cima do `Payment` existente.
-- [ ] 15.3 — Primeiro produto novo de verdade: materiais didáticos (ebooks/planos de aula de
-  cidadania usando o UrnaLab) — armazenamento do arquivo (mesmo padrão de `photo-storage.js`),
-  endpoint de download protegido pelo mesmo tipo de gate que hoje existe pro PDF (`isPaid`), e um
-  CTA de loja a partir da página `/sistema-eleitoral` (conteúdo educacional já existente).
-
 ### Etapa 16 — Área de Gerenciamento: rota própria e gestão de produtos
 
-Depende da Etapa 15 existir pra ter o que gerenciar (produtos/vendas); a rota própria (16.1) pode
-ser feita antes, independente do resto.
+Depende do model `Product` (Etapa 15, concluída — ver `CHANGELOG.md`) existir pra ter o que
+gerenciar; a rota própria (16.1) pode ser feita antes, independente do resto. Hoje o único jeito
+de cadastrar um produto novo (ex. o ebook de verdade, substituindo o placeholder do seed de
+desenvolvimento) é direto no banco — essa Etapa é o que resolve isso de vez.
 
 - [ ] 16.1 — Mover a Área de Gerenciamento pra uma rota própria, separada da árvore de rotas comum
   do usuário (hoje é `/admin*` dentro do mesmo app, com a checagem de `ADMIN_EMAIL` feita dentro de

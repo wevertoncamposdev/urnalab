@@ -16,6 +16,7 @@ import ElectoralSystem from '@/pages/ElectoralSystem';
 import Financeiro from '@/pages/Financeiro';
 import ForgotPassword from '@/pages/ForgotPassword';
 import Landing from '@/pages/Landing';
+import Loja from '@/pages/Loja';
 import Login from '@/pages/Login';
 import Parties from '@/pages/Parties';
 import People from '@/pages/People';
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="financeiro" element={<Financeiro />} />
           <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
+          <Route path="loja" element={<Loja />} />
           <Route path="linha-do-tempo" element={<Timeline />} />
           <Route path="admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
           <Route path="admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />

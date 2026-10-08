@@ -208,6 +208,15 @@ export const api = {
     refund: (id) => request(`/api/payments/${id}/refund`, { method: 'POST' }),
   },
 
+  // Loja de produtos "por conta" (Etapa 15.3) — hoje só ebooks; a exportação de PDF por
+  // sessão continua em api.payments acima.
+  products: {
+    list: () => request('/api/products'),
+    getStatus: (id) => request(`/api/products/${id}/payment`),
+    createCheckout: (id) => request(`/api/products/${id}/payment`, { method: 'POST' }),
+    download: (id) => requestFile(`/api/products/${id}/download`),
+  },
+
   audit: {
     get: (sessionId) => request(`/api/sessions/${sessionId}/audit`),
   },

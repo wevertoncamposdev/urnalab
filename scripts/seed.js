@@ -10,6 +10,9 @@ import { partyService } from '../backend/src/services/party.service.js';
 import { personService } from '../backend/src/services/person.service.js';
 import { candidateService } from '../backend/src/services/candidate.service.js';
 import { voteService } from '../backend/src/services/vote.service.js';
+import { productRepository } from '../backend/src/repositories/product.repository.js';
+import { productFileStorage } from '../backend/src/storage/product-file-storage.js';
+import { buildPlaceholderPdf } from '../backend/src/reports/placeholder-pdf.js';
 
 // Conta fixa só para o seed: cada conta tem seus próprios dados agora (multiusuário),
 // então o seed precisa de um "dono" — reaproveita a mesma conta a cada execução.
@@ -84,6 +87,29 @@ async function clearData() {
   await fs.rm(path.join(config.dataPath, 'photos'), { recursive: true, force: true });
 }
 
+// Idempotente (upsert por slug) — roda em todo `npm run seed`, não só na primeira vez.
+// Só pra ambiente de desenvolvimento: a Etapa 16 (CRUD de produto pelo admin) é o jeito
+// de verdade de cadastrar isso em produção. O PDF em si é só placeholder, pra testar o
+// fluxo de compra/download ponta a ponta — o ebook de verdade (texto, plano de aula) é
+// decisão de conteúdo da própria UrnaLab, fora do escopo deste script.
+async function ensureDemoEbookProduct() {
+  const buffer = await buildPlaceholderPdf(
+    'UrnaLab — Material de apoio (exemplo)',
+    'Este é um arquivo de demonstração gerado pelo seed de desenvolvimento (scripts/seed.js) — '
+    + 'substitua pelo conteúdo real do material didático (plano de aula de cidadania usando o '
+    + 'UrnaLab) antes de vender de verdade.',
+  );
+  const fileKey = await productFileStorage.save(buffer, 'pdf');
+  return productRepository.upsertBySlug('ebook-cidadania-demo', {
+    name: 'Plano de aula: Cidadania com o UrnaLab (exemplo)',
+    description: 'Material de demonstração — em breve, o plano de aula de verdade.',
+    kind: 'EBOOK',
+    priceCents: 1990,
+    active: true,
+    fileKey,
+  });
+}
+
 async function createParties(userId) {
   const partiesByAcronym = new Map();
   for (const data of PARTIES) {
@@ -142,6 +168,7 @@ async function main() {
 
   await clearData();
   const user = await ensureSeedUser();
+  const ebookProduct = await ensureDemoEbookProduct();
   const partiesByAcronym = await createParties(user.id);
 
   const session = await sessionService.create(
@@ -167,6 +194,7 @@ async function main() {
   console.log(`Candidatos criados: ${Object.values(CANDIDATES_BY_POSITION).flat().length}`);
   console.log(`Votos simulados: ${votesCast}`);
   console.log(`Sessão finalizada: ${finish ? 'sim' : 'não'}`);
+  console.log(`Produto ebook de demonstração: "${ebookProduct.name}" (${ebookProduct.id})`);
 }
 
 main().catch((error) => {

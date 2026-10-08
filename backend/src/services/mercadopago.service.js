@@ -109,8 +109,11 @@ export const mercadoPagoService = {
 
   // Cria uma "preference" (Checkout Pro) pra uma cobrança avulsa. `externalReference`
   // é o id do nosso Payment — é por ele que o webhook (ver payment.service.js) liga o
-  // pagamento aprovado de volta à sessão certa.
-  async createPreference({ paymentId, sessionId, title, amountCents, payerEmail }) {
+  // pagamento aprovado de volta ao produto/sessão certos. `returnPath` (Etapa 15) é pra
+  // onde a volta do Checkout Pro cai — já com `?sessionId=...` ou `?productId=...`,
+  // conforme o escopo do produto (ver payment.service.js createCheckoutFor) — só
+  // acrescenta `&payment=success|pending|failure`.
+  async createPreference({ paymentId, title, amountCents, payerEmail, returnPath }) {
     requireBackendUrl();
 
     const payload = await callMercadoPago('/checkout/preferences', {
@@ -128,9 +131,9 @@ export const mercadoPagoService = {
         external_reference: paymentId,
         notification_url: `${config.backendUrl}/api/payments/webhook`,
         back_urls: {
-          success: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=success`,
-          pending: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=pending`,
-          failure: `${config.frontendUrl}/resultados?sessionId=${sessionId}&payment=failure`,
+          success: `${config.frontendUrl}${returnPath}&payment=success`,
+          pending: `${config.frontendUrl}${returnPath}&payment=pending`,
+          failure: `${config.frontendUrl}${returnPath}&payment=failure`,
         },
         ...(isLoopback(config.frontendUrl) ? {} : { auto_return: 'approved' }),
       },

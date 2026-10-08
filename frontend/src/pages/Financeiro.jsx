@@ -57,14 +57,14 @@ export default function Financeiro() {
         <EmptyState
           icon={Wallet}
           title="Nenhuma cobrança ainda"
-          description="Cobranças pela exportação de resultados aparecem aqui."
+          description="Cobranças pela exportação de resultados e por produtos da loja aparecem aqui."
         />
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Sessão</TableHead>
+                <TableHead>Produto</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
@@ -79,7 +79,9 @@ export default function Financeiro() {
                 return (
                   <TableRow key={payment.id}>
                     <TableCell>
-                      {payment.session ? `${payment.session.name} (${payment.session.year})` : '—'}
+                      {payment.session
+                        ? `${payment.product?.name ?? 'Exportação de PDF'} — ${payment.session.name} (${payment.session.year})`
+                        : payment.product?.name ?? '—'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDateTime(payment.createdAt)}</TableCell>
                     <TableCell>{formatCents(payment.amountCents)}</TableCell>
@@ -109,8 +111,8 @@ export default function Financeiro() {
         description={
           refunding
             ? `O valor de ${formatCents(refunding.amountCents)} volta pela mesma forma de pagamento usada ` +
-              `no Mercado Pago, e o PDF dessa sessão deixa de ficar liberado. Só é possível reembolsar antes ` +
-              `do primeiro download.`
+              `no Mercado Pago, e o produto deixa de ficar liberado. Só é possível reembolsar antes do ` +
+              `primeiro download.`
             : ''
         }
         confirmLabel={submittingRefund ? 'Enviando...' : 'Reembolsar'}
