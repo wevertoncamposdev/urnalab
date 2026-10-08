@@ -270,6 +270,10 @@ model Product {
   // Só produtos "EBOOK" têm arquivo fixo — "SESSION_EXPORT" gera o PDF na hora
   // (ver reports/results-pdf.js), não tem nada pra guardar aqui.
   fileKey     String?
+  // Capa pública (Etapa 16, upload pelo admin) — ao contrário de `fileKey`, serve só pra
+  // pré-visualização na loja antes de comprar; guardada como foto comum
+  // (`/photos/...`, ver storage/photo-storage.js), servida sem gate nenhum.
+  coverImage  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

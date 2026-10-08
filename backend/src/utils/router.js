@@ -4,10 +4,12 @@
 // protegida exige login por padrão, nenhuma tem rate limit por padrão. `adminOnly: true`
 // (Etapa 16) exige que o e-mail do token bata com ADMIN_EMAIL (ver server.js) — rejeitado
 // ali mesmo, antes do handler/controller/service rodarem, sem nenhuma consulta ao banco.
+// `maxBodyBytes` sobrepõe o teto padrão do corpo da requisição (ver utils/http.js) — só
+// rotas com upload de arquivo maior (ex. produtos com capa/ebook) precisam disso.
 export class Router {
   #routes = [];
 
-  add(method, pattern, handler, { public: isPublic = false, rateLimit = null, adminOnly = false } = {}) {
+  add(method, pattern, handler, { public: isPublic = false, rateLimit = null, adminOnly = false, maxBodyBytes = null } = {}) {
     const keys = [];
     const source = pattern.replace(/:([A-Za-z]+)/g, (_, key) => {
       keys.push(key);
@@ -21,6 +23,7 @@ export class Router {
       public: isPublic,
       rateLimit,
       adminOnly,
+      maxBodyBytes,
     });
   }
 
@@ -45,6 +48,7 @@ export class Router {
         public: route.public,
         rateLimit: route.rateLimit,
         adminOnly: route.adminOnly,
+        maxBodyBytes: route.maxBodyBytes,
       };
     }
     return null;

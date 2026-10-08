@@ -1,5 +1,6 @@
 import { adminController } from '../controllers/admin.controller.js';
 import { productController } from '../controllers/product.controller.js';
+import { PRODUCT_FILE_LIMITS } from '../rules/product-rules.js';
 
 // Autenticação exige login (nenhuma rota aqui é `public`); a autorização admin em si
 // (ADMIN_EMAIL) é checada no roteador/server.js (`adminOnly: true`, Etapa 16) — antes de
@@ -15,8 +16,16 @@ export function registerAdminRoutes(router) {
 
   // Gestão de produtos (Etapa 16.2/16.3) — catálogo completo (inclusive inativos) e
   // histórico de vendas; o catálogo público fica em product.routes.js (/api/products).
+  // create/update aceitam a capa e o arquivo do ebook em base64 no corpo — teto bem
+  // maior que o padrão de 1MB (ver PRODUCT_FILE_LIMITS, utils/http.js).
   router.get('/api/admin/products', productController.adminList, { adminOnly: true });
-  router.post('/api/admin/products', productController.adminCreate, { adminOnly: true });
-  router.put('/api/admin/products/:id', productController.adminUpdate, { adminOnly: true });
+  router.post('/api/admin/products', productController.adminCreate, {
+    adminOnly: true,
+    maxBodyBytes: PRODUCT_FILE_LIMITS.requestBodyMaxBytes,
+  });
+  router.put('/api/admin/products/:id', productController.adminUpdate, {
+    adminOnly: true,
+    maxBodyBytes: PRODUCT_FILE_LIMITS.requestBodyMaxBytes,
+  });
   router.get('/api/admin/products/:id/sales', productController.adminSales, { adminOnly: true });
 }

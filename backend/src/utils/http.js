@@ -27,13 +27,16 @@ export function sendPdfDownload(res, buffer, fileName) {
   res.end(buffer);
 }
 
-export async function readJsonBody(req) {
+// `maxBytes` (Etapa 16, ver utils/router.js `maxBodyBytes`) sobrepõe o teto padrão por
+// rota — só rotas com upload de arquivo maior (ex. admin.routes.js produtos) pedem um
+// valor maior explicitamente; todo o resto usa MAX_BODY_BYTES.
+export async function readJsonBody(req, maxBytes = MAX_BODY_BYTES) {
   const chunks = [];
   let size = 0;
 
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) {
+    if (size > maxBytes) {
       throw badRequest('PAYLOAD_TOO_LARGE', 'O corpo da requisição é grande demais.');
     }
     chunks.push(chunk);

@@ -78,6 +78,13 @@ andamento" acima como uma Etapa nova.
 
 ### Segurança e integridade
 
+- **Pagamento com valor divergente fica travado sem alerta**: levantado numa revisão de código da
+  Etapa 13. Se `mpPayment.transaction_amount` divergir do `amountCents` cobrado,
+  `payment.service.js confirmPayment` recusa aprovar (correto) mas o `Payment` fica `PENDING` pra
+  sempre, só com um `console.error` — sem sinal pro admin, sem caminho de recuperação além de
+  mexer no banco direto. Não é explorável hoje (o preço é definido só pelo servidor), mas merece
+  algum tipo de alerta/visibilidade quando existir infraestrutura pra isso (ver "Logs
+  estruturados"/"Métricas básicas" em Operação, abaixo).
 - **Content-Security-Policy**: headers de baixo risco (`X-Content-Type-Options`,
   `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`) já estão em
   `frontend/nginx.conf.template` e `backend/src/middleware/security-headers.js`. CSP ficou de

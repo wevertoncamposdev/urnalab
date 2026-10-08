@@ -12,6 +12,21 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Upload de arquivo e capa de produto pela Área de Gerenciamento**: fechava dois itens do
+  `ROADMAP.md` levantados na revisão da Etapa 16. (1) `/gerenciamento/produtos` agora faz upload de
+  verdade do PDF de um produto `EBOOK` (campo `file`, data URI, decodificado e gravado por
+  `storage/product-file-storage.js`) — antes só dava pra cadastrar via `scripts/seed.js`/banco
+  direto. Corpo da requisição de criar/editar produto ganhou um teto maior
+  (`PRODUCT_FILE_LIMITS.requestBodyMaxBytes`, 21MB) só nessas duas rotas — `maxBodyBytes` virou uma
+  opção por rota no roteador (`utils/router.js`/`utils/http.js readJsonBody`), em vez de aumentar o
+  teto padrão de 1MB pra toda a API. Arquivo do ebook tem seu próprio teto, bem mais generoso
+  (`PRODUCT_FILE_LIMITS.ebookMaxBytes`, 15MB) — bem acima do antigo limite de 1MB que tornava
+  qualquer ebook de verdade inviável. (2) Novo campo `Product.coverImage` — uma capa pública
+  (reaproveitando `photo-storage.js`, mesmo armazenamento das fotos de candidato, servida sem gate
+  nenhum) que aparece na loja (`/loja`) como pré-visualização do produto antes da compra; o arquivo
+  pago em si continua só liberado depois do pagamento aprovado. Com isso, a conta admin já pode
+  cadastrar o material didático de verdade (substituindo o placeholder do seed) quando tiver o
+  conteúdo pronto — decisão de conteúdo, não mais limitação técnica.
 - **Área de Gerenciamento: rota própria e gestão de produtos (Etapa 16)**: a Área de Gerenciamento
   saiu de `/admin*` (dentro da árvore de rotas comum do usuário) para `/gerenciamento*`, numa árvore
   de rotas própria no React Router (`App.jsx`), com as páginas (`Admin`, `AdminAnalytics`,

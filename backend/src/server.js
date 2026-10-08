@@ -61,7 +61,7 @@ async function handleRequest(req, res) {
     }
 
     const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
-    const body = hasBody ? await readJsonBody(req) : {};
+    const body = hasBody ? await readJsonBody(req, match.maxBodyBytes ?? undefined) : {};
 
     await match.handler({
       req,

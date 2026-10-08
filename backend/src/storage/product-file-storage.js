@@ -9,9 +9,21 @@ import { config } from '../config.js';
 // isPaid). Ficam em backend/data/products, fora do alcance do servidor de fotos.
 const productFileDir = () => path.join(config.dataPath, 'products');
 
+// Hoje só PDF (é o formato de "ebook"/plano de aula) — mesmo espírito de
+// photo-storage.js parsePhotoDataUri, mas pra um documento em vez de imagem.
+const DATA_URI_PATTERN = /^data:(application\/pdf);base64,([A-Za-z0-9+/=]+)$/;
+const EXTENSION_BY_MIME = { 'application/pdf': 'pdf' };
+
+// Reconhece um arquivo enviado pelo admin (data URI) ainda não salvo em disco — usado
+// por product.service.js antes de chamar save() (ver normalizeFile).
+export function parseProductFileDataUri(value) {
+  const match = typeof value === 'string' ? DATA_URI_PATTERN.exec(value) : null;
+  if (!match) return null;
+  const [, mime, base64] = match;
+  return { extension: EXTENSION_BY_MIME[mime], buffer: Buffer.from(base64, 'base64') };
+}
+
 export const productFileStorage = {
-  // Usado hoje só pelo seed de desenvolvimento (scripts/seed.js) — a Etapa 16 (upload
-  // pelo admin) vai chamar isso de um controller de verdade.
   async save(buffer, extension) {
     const fileKey = `${randomUUID()}.${extension}`;
     await fs.mkdir(productFileDir(), { recursive: true });
@@ -21,5 +33,12 @@ export const productFileStorage = {
 
   read(fileKey) {
     return fs.readFile(path.join(productFileDir(), fileKey));
+  },
+
+  // Chamado quando o admin substitui o arquivo de um produto (ver product.service.js
+  // update) — sem efeito se `fileKey` for nulo/indefinido, então é seguro chamar sempre.
+  async remove(fileKey) {
+    if (!fileKey) return;
+    await fs.unlink(path.join(productFileDir(), fileKey)).catch(() => {});
   },
 };
