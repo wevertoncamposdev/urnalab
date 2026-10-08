@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
 import { formatCents } from '@/lib/format';
 import { saveBlobAsFile } from '@/lib/download';
-import { api } from '@/services/api';
+import { api, resolvePhotoUrl } from '@/services/api';
 
 // Loja de materiais didáticos (Etapa 15.3) — produtos "por conta" (hoje só ebooks),
 // comprados fora do contexto de uma sessão específica. A exportação de PDF por sessão
@@ -94,7 +94,18 @@ export default function Loja() {
             const status = statusState.data?.[product.id];
             const paid = status?.paid;
             return (
-              <Card key={product.id}>
+              <Card key={product.id} className="overflow-hidden">
+                {product.coverImage ? (
+                  <img
+                    src={resolvePhotoUrl(product.coverImage)}
+                    alt=""
+                    className="aspect-[3/2] w-full border-b object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-[3/2] w-full items-center justify-center border-b bg-muted/30 text-muted-foreground">
+                    <BookOpen className="size-8" />
+                  </div>
+                )}
                 <CardHeader>
                   <CardTitle className="text-lg">{product.name}</CardTitle>
                 </CardHeader>
