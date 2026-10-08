@@ -40,16 +40,6 @@ andamento" acima como uma Etapa nova.
 
 ### Produto e conteúdo educacional
 
-- **Dois turnos — casos de borda não cobertos**: a criação de sessão de 2º turno
-  (`resultService.createRunoffSession`) já funciona pro caso comum (dois candidatos mais votados,
-  sem empate), mas foi encontrada uma lista de lacunas numa revisão de código: (1) empate no 2º/3º
-  lugar é quebrado só por ordem alfabética, sem indicar que houve empate nem avançar mais de dois
-  candidatos; (2) nada impede criar mais de uma sessão de 2º turno pra mesma sessão original (não
-  há campo ligando o runoff à sessão-mãe, nem trava no backend); (3) o nome da sessão nova sempre
-  vira `"<nome> - 2º turno"`, então um 3º turno (teoricamente possível se o 2º turno também
-  empatar) viraria `"- 2º turno - 2º turno"`; (4) a cópia de candidato pro 2º turno usa
-  `candidateRepository.create` direto, sem passar pela validação de partido ativo que o resto do
-  código (`candidateService.create`) sempre aplica.
 - **Importação em massa de candidatos/partidos (CSV)**: hoje é tudo cadastro manual, um por um —
   pesa pra eleições com muitos candidatos (grêmio de escola grande, por exemplo). Essa
   funcionalidade será um recurso premium, cobrado por importação — o sistema de produtos genérico

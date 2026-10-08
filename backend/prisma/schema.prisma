@@ -139,12 +139,20 @@ model Session {
   createdAt   DateTime  @default(now())
   startedAt   DateTime?
   finishedAt  DateTime?
+  // Preenchido só em sessões criadas por resultService.createRunoffSession — aponta pra
+  // sessão do 1º turno que originou esta. Usado pra impedir criar mais de um 2º turno
+  // pra mesma sessão origem (ver result.service.js createRunoffSession) — uma eventual
+  // sessão de 3º turno (se o 2º turno também empatar) aponta pro 2º turno, não pro 1º.
+  runoffOfSessionId String?
+  runoffOf          Session?  @relation("SessionRunoff", fields: [runoffOfSessionId], references: [id], onDelete: SetNull)
+  runoffSessions    Session[] @relation("SessionRunoff")
 
   candidates Candidate[]
   votes      Vote[]
   payments   Payment[]
 
   @@index([userId])
+  @@index([runoffOfSessionId])
   @@map("sessions")
 }
 

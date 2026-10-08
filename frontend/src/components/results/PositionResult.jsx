@@ -54,8 +54,11 @@ export function PositionResult({ result }) {
         {runoff && (
           <Alert className="mb-3">
             <AlertDescription>
-              Ninguém alcançou maioria absoluta dos votos válidos (mais de 50%). Vai para o 2º
-              turno: <strong>{runoffCandidates.map((c) => c.name).join(' × ')}</strong>.
+              Ninguém alcançou maioria absoluta dos votos válidos (mais de 50%).
+              {runoff.tied && (
+                <> <strong>Empate</strong> no ponto de corte do 2º turno —</>
+              )}{' '}
+              Vai para o 2º turno: <strong>{runoffCandidates.map((c) => c.name).join(' × ')}</strong>.
             </AlertDescription>
           </Alert>
         )}

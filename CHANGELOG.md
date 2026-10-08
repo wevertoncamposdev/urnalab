@@ -10,6 +10,30 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ## [Não lançado]
 
+### Fixed
+
+- **2º turno — casos de borda do ROADMAP**: os 4 problemas levantados numa revisão de código
+  anterior, todos em `resultService.createRunoffSession`. (1) Empate no ponto de corte do 2º turno
+  (ex. 2º e 3º lugar com o mesmo número de votos) não era mais indicado — `tallyPosition` só
+  desempatava por ordem alfabética do nome antes de `resolveOutcome` decidir quem avança; agora
+  todo mundo empatado no ponto de corte entra junto (podendo passar de 2 candidatos), e o resultado
+  carrega `runoff.tied: true` — `PositionResult.jsx` mostra "Empate" na tela quando isso acontece.
+  (2) Nada impedia criar mais de uma sessão de 2º turno pra mesma sessão origem — novo campo
+  `Session.runoffOfSessionId` (auto-relação, migração `20261008040650_add_session_runoff_link`) liga
+  a sessão nova à sessão que a originou; `createRunoffSession` agora recusa
+  (`409 RUNOFF_ALREADY_EXISTS`) se já existir uma. (3) O nome da sessão nova sempre virava
+  `"<nome> - 2º turno"`, então um eventual 3º turno (se o 2º turno também empatar — agora possível
+  de verdade, ver item 1) ficaria `"- 2º turno - 2º turno"`; `nextRoundName` troca o sufixo de turno
+  em vez de só concatenar mais um, virando `"- 3º turno"` corretamente. (4) A cópia de candidato pro
+  2º turno usava `candidateRepository.create` direto, pulando a validação de partido ativo que
+  `candidateService.create` sempre aplica — agora os partidos de todos os classificados são
+  conferidos **antes** de criar a sessão nova (`409 RUNOFF_PARTY_INACTIVE` se algum estiver
+  inativo), evitando tanto o problema original quanto uma sessão criada pela metade.
+- **Proposta de governo não copiada pro 2º turno / sessão duplicada**: verificado e confirmado que
+  **já estava corrigido** (commit anterior a esta revisão) — testado de ponta a ponta criando um
+  empate real, gerando o 2º turno e duplicando a sessão: a proposta de cada candidato chega
+  corretamente nos dois fluxos. Nenhuma mudança de código necessária aqui.
+
 ## [0.14.0] — 2026-10-08
 
 ### Added
