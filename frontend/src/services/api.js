@@ -210,14 +210,12 @@ export const api = {
 
   candidates: {
     list: (params) => request(`/api/candidates${toQuery(params)}`),
-    create: (data) => request('/api/candidates', { method: 'POST', body: data }),
     update: (id, data) => request(`/api/candidates/${id}`, { method: 'PUT', body: data }),
     deactivate: (id) => request(`/api/candidates/${id}`, { method: 'DELETE' }),
   },
 
   people: {
     list: (params) => request(`/api/people${toQuery(params)}`),
-    create: (data) => request('/api/people', { method: 'POST', body: data }),
     update: (id, data) => request(`/api/people/${id}`, { method: 'PUT', body: data }),
     remove: (id) => request(`/api/people/${id}`, { method: 'DELETE' }),
   },

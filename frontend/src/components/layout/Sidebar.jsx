@@ -1,13 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import {
-  BarChart3,
   BookOpen,
   Briefcase,
   ClipboardList,
   Flag,
   IdCard,
   LayoutDashboard,
-  ShieldCheck,
   Store,
   Wallet,
   Wand2,
@@ -18,12 +16,14 @@ import { cn } from '@/lib/utils';
 
 // Agrupado por momento do fluxo (não por ordem alfabética ou de criação): visão geral
 // primeiro, depois o que precisa existir ANTES de uma sessão (cargos, partidos,
-// pessoas — nessa ordem de pré-requisito) terminando na própria sessão, depois o que
-// acontece no dia da votação, e por fim o conteúdo de referência/estudo. Candidatos não
-// tem item próprio aqui de propósito — já é acessível direto de dentro da sessão
-// (ver SessionDetails.jsx), não precisa duplicar no menu. "Linha do tempo" também saiu
-// do menu por ora (ideia em aberto pra ela, ver ROADMAP.md) — rota e página continuam
-// existindo, só não aparecem aqui.
+// pessoas — nessa ordem de pré-requisito) terminando na própria sessão, e por fim o
+// conteúdo de referência/estudo. Candidatos não tem item próprio aqui de propósito —
+// já é acessível direto de dentro da sessão (ver SessionDetails.jsx), não precisa
+// duplicar no menu. "Linha do tempo" também saiu do menu por ora (ideia em aberto pra
+// ela, ver ROADMAP.md) — rota e página continuam existindo, só não aparecem aqui.
+// Resultados e Auditoria são um caso diferente dos dois acima: não têm mais nem rota
+// nem página — o conteúdo que existia nelas virou seção dentro da própria tela da
+// sessão (ver SessionDetails.jsx), então não há mais link nenhum pra apontar aqui.
 const NAV_GROUPS = [
   {
     label: null,
@@ -37,13 +37,6 @@ const NAV_GROUPS = [
       { label: 'Partidos', to: '/partidos', icon: Flag },
       { label: 'Pessoas', to: '/pessoas', icon: IdCard },
       { label: 'Eleições', to: '/sessoes', icon: ClipboardList },
-    ],
-  },
-  {
-    label: 'Dia da votação',
-    items: [
-      { label: 'Resultados', to: '/resultados', icon: BarChart3 },
-      { label: 'Auditoria', to: '/auditoria', icon: ShieldCheck },
     ],
   },
   {
