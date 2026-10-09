@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DonationDialog } from '@/components/donation/DonationDialog';
 
 // Botão flutuante de doação (landing page apenas) — acompanha o scroll no canto
 // onde antes ficava o FeedbackButton global (ver App.jsx: escondido em "/" pra
 // não disputar espaço com este aqui). Maior e mais chamativo de propósito, com um
 // leve pulso atrás pra puxar o olho sem travar a leitura da página.
-// A doação em si ainda não existe (ver pedido do produto); por enquanto o clique só
-// explica que a funcionalidade está a caminho, sem prometer nada além disso.
 export function DonationButton() {
   const [open, setOpen] = useState(false);
 
@@ -26,26 +24,7 @@ export function DonationButton() {
         </Button>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Apoie o UrnaLab</DialogTitle>
-            <DialogDescription>
-              A doação ainda não está disponível — estamos preparando essa funcionalidade.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            O UrnaLab é mantido para seguir gratuito nas funcionalidades essenciais de qualquer
-            escola. Em breve você vai poder contribuir diretamente por aqui. Por enquanto, a forma
-            que mais ajuda é indicar o projeto para outros professores.
-          </p>
-          <div className="flex justify-end">
-            <Button type="button" onClick={() => setOpen(false)}>
-              Entendi
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DonationDialog open={open} onOpenChange={setOpen} />
     </>
   );
 }

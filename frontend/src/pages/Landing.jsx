@@ -1,4 +1,5 @@
-import { Link, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Sparkles,
   Vote,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/branding/Logo';
@@ -152,6 +154,26 @@ function FeatureRow({ feature, reverse }) {
 
 export default function Landing() {
   const { status } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Volta do Checkout Pro de uma doação feita sem login (ver DonationButton +
+  // backend/src/services/donation.service.js createCheckout, returnPath '/' pra quem
+  // doa anônimo). Mesmo padrão de SessionResultsSection.jsx pro retorno do pagamento
+  // de exportação — roda antes do redirect de autenticado abaixo pra não quebrar a
+  // ordem dos hooks entre renders.
+  useEffect(() => {
+    const donation = searchParams.get('donation');
+    if (!donation) return;
+
+    if (donation === 'success') toast.success('Doação recebida! Muito obrigado por apoiar o UrnaLab. 💛');
+    else if (donation === 'pending') toast.message('Doação em processamento. Assim que for aprovada, confirmamos por aqui.');
+    else if (donation === 'failure') toast.error('Não foi possível concluir a doação. Tente de novo quando quiser.');
+
+    navigate('/', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (status === 'authenticated') return <Navigate to="/painel" replace />;
 
   return (

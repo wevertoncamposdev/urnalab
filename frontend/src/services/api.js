@@ -256,6 +256,15 @@ export const api = {
     refund: (id) => request(`/api/payments/${id}/refund`, { method: 'POST' }),
   },
 
+  // Doação avulsa (landing sem login, ou botão do sidebar já logado) — rota pública,
+  // mas o backend ainda lê o token se houver (ver server.js), então `userId` chega
+  // preenchido sozinho quando a pessoa está logada; `donorName` só importa no caso
+  // anônimo. Sem getStatus/isPaid: ao contrário de payments/products acima, não existe
+  // "já pagou" — dá pra doar quantas vezes quiser.
+  donations: {
+    createCheckout: (data) => request('/api/donations', { method: 'POST', body: data }),
+  },
+
   // Loja de produtos "por conta" (Etapa 15.3) — hoje só ebooks; a exportação de PDF por
   // sessão continua em api.payments acima.
   products: {

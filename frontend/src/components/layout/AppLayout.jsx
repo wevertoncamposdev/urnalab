@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -27,8 +28,26 @@ export function AppLayout() {
   const { session } = useCurrentSession();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(readStoredCollapsed);
   const notifications = getNotifications(user);
+
+  // Volta do Checkout Pro de uma doação feita já logado (ver Sidebar.jsx +
+  // backend/src/services/donation.service.js createCheckout, returnPath '/painel' pra
+  // quem doa autenticado) — shell comum a toda a área logada, então pega o retorno
+  // não importa em qual sub-rota de /painel a pessoa esteja.
+  useEffect(() => {
+    const donation = searchParams.get('donation');
+    if (!donation) return;
+
+    if (donation === 'success') toast.success('Doação recebida! Muito obrigado por apoiar o UrnaLab. 💛');
+    else if (donation === 'pending') toast.message('Doação em processamento. Assim que for aprovada, confirmamos por aqui.');
+    else if (donation === 'failure') toast.error('Não foi possível concluir a doação. Tente de novo quando quiser.');
+
+    navigate(location.pathname, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleSidebar() {
     setCollapsed((current) => {

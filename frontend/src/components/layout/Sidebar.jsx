@@ -1,17 +1,21 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   BookOpen,
   Briefcase,
   ClipboardList,
   Flag,
+  Heart,
   IdCard,
   LayoutDashboard,
   Store,
   Wallet,
   Wand2,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/branding/Logo';
 import { Wordmark } from '@/components/branding/Wordmark';
+import { DonationDialog } from '@/components/donation/DonationDialog';
 import { cn } from '@/lib/utils';
 
 // Agrupado por momento do fluxo (não por ordem alfabética ou de criação): visão geral
@@ -92,6 +96,7 @@ function NavItem({ label, to, icon: Icon, accent }) {
 }
 
 export function Sidebar({ collapsed }) {
+  const [donationOpen, setDonationOpen] = useState(false);
   if (collapsed) return null;
 
   return (
@@ -119,16 +124,32 @@ export function Sidebar({ collapsed }) {
         ))}
       </nav>
 
+      <div className="px-3 pb-3">
+        <Button
+          type="button"
+          onClick={() => setDonationOpen(true)}
+          className="w-full justify-center gap-2 bg-coral text-white shadow-sm hover:bg-coral/90"
+        >
+          <Heart className="size-4 fill-current" /> Apoiar o projeto
+        </Button>
+      </div>
+
       <p className="px-5 py-4 text-xs leading-relaxed text-sidebar-foreground/50">
         Projeto educacional. Não é uma urna eletrônica oficial.
       </p>
+
+      <DonationDialog open={donationOpen} onOpenChange={setDonationOpen} />
     </aside>
   );
 }
 
 // Navegação compacta para telas pequenas (a sidebar fica oculta abaixo de md):
-// mesma ordem dos grupos, com um separador sutil entre eles.
+// mesma ordem dos grupos, com um separador sutil entre eles, mais o botão de
+// doação no fim (mesmo diálogo da Sidebar acima) — sem ele aqui, quem só usa pelo
+// celular nunca veria essa entrada.
 export function MobileNav() {
+  const [donationOpen, setDonationOpen] = useState(false);
+
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-b bg-card px-3 py-2 md:hidden" aria-label="Principal">
       {NAV_GROUPS.map((group, groupIndex) => (
@@ -152,6 +173,15 @@ export function MobileNav() {
           ))}
         </div>
       ))}
+      <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={() => setDonationOpen(true)}
+        className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-coral/10 px-3 py-1.5 text-sm font-medium text-coral"
+      >
+        <Heart className="size-4 fill-current" /> Apoiar
+      </button>
+      <DonationDialog open={donationOpen} onOpenChange={setDonationOpen} />
     </nav>
   );
 }
