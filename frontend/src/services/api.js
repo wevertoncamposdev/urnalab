@@ -307,6 +307,9 @@ export const api = {
       update: (id, data) => request(`/api/admin/products/${id}`, { method: 'PUT', body: data }),
       sales: (id) => request(`/api/admin/products/${id}/sales`),
     },
+    // Painel financeiro: produtos com total vendido/receita já embutidos, mais o total
+    // geral e de doações (ver backend/src/services/admin.service.js getPaymentsSummary).
+    paymentsSummary: () => request('/api/admin/payments/summary'),
   },
 
   // Link público de votação: sem login, o token é a própria autorização.
