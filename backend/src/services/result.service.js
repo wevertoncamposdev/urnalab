@@ -82,10 +82,17 @@ function tallyPosition(code, votes, candidates, partiesById, positionsByCode, pe
   const nullVotes = positionVotes.filter((v) => v.type === VOTE_TYPE.NULL).length;
   const validVotes = totalVotes - blankVotes - nullVotes;
 
+  const validCandidateVotes = positionVotes.filter((v) => v.type === VOTE_TYPE.VALID && v.candidateId);
+
   const countByCandidate = new Map();
-  positionVotes
-    .filter((v) => v.type === VOTE_TYPE.VALID && v.candidateId)
-    .forEach((v) => countByCandidate.set(v.candidateId, (countByCandidate.get(v.candidateId) ?? 0) + 1));
+  validCandidateVotes.forEach((v) => countByCandidate.set(v.candidateId, (countByCandidate.get(v.candidateId) ?? 0) + 1));
+
+  // Evolução voto a voto (gráfico temporal do resultado): `positionVotes` já chega
+  // na ordem de gravação (voteRepository.findWhere ordena por `seq`, que não sai do
+  // repository — ver omitSeq ali), então o índice no array já É a ordem cronológica;
+  // não precisamos do timestamp real (votos de uma sala de aula costumam cair no
+  // mesmo segundo, o que acabaria achatando o eixo de um gráfico por horário).
+  const timeline = validCandidateVotes.map((v, index) => ({ order: index + 1, candidateId: v.candidateId }));
 
   const ranked = candidates
     .filter((c) => c.position === code)
@@ -125,6 +132,7 @@ function tallyPosition(code, votes, candidates, partiesById, positionsByCode, pe
     candidates: ranked,
     winners,
     runoff,
+    timeline,
   };
 }
 

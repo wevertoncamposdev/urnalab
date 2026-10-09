@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 // Paleta cíclica pra distinguir candidatos no gráfico — reaproveita as cores da
 // identidade visual (ver globals.css) antes de cair em tons extras pra cargos com
 // mais candidatos do que cores "oficiais".
@@ -18,24 +20,42 @@ export function sliceColor(index) {
 
 const RADIUS = 40;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+// Fatia só ganha o rótulo de % escrito em cima dela a partir desse tamanho —
+// abaixo disso a letra não cabe e fica ilegível (sobra pra legenda, que cobre
+// cargos com muitos candidatos sem lotar o desenho).
+const LABEL_MIN_FRACTION = 0.08;
 
 // Gráfico de rosca com a proporção de votos válidos por candidato — complementa a
-// barra de progresso de cada CandidateRow com uma visão consolidada do cargo inteiro,
-// útil pra enxergar o resultado de relance numa apresentação pra turma. Construído em
-// SVG puro (sem lib de gráfico) pra não trazer uma dependência só por isso.
-export function PositionPieChart({ candidates, validVotes }) {
+// barra de progresso de PositionResultsTable com uma visão consolidada do cargo
+// inteiro, útil pra enxergar o resultado de relance numa apresentação pra turma.
+// Construído em SVG puro (sem lib de gráfico) pra não trazer uma dependência só
+// por isso.
+export function PositionPieChart({ candidates, validVotes, size = 112, className, showLabels = false }) {
   if (validVotes <= 0) return null;
 
   const withVotes = candidates.filter((c) => c.votes > 0);
   if (withVotes.length === 0) return null;
 
   let cumulative = 0;
-  const slices = withVotes.map((candidate, index) => {
+  const slices = withVotes.map((candidate) => {
     const fraction = candidate.votes / validVotes;
     const length = fraction * CIRCUMFERENCE;
     const offset = cumulative;
     cumulative += length;
-    return { id: candidate.id, length, offset, color: sliceColor(candidates.indexOf(candidate)) };
+    // -90 compensa o rotate(-90 50 50) do grupo das fatias abaixo: calculado fora
+    // desse grupo, o rótulo precisa do mesmo giro já embutido na própria posição,
+    // em vez de herdar a rotação (que deixaria o texto deitado).
+    const midAngle = ((offset + length / 2) / CIRCUMFERENCE) * 360 - 90;
+    const rad = (midAngle * Math.PI) / 180;
+    return {
+      id: candidate.id,
+      length,
+      offset,
+      fraction,
+      color: sliceColor(candidates.indexOf(candidate)),
+      labelX: 50 + RADIUS * Math.cos(rad),
+      labelY: 50 + RADIUS * Math.sin(rad),
+    };
   });
 
   const summary = withVotes
@@ -45,7 +65,8 @@ export function PositionPieChart({ candidates, validVotes }) {
   return (
     <svg
       viewBox="0 0 100 100"
-      className="size-28 shrink-0"
+      className={cn('shrink-0', className)}
+      style={{ width: size, height: size }}
       role="img"
       aria-label={`Distribuição de votos válidos — ${summary}`}
     >
@@ -66,6 +87,22 @@ export function PositionPieChart({ candidates, validVotes }) {
           />
         ))}
       </g>
+      {showLabels &&
+        slices
+          .filter((slice) => slice.fraction >= LABEL_MIN_FRACTION)
+          .map((slice) => (
+            <text
+              key={slice.id}
+              x={slice.labelX}
+              y={slice.labelY}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className="fill-white text-[7px] font-bold"
+              style={{ paintOrder: 'stroke', stroke: 'rgba(15,23,42,0.45)', strokeWidth: 2.5, strokeLinejoin: 'round' }}
+            >
+              {Math.round(slice.fraction * 100)}%
+            </text>
+          ))}
     </svg>
   );
 }
