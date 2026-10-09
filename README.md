@@ -177,6 +177,15 @@ Tentar acessar um registro de outra conta responde `404` (nunca `403`, pra não 
 | PUT | /api/sessions/:id | Edita sessão (somente DRAFT) |
 | POST | /api/sessions/:id/open | DRAFT → OPEN |
 | POST | /api/sessions/:id/finish | OPEN → FINISHED |
+| POST | /api/sessions/:id/reopen | OPEN → DRAFT (Etapa 24 — volta pra candidatura, p/ corrigir cargos/candidatos) |
+| POST | /api/sessions/:id/resume | FINISHED → OPEN (Etapa 24 — reabre a votação sem apagar os votos já registrados) |
+
+As etapas da sessão (nome técnico `DRAFT`/`OPEN`/`FINISHED`, exibidas na UI como "Candidatura" /
+"Votação" / "Encerrada" — ver `SessionStageControl.jsx`) são reversíveis de propósito: pensado pro
+uso didático em sala de aula, onde é comum precisar corrigir um candidato depois de já ter aberto a
+votação, ou continuar registrando votos depois de ter finalizado por engano. `reopen`/`resume`
+nunca apagam voto nenhum — a cadeia de hashes da auditoria (`audit.service.js`) não depende do
+histórico de status da sessão, só da ordem em que os votos foram gravados.
 
 Erros seguem `{ "success": false, "error": { "code", "message" } }`
 (400 validação, 404 não encontrada, 409 transição/edição inválida).
@@ -271,7 +280,7 @@ para o `hash` do voto anterior). Isso detecta alteração de conteúdo, remoçã
 qualquer voto feita diretamente no banco depois da gravação. A resposta inclui `valid`
 (booleano geral) e `brokenAtIndex` (posição do primeiro voto onde a cadeia quebra, ou `null`).
 
-## Área de Gerenciamento (Etapas 9, 16, 18 e 19)
+## Área de Gerenciamento (Etapas 9, 16, 18, 19 e 24)
 
 Painel interno de métricas e suporte, visível só pra uma única conta — a configurada em
 `ADMIN_EMAIL` (`backend/.env.example`). Não existe campo de role no banco de propósito: é
@@ -307,6 +316,7 @@ resolvem esse próprio desafio (`/api/admin/verify/request` e `/confirm`, com
 | GET/POST | /api/admin/products | Lista (inclusive inativos) e cria produto (ver "Cobrança e produtos") |
 | PUT | /api/admin/products/:id | Edita nome, descrição, preço, ativo/inativo de um produto |
 | GET | /api/admin/products/:id/sales | Quantidade e receita aprovada de um produto, sem dado de quem comprou |
+| GET | /api/admin/system | Etapa 24 — estado do processo (uptime, memória) + os mesmos totais agregados de `overview`, pra aba "Sistema" (`AdminSystem.jsx`) |
 
 ## Analytics e feedback (Etapa 10)
 

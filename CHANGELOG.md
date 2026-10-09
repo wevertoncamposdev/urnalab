@@ -12,6 +12,27 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Etapas da sessão reversíveis + aba Sistema na Área de Gerenciamento (Etapa 24)**: pensado pro
+  uso didático em sala de aula — onde é comum precisar corrigir um candidato depois de já ter
+  aberto a votação, ou continuar registrando votos depois de ter finalizado por engano — as etapas
+  da sessão ganharam duas transições novas além de `open`/`finish`: `POST /api/sessions/:id/reopen`
+  (Votação → Candidatura, destrava cargos/candidatos de novo) e `POST /api/sessions/:id/resume`
+  (Encerrada → Votação, reabre o recebimento de votos). Nenhuma delas apaga voto nenhum — a cadeia
+  de hashes da auditoria (`audit.service.js`) não depende do histórico de status da sessão, só da
+  ordem em que os votos foram gravados. `SessionDetails.jsx` passou a mostrar isso como um stepper
+  clicável de 3 etapas (`SessionStageControl.jsx`), com confirmação explicando a consequência de
+  cada transição. A Área de Gerenciamento ganhou uma aba **Sistema** (`AdminSystem.jsx`,
+  `GET /api/admin/system`) com o estado do processo (uptime, memória) mais os mesmos totais
+  agregados de "Visão geral" — absorveu o que antes era um `<SystemStatus/>` solto no painel comum
+  do usuário (removido do painel comum: informação irrelevante pra quem só usa o simulador).
+- **Tela de detalhes de pessoa com ranking (Etapa 24)**: `Pessoas` ganhou colunas ordenáveis
+  (candidaturas, propostas, votos, eleições vencidas), agregadas em `person.service.js`
+  reaproveitando o tally que `result.service.js` já calculava por sessão finalizada — sem recontar
+  voto nenhum do zero. O nome de cada candidato virou link, tanto na tabela de candidatos
+  (`CandidatesTable.jsx`) quanto na tela de Resultados (`PositionResult.jsx`), levando pra uma tela
+  nova (`PersonDetails.jsx`, `GET /api/people/:id` enriquecido) com o histórico completo de
+  candidaturas da pessoa: sessão, cargo, partido, número, proposta, votos e se foi eleita.
+
 - **Cadastro de candidatura por link público (Etapa 20)**: igual já existia pra votação, agora
   também existe um link público de candidatura — o próprio candidato se cadastra (pessoa +
   candidatura numa submissão só) sem precisar de conta, e quem administra a sessão aprova ou
@@ -56,6 +77,32 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Changed
 
+- **Dashboard, Sessões e Pessoas com visual revisado e navegação mais clara (Etapa 24)**: cards
+  numéricos do Dashboard e de `SessionDetails.jsx` viraram tiles com ícone colorido + número grande
+  (`StatTile.jsx`, reaproveitado nos dois lugares); Dashboard e a lista de Sessões ganharam busca
+  por nome/ano, filtro por status e paginação (antes a lista de sessões recentes só cortava em 6,
+  sem navegação). A tabela de Sessões ganhou botões de acesso direto por linha (link de candidatura,
+  votar), além do "Gerenciar". `SessionDetails.jsx` ganhou um botão "Voltar" (antes não havia
+  como voltar pra lista de sessões de forma consistente, só pelo navegador) e a aba Detalhes
+  reorganizou o link público (código em destaque) e os cargos em disputa (lista vertical em vez de
+  badges) numa tela mais larga (`max-w-6xl`). Os termos das etapas da sessão também mudaram de
+  nomes técnicos para nomes didáticos: Rascunho/Aberta/Finalizada viraram **Candidatura** /
+  **Votação** / **Encerrada** em toda a interface (badges, filtros, textos) — os valores internos
+  `DRAFT`/`OPEN`/`FINISHED` não mudaram, só a exibição.
+- **Tela pública de candidatura mais visual, câmera num dialog maior (Etapa 24)**: `/candidatar`
+  ganhou um cartão de abertura (ícone, selo "Candidatura aberta", cargos em disputa como pills) e
+  os campos do formulário ganharam cabeçalhos com ícone em vez de só texto em caixa alta —
+  aproveitando a mesma linguagem visual (ícone + cor) já usada no Dashboard/Sessões/Pessoas.
+  `PhotoCaptureField.jsx` passou a abrir a câmera (prévia ao vivo e a foto capturada) num `Dialog`
+  maior e centralizado, em vez de encolher dentro do próprio formulário — componente compartilhado
+  com a edição de Pessoas na Área de Gerenciamento, então o ganho vale pros dois lugares.
+- **Criar sessão simplificado e renomeado (Etapa 24)**: o antigo "Assistente guiado" perdeu a
+  etapa final de revisão — depois de cadastrar os partidos, "Concluir" leva direto pra tela de
+  gerenciamento da sessão (`SessionDetails.jsx`), que já reúne tudo que a revisão mostrava (link de
+  candidatura, cargos, totais). Renomeado para **Criar sessão** em todo lugar (sidebar, Dashboard,
+  Sessões, landing page). O formulário rápido de criação (`/sessoes/nova`, sem etapa de partidos)
+  foi removido — criar sessão passou a ser sempre pelo fluxo guiado; `SessionCreate.jsx` continua
+  existindo só para editar uma sessão já existente (`/sessoes/:id/editar`).
 - **Avatares prontos no campo de foto, no lugar do link (Etapa 20)**: refinamento depois de testar
   o cadastro de candidatura por link público. `PhotoCaptureField.jsx` perdeu a opção de colar um
   link de imagem e ganhou "Escolher avatar": um `AvatarPickerDialog.jsx` novo com ilustrações
@@ -111,6 +158,14 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Fixed
 
+- **Câmera preta dentro do dialog de captura de foto (Etapa 24)**: depois de mover a prévia da
+  câmera (`PhotoCaptureField.jsx`) pra dentro de um `Dialog` (ver "Changed" acima), o `useEffect`
+  que conectava o `MediaStream` ao `<video>` às vezes rodava antes do elemento existir de verdade
+  no DOM — o Dialog monta seu conteúdo num Portal, então o vídeo podia aparecer num commit depois
+  daquele em que o `stream` mudava. Resultado: `<video>` sem `srcObject`, tela preta, sem nenhum
+  erro no console. Corrigido conectando o stream num callback ref (`attachVideo`), que o React
+  chama exatamente no instante em que o nó monta, eliminando a corrida — confirmado via
+  diagnóstico direto no navegador (`video.srcObject` nulo antes, presente e tocando depois).
 - **CORS bloqueava toda chamada à API depois de verificar a Área de Gerenciamento**: o header
   `X-Admin-Verification` (Etapa 19, ver acima) não estava na lista `Access-Control-Allow-Headers`
   de `middleware/cors.js` — assim que o token de verificação passava a existir, o navegador

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Briefcase, CalendarPlus, Copy, CopyPlus, ExternalLink, Info, Pencil, Play, ShieldCheck, Square, Trophy, UserPlus, Users, Vote } from 'lucide-react';
+import { ArrowLeft, Briefcase, CalendarPlus, Copy, CopyPlus, ExternalLink, Info, Pencil, Play, ShieldCheck, Square, Trophy, UserPlus, Users, Vote } from 'lucide-react';
 import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,12 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { ConfirmAction } from '@/components/sessions/ConfirmAction';
+import { StatTile } from '@/components/layout/StatTile';
 import { DuplicateSessionDialog } from '@/components/sessions/DuplicateSessionDialog';
 import { SessionAuditSection } from '@/components/sessions/SessionAuditSection';
 import { SessionCandidatesSection } from '@/components/sessions/SessionCandidatesSection';
 import { SessionResultsSection } from '@/components/sessions/SessionResultsSection';
-import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
+import { SessionStageControl } from '@/components/sessions/SessionStageControl';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
 import { formatDateTime, formatNumber } from '@/lib/format';
@@ -25,27 +24,14 @@ import { api } from '@/services/api';
 
 const DEFAULT_TAB = 'detalhes';
 
-const STATUS_HINT = {
-  DRAFT: 'Esta sessão é uma rascunho. Abra a votação para começar a receber votos.',
-  OPEN: 'A votação está aberta. Finalize a eleição para encerrar o recebimento de votos.',
-  FINISHED: 'Eleição finalizada. Esta sessão não recebe mais votos.',
+// Ações disparadas pelo stepper de etapas (ver SessionStageControl.jsx) — o
+// nome da transição vem de lá, só o `api.sessions.*` certo é resolvido aqui.
+const STAGE_ACTIONS = {
+  open: api.sessions.open,
+  reopen: api.sessions.reopen,
+  finish: api.sessions.finish,
+  resume: api.sessions.resume,
 };
-
-function Stat({ icon: Icon, label, value }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          <Icon className="size-4" />
-        </div>
-        <div className="flex min-w-0 flex-col">
-          <span className="text-lg font-semibold leading-tight tabular-nums">{value}</span>
-          <span className="truncate text-xs leading-tight text-muted-foreground">{label}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 async function copyPublicLink(url) {
   try {
@@ -56,36 +42,39 @@ async function copyPublicLink(url) {
   }
 }
 
-// Card compacto, tudo numa linha só: rótulo+ícone, código de acesso clicável (copia),
-// campo com a URL completa, e os dois botões de ação — pra não tomar a tela toda só
-// com o link (ver People/Candidates para o padrão equivalente de código grande, que
-// aqui foi propositalmente encolhido).
+// Código em destaque (fonte grande) numa linha própria, com o endereço completo e
+// as ações de cópia/abrir logo abaixo — versão mais visual do que o card de uma
+// linha só que existia antes (ver People/Candidates para o padrão equivalente).
 function LinkCardRow({ icon: Icon, label, labelClassName, code, url, codeClassName }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className={cn('flex shrink-0 items-center gap-1.5 text-sm font-medium', labelClassName)}>
-        <Icon className="size-4" /> {label}
-      </span>
-      <button
-        type="button"
-        onClick={() => copyPublicLink(code)}
-        className={cn(
-          'shrink-0 rounded-md border px-2.5 py-1 font-mono text-base font-bold tracking-widest tabular-nums',
-          codeClassName,
-        )}
-        title="Copiar código"
-      >
-        {code}
-      </button>
-      <Input readOnly value={url} onFocus={(e) => e.target.select()} className="h-8 min-w-40 flex-1 font-mono text-xs" />
-      <Button type="button" variant="outline" size="icon" className="size-8" onClick={() => copyPublicLink(url)} aria-label="Copiar link" title="Copiar link">
-        <Copy className="size-3.5" />
-      </Button>
-      <Button type="button" variant="outline" size="icon" className="size-8" asChild>
-        <a href={url} target="_blank" rel="noreferrer" aria-label="Abrir em nova aba" title="Abrir em nova aba">
-          <ExternalLink className="size-3.5" />
-        </a>
-      </Button>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className={cn('flex items-center gap-2 text-sm font-semibold', labelClassName)}>
+          <Icon className="size-4" /> {label}
+        </span>
+        <button
+          type="button"
+          onClick={() => copyPublicLink(code)}
+          className={cn(
+            'rounded-lg border px-4 py-1.5 font-mono text-xl font-bold tracking-[0.2em] tabular-nums',
+            codeClassName,
+          )}
+          title="Copiar código"
+        >
+          {code}
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input readOnly value={url} onFocus={(e) => e.target.select()} className="h-9 flex-1 font-mono text-xs" />
+        <Button type="button" variant="outline" size="icon" onClick={() => copyPublicLink(url)} aria-label="Copiar link" title="Copiar link">
+          <Copy className="size-4" />
+        </Button>
+        <Button type="button" variant="outline" size="icon" asChild>
+          <a href={url} target="_blank" rel="noreferrer" aria-label="Abrir em nova aba" title="Abrir em nova aba">
+            <ExternalLink className="size-4" />
+          </a>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -96,7 +85,7 @@ function PublicLinkCard({ publicToken }) {
   const url = `${window.location.origin}/votar/${publicToken}`;
   return (
     <Card>
-      <CardContent className="flex flex-col gap-1.5 p-3">
+      <CardContent className="p-5">
         <LinkCardRow
           icon={Vote}
           label="Link de votação"
@@ -104,9 +93,6 @@ function PublicLinkCard({ publicToken }) {
           url={url}
           codeClassName="bg-muted/40"
         />
-        <p className="pl-[1.625rem] text-xs text-muted-foreground">
-          Sem login, funciona bem pelo celular — para sozinho ao finalizar a eleição.
-        </p>
       </CardContent>
     </Card>
   );
@@ -119,7 +105,7 @@ function PublicCandidacyLinkCard({ candidacyToken }) {
   const url = `${window.location.origin}/candidatar/${candidacyToken}`;
   return (
     <Card>
-      <CardContent className="flex flex-col gap-1.5 p-3">
+      <CardContent className="flex flex-col gap-2 p-5">
         <LinkCardRow
           icon={UserPlus}
           label="Link de candidatura"
@@ -128,7 +114,7 @@ function PublicCandidacyLinkCard({ candidacyToken }) {
           url={url}
           codeClassName="bg-accent-soft/40 text-accent"
         />
-        <p className="pl-[1.625rem] text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Toda candidatura recebida entra como pendente — aprove ou reprove na aba Candidatos.
         </p>
       </CardContent>
@@ -199,6 +185,7 @@ export default function SessionDetails() {
   const rules = Object.fromEntries(positionsState.data.map((p) => [p.code, p]));
   const positionLabels = Object.fromEntries(positionsState.data.map((p) => [p.code, p.label]));
   const finished = session.status === 'FINISHED';
+  const hasPublicLink = session.status === 'DRAFT' || session.status === 'OPEN';
 
   const tabs = [
     { value: 'detalhes', label: 'Detalhes', icon: Info },
@@ -225,74 +212,56 @@ export default function SessionDetails() {
     );
   }
 
+  function handleStageAction(action, successMessage) {
+    runAction(STAGE_ACTIONS[action], successMessage);
+  }
+
   const actions = (
     <>
+      <Button asChild variant="outline">
+        <Link to="/sessoes"><ArrowLeft /> Voltar</Link>
+      </Button>
       <Button type="button" variant="outline" onClick={() => setDuplicating(true)}>
         <CopyPlus /> Duplicar
       </Button>
       {session.status === 'DRAFT' && (
-        <>
-          <Button asChild variant="outline">
-            <Link to={`/sessoes/${session.id}/editar`}><Pencil /> Editar</Link>
-          </Button>
-          <ConfirmAction
-            trigger={<Button disabled={working}><Play /> Abrir votação</Button>}
-            title="Abrir a votação?"
-            description="A sessão passará a receber votos. Depois disso, nome, ano e cargos não poderão ser alterados."
-            confirmLabel="Abrir votação"
-            onConfirm={() => runAction(api.sessions.open, 'Votação aberta.')}
-          />
-        </>
+        <Button asChild variant="outline">
+          <Link to={`/sessoes/${session.id}/editar`}><Pencil /> Editar</Link>
+        </Button>
       )}
       {session.status === 'OPEN' && (
-        <>
-          <Button asChild>
-            <a href={`/votar/${session.publicToken}`} target="_blank" rel="noreferrer"><Vote /> Votar</a>
-          </Button>
-          <ConfirmAction
-            trigger={<Button variant="outline" disabled={working}><Square /> Finalizar eleição</Button>}
-            title="Finalizar a eleição?"
-            description="A sessão deixará de receber votos. Esta ação não pode ser desfeita."
-            confirmLabel="Finalizar eleição"
-            onConfirm={() => runAction(api.sessions.finish, 'Eleição finalizada.')}
-          />
-        </>
+        <Button asChild>
+          <a href={`/votar/${session.publicToken}`} target="_blank" rel="noreferrer"><Vote /> Votar</a>
+        </Button>
       )}
     </>
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <PageHeader
         title={session.name}
         description={(
-          <>
-
-            <span className="flex items-center gap-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-full p-2" title={STATUS_HINT[session.status]}
-            >
-              <Info /> {STATUS_HINT[session.status]}
+          <span className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5" title="Criada em">
+              <CalendarPlus className="size-3.5" /> Criada em {formatDateTime(session.createdAt)}
             </span>
-          </>
+            {session.startedAt && (
+              <span className="flex items-center gap-1.5" title="Votação iniciada em">
+                <Play className="size-3.5" /> Votação iniciada em {formatDateTime(session.startedAt)}
+              </span>
+            )}
+            {session.finishedAt && (
+              <span className="flex items-center gap-1.5" title="Encerrada em">
+                <Square className="size-3.5" /> Encerrada em {formatDateTime(session.finishedAt)}
+              </span>
+            )}
+          </span>
         )}
         actions={actions}
-      >
-        <SessionStatusBadge status={session.status} />
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-lg px-3.5 py-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5" title="Criada em">
-            <CalendarPlus className="size-3.5" /> Criada em {formatDateTime(session.createdAt)}
-          </span>
-          {session.startedAt && (
-            <span className="flex items-center gap-1.5" title="Votação aberta em">
-              <Play className="size-3.5" /> Aberta em {formatDateTime(session.startedAt)}
-            </span>
-          )}
-          {session.finishedAt && (
-            <span className="flex items-center gap-1.5" title="Finalizada em">
-              <Square className="size-3.5" /> Finalizada em {formatDateTime(session.finishedAt)}
-            </span>
-          )}
-        </div>
-      </PageHeader>
+      />
+
+      <SessionStageControl session={session} working={working} onAction={handleStageAction} />
 
       <Tabs value={activeTab} onValueChange={changeTab} className="flex flex-col gap-6">
         <TabsList className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -304,28 +273,35 @@ export default function SessionDetails() {
         </TabsList>
 
         <TabsContent value="detalhes" className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Stat icon={Briefcase} label="Cargos" value={formatNumber(session.positionsCount)} />
-            <Stat icon={Users} label="Candidatos" value={formatNumber(session.candidatesCount)} />
-            <Stat icon={Vote} label="Votos" value={formatNumber(session.votesCount)} />
+          <div className="grid grid-cols-3 gap-4">
+            <StatTile icon={Briefcase} label="Cargos" value={formatNumber(session.positionsCount)} tone="primary" />
+            <StatTile icon={Users} label="Candidatos" value={formatNumber(session.candidatesCount)} tone="accent" />
+            <StatTile icon={Vote} label="Votos" value={formatNumber(session.votesCount)} tone="coral" />
           </div>
+          <div className="grid gap-4 lg:grid-cols-5">
+            {hasPublicLink && (
+              <div className="lg:col-span-3">
+                {session.status === 'DRAFT' && <PublicCandidacyLinkCard candidacyToken={session.candidacyToken} />}
+                {session.status === 'OPEN' && <PublicLinkCard publicToken={session.publicToken} />}
+              </div>
+            )}
 
-          {session.status === 'DRAFT' && <PublicCandidacyLinkCard candidacyToken={session.candidacyToken} />}
-          {session.status === 'OPEN' && <PublicLinkCard publicToken={session.publicToken} />}
-
-          <Card>
-            <CardContent className="flex flex-wrap items-center gap-2 p-3">
-              <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium">
-                <Briefcase className="size-4 text-muted-foreground" /> Cargos em disputa
-              </span>
-              {session.positions.map((code) => (
-                <span key={code} className="rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium">
-                  {rules[code]?.label ?? code}
-                  <span className="text-muted-foreground"> · {rules[code]?.digits} díg.</span>
-                </span>
-              ))}
-            </CardContent>
-          </Card>
+            <Card className={hasPublicLink ? 'lg:col-span-2' : 'lg:col-span-5'}>
+              <CardContent className="p-0">
+                <div className="flex items-center gap-1.5 border-b px-4 py-3 text-sm font-semibold">
+                  <Briefcase className="size-4 text-muted-foreground" /> Cargos em disputa
+                </div>
+                <ul className="divide-y">
+                  {session.positions.map((code) => (
+                    <li key={code} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                      <span className="font-medium">{rules[code]?.label ?? code}</span>
+                      <span className="text-xs text-muted-foreground">{rules[code]?.digits} dígitos</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="candidatos">

@@ -128,7 +128,7 @@ export default function Candidates() {
           icon={Users}
           title="Crie uma sessão primeiro"
           description="Todo candidato pertence a uma sessão eleitoral."
-          action={<Button asChild><Link to="/sessoes/nova">Criar sessão</Link></Button>}
+          action={<Button asChild><Link to="/sessoes/assistente">Criar sessão</Link></Button>}
         />
       </div>
     );

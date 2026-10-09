@@ -10,6 +10,7 @@ import { FEEDBACK_STATUSES, FEEDBACK_TYPES } from '../rules/feedback-rules.js';
 import { badRequest, notFound, tooManyRequests } from '../utils/errors.js';
 import { signJwt } from '../utils/jwt.js';
 import { emailService } from './email.service.js';
+import { healthService } from './health.service.js';
 
 // Autorização admin (Etapa 16): toda rota `/api/admin/*` tem `adminOnly: true` (ver
 // admin.routes.js), checado em server.js antes de qualquer handler/controller/service
@@ -75,6 +76,41 @@ export const adminService = {
     await adminRepository.logAccess(userId, 'VIEW_OVERVIEW');
 
     return { totalUsers, totalInstitutions, totalSessions, totalVotes, newUsersLast7Days, newUsersLast30Days };
+  },
+
+  // Aba Sistema da Área de Gerenciamento (Etapa 24): mesmo health check público de
+  // /api/health (API + banco), mais o que só faz sentido pra quem administra —
+  // memória/uptime do processo e totais cross-tenant (ver adminRepository, único
+  // lugar do backend com query sem filtro de userId).
+  async getSystem(userId) {
+    const [health, totalUsers, totalInstitutions, totalSessions, totalVotes, totalPeople, totalCandidates] =
+      await Promise.all([
+        healthService.check(),
+        adminRepository.countUsers(),
+        adminRepository.countInstitutionProfiles(),
+        adminRepository.countSessions(),
+        adminRepository.countVotes(),
+        adminRepository.countPeople(),
+        adminRepository.countCandidates(),
+      ]);
+
+    const memory = process.memoryUsage();
+
+    await adminRepository.logAccess(userId, 'VIEW_SYSTEM');
+
+    return {
+      health,
+      process: {
+        uptimeSeconds: Math.round(process.uptime()),
+        nodeVersion: process.version,
+        memory: {
+          rssBytes: memory.rss,
+          heapUsedBytes: memory.heapUsed,
+          heapTotalBytes: memory.heapTotal,
+        },
+      },
+      totals: { totalUsers, totalInstitutions, totalSessions, totalVotes, totalPeople, totalCandidates },
+    };
   },
 
   async listUsers(userId, pagination) {

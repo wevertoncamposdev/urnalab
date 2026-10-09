@@ -1,9 +1,14 @@
 import { candidateRepository } from '../repositories/candidate.repository.js';
+import { partyRepository } from '../repositories/party.repository.js';
 import { personRepository } from '../repositories/person.repository.js';
+import { positionRepository } from '../repositories/position.repository.js';
+import { sessionRepository } from '../repositories/session.repository.js';
 import { PERSON_LIMITS } from '../rules/person-rules.js';
+import { SESSION_STATUS } from '../rules/session-rules.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
 import { isPlainObject, normalizeText } from '../utils/object.js';
 import { isStoredPhotoPath, parsePhotoDataUri, photoStorage } from '../storage/photo-storage.js';
+import { resultService } from './result.service.js';
 
 // Uma captura da webcam (480x480, JPEG, ver PhotoCaptureField.jsx) fica na casa de
 // dezenas de KB — bem abaixo disso. O limite também precisa caber com folga no
@@ -65,24 +70,111 @@ async function withCandidaciesCount(person, countByPerson) {
   return { ...person, candidaciesCount: count };
 }
 
+// Votos e "eleito" só existem depois da apuração (sessão finalizada) — monta um mapa
+// candidateId -> {votes, elected} reaproveitando o tally que já existe em
+// resultService (um tally por sessão finalizada, não um por candidato) pra servir
+// tanto o ranking da listagem quanto a tela de detalhes de uma pessoa.
+async function buildCandidateOutcomes(candidates) {
+  const sessionIds = [...new Set(candidates.map((c) => c.sessionId))];
+  const sessions = await Promise.all(sessionIds.map((id) => sessionRepository.findById(id)));
+  const finishedSessions = sessions.filter((s) => s?.status === SESSION_STATUS.FINISHED);
+  const results = await Promise.all(finishedSessions.map((s) => resultService.getForSession(s)));
+
+  const outcomes = new Map();
+  for (const { positions } of results) {
+    for (const position of positions) {
+      for (const candidate of position.candidates) {
+        outcomes.set(candidate.id, { votes: candidate.votes, elected: position.winners.includes(candidate.id) });
+      }
+    }
+  }
+  return outcomes;
+}
+
+const emptyStats = () => ({ candidaciesCount: 0, proposalsCount: 0, totalVotes: 0, electionsWon: 0 });
+
 export const personService = {
-  // Lista pensada pro seletor "reaproveitar candidato existente" do formulário de
-  // candidatos: nome, foto e em quantas candidaturas a pessoa já aparece.
+  // Lista pensada tanto pro seletor "reaproveitar candidato existente" (formulário
+  // de candidatos) quanto pro ranking da tela Pessoas: candidaturas, propostas
+  // registradas, votos somados e eleições vencidas (só contam sessões já apuradas).
   async list(filters = {}, userId) {
     const search = normalizeText(filters.search).trim();
     let people = await personRepository.findAllForUser(userId);
     if (search) people = people.filter((p) => normalizeText(p.name).includes(search));
 
     const candidates = await candidateRepository.findAllForUser(userId);
-    const countByPerson = new Map();
-    candidates.forEach((c) => countByPerson.set(c.personId, (countByPerson.get(c.personId) ?? 0) + 1));
+    const outcomes = await buildCandidateOutcomes(candidates);
 
-    const withCounts = await Promise.all(people.map((p) => withCandidaciesCount(p, countByPerson)));
-    return withCounts.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const statsByPerson = new Map();
+    for (const c of candidates) {
+      const stats = statsByPerson.get(c.personId) ?? emptyStats();
+      stats.candidaciesCount += 1;
+      if (c.governmentProposal) stats.proposalsCount += 1;
+      const outcome = outcomes.get(c.id);
+      if (outcome) {
+        stats.totalVotes += outcome.votes;
+        if (outcome.elected) stats.electionsWon += 1;
+      }
+      statsByPerson.set(c.personId, stats);
+    }
+
+    const withStats = people.map((p) => ({ ...p, ...(statsByPerson.get(p.id) ?? emptyStats()) }));
+    return withStats.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   },
 
+  // Tela de detalhes da pessoa: todas as candidaturas (sessão, cargo, partido,
+  // número, proposta) com votos e resultado (eleito/não eleito) de quem já foi
+  // apurado — sessões ainda não finalizadas entram sem esses dois dados.
   async getById(id, userId) {
-    return withCandidaciesCount(await findOrFail(id, userId));
+    const person = await findOrFail(id, userId);
+    const candidates = await candidateRepository.findWhere((c) => c.personId === id && c.userId === userId);
+
+    const sessionIds = [...new Set(candidates.map((c) => c.sessionId))];
+    const [sessions, parties, positions, outcomes] = await Promise.all([
+      Promise.all(sessionIds.map((sid) => sessionRepository.findById(sid))),
+      partyRepository.findAllForUser(userId),
+      positionRepository.findAllForUser(userId),
+      buildCandidateOutcomes(candidates),
+    ]);
+    const sessionsById = new Map(sessions.filter(Boolean).map((s) => [s.id, s]));
+    const partiesById = new Map(parties.map((p) => [p.id, p]));
+    const positionLabels = Object.fromEntries(positions.map((p) => [p.code, p.label]));
+
+    const stats = emptyStats();
+    const candidacies = candidates.map((c) => {
+      const session = sessionsById.get(c.sessionId);
+      const party = partiesById.get(c.partyId);
+      const outcome = outcomes.get(c.id) ?? null;
+
+      stats.candidaciesCount += 1;
+      if (c.governmentProposal) stats.proposalsCount += 1;
+      if (outcome) {
+        stats.totalVotes += outcome.votes;
+        if (outcome.elected) stats.electionsWon += 1;
+      }
+
+      return {
+        id: c.id,
+        sessionId: c.sessionId,
+        sessionName: session?.name ?? null,
+        sessionYear: session?.year ?? null,
+        sessionStatus: session?.status ?? null,
+        position: c.position,
+        positionLabel: positionLabels[c.position] ?? c.position,
+        number: c.number,
+        status: c.status,
+        party: party
+          ? { id: party.id, name: party.name, acronym: party.acronym, number: party.number }
+          : null,
+        governmentProposal: c.governmentProposal,
+        votes: outcome?.votes ?? null,
+        elected: outcome?.elected ?? null,
+      };
+    });
+
+    candidacies.sort((a, b) => (b.sessionYear ?? 0) - (a.sessionYear ?? 0));
+
+    return { ...person, ...stats, candidacies };
   },
 
   async create(input, userId) {

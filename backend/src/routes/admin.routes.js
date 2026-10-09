@@ -24,6 +24,7 @@ export function registerAdminRoutes(router) {
   });
 
   router.get('/api/admin/overview', adminController.overview, { adminOnly: true });
+  router.get('/api/admin/system', adminController.system, { adminOnly: true });
   router.get('/api/admin/users', adminController.listUsers, { adminOnly: true });
   router.get('/api/admin/analytics/funnel', adminController.funnel, { adminOnly: true });
   router.get('/api/admin/feedback', adminController.listFeedback, { adminOnly: true });

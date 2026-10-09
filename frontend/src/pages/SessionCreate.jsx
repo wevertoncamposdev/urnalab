@@ -10,18 +10,18 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SessionForm } from '@/components/sessions/SessionForm';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
-import { trackEvent } from '@/lib/analytics';
 import { api } from '@/services/api';
 
-// Serve para criar (/sessoes/nova) e editar (/sessoes/:id/editar) uma sessão em rascunho.
+// Só edita (/sessoes/:id/editar) uma sessão já existente, na etapa de candidatura —
+// criar uma sessão nova é sempre pelo Criar sessão (ver SessionWizard.jsx), que
+// também cadastra os partidos; esta tela não tem mais rota de criação própria.
 export default function SessionCreate() {
   const { id } = useParams();
-  const editing = Boolean(id);
   const navigate = useNavigate();
   const { select } = useCurrentSession();
 
   const positionsState = useAsync(() => api.positions.list(), []);
-  const sessionState = useAsync(() => (editing ? api.sessions.get(id) : Promise.resolve(null)), [id]);
+  const sessionState = useAsync(() => api.sessions.get(id), [id]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -29,23 +29,17 @@ export default function SessionCreate() {
   const loadError = positionsState.error ?? sessionState.error;
   const loading = positionsState.loading || sessionState.loading;
   const session = sessionState.data;
-  const goBack = () => navigate(editing ? `/sessoes/${id}` : '/sessoes');
+  const goBack = () => navigate(`/sessoes/${id}`);
 
   async function handleSubmit(values) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const saved = editing ? await api.sessions.update(id, values) : await api.sessions.create(values);
-      if (!editing) trackEvent('SESSION_CREATED', { sessionId: saved.id });
+      const saved = await api.sessions.update(id, values);
       select(saved);
-      toast.success(editing ? 'Alterações salvas.' : 'Sessão criada.');
+      toast.success('Alterações salvas.');
       navigate(`/sessoes/${saved.id}`);
     } catch (error) {
-      if (error.code === 'INSTITUTION_PROFILE_REQUIRED') {
-        toast.error(error.message);
-        navigate('/perfil');
-        return;
-      }
       setSubmitError(error);
       setSubmitting(false);
     }
@@ -61,11 +55,11 @@ export default function SessionCreate() {
     );
   } else if (loading) {
     content = <Skeleton className="h-96" />;
-  } else if (editing && session.status !== 'DRAFT') {
+  } else if (session.status !== 'DRAFT') {
     content = (
       <Alert>
         <AlertDescription className="flex flex-col items-start gap-3">
-          Só é possível editar sessões em rascunho.
+          Só é possível editar sessões na etapa de candidatura.
           <Button asChild variant="outline" size="sm">
             <Link to={`/sessoes/${id}`}>Voltar para a sessão</Link>
           </Button>
@@ -81,7 +75,7 @@ export default function SessionCreate() {
             initial={session}
             error={submitError}
             submitting={submitting}
-            submitLabel={editing ? 'Salvar alterações' : 'Criar sessão'}
+            submitLabel="Salvar alterações"
             onSubmit={handleSubmit}
             onCancel={goBack}
           />
@@ -92,10 +86,7 @@ export default function SessionCreate() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <PageHeader
-        title={editing ? 'Editar sessão' : 'Nova sessão eleitoral'}
-        description="Defina o nome, o ano e os cargos que estarão em disputa."
-      />
+      <PageHeader title="Editar sessão" description="Defina o nome, o ano e os cargos que estarão em disputa." />
       {content}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LineChart, LogOut, MessageSquare, Package, ShieldAlert } from 'lucide-react';
+import { Activity, LayoutDashboard, LineChart, LogOut, MessageSquare, Package, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/branding/Logo';
 import { AdminVerificationGate } from '@/components/admin/AdminVerificationGate';
@@ -22,6 +22,7 @@ const ADMIN_NAV = [
   { label: 'Produtos', to: '/gerenciamento/produtos', icon: Package },
   { label: 'Analytics', to: '/gerenciamento/analytics', icon: LineChart },
   { label: 'Feedback', to: '/gerenciamento/feedback', icon: MessageSquare },
+  { label: 'Sistema', to: '/gerenciamento/sistema', icon: Activity },
 ];
 
 export function AdminLayout() {

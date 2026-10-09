@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Camera, Check, RotateCcw, Smile, Trash2, Upload, Video, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { resolvePhotoUrl } from '@/services/api';
 
@@ -66,15 +66,27 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
   // desmonte do componente (ex.: fechar o diálogo com a câmera ainda ligada).
   useEffect(() => () => stream?.getTracks().forEach((track) => track.stop()), [stream]);
 
-  // O <video> só existe no DOM quando `capturing` é true, e é recriado do zero
-  // sempre que se alterna entre a prévia ao vivo e o snapshot congelado — por
-  // isso este efeito roda de novo a cada troca (via a dependência `snapshot`),
-  // conectando o stream ao elemento que acabou de montar. Fazer isso direto no
-  // handler de clique não funciona: a re-renderização que cria o <video> ainda
-  // não aconteceu naquele momento, e a câmera liga com a prévia preta.
+  // O <video> só existe no DOM quando `capturing` é true (e sem snapshot), e é
+  // recriado do zero sempre que se alterna entre a prévia ao vivo e o snapshot
+  // congelado. Dentro do Dialog (Radix monta o conteúdo num Portal), esse
+  // elemento pode aparecer depois do commit em que `stream` muda — um useEffect
+  // dependente só de `stream`/`capturing`/`snapshot` roda cedo demais e encontra
+  // `videoRef.current` ainda nulo, deixando o vídeo sem `srcObject` (tela preta,
+  // sem nenhum erro). Por isso a conexão acontece no próprio callback ref
+  // (`attachVideo`), que o React chama exatamente quando o nó é montado —
+  // mantém o efeito abaixo só como reforço para quando o `stream` muda com o
+  // elemento já montado.
+  function attachVideo(node) {
+    videoRef.current = node;
+    if (node && stream && node.srcObject !== stream) {
+      node.srcObject = stream;
+      node.play().catch(() => {});
+    }
+  }
+
   useEffect(() => {
     const video = videoRef.current;
-    if (video && stream && !snapshot) {
+    if (video && stream && !snapshot && video.srcObject !== stream) {
       video.srcObject = stream;
       video.play().catch(() => {});
     }
@@ -174,43 +186,6 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
   const isDataUri = value?.startsWith('data:');
   const previewUrl = isDataUri ? value : resolvePhotoUrl(value);
 
-  if (capturing) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border bg-muted/30 p-3">
-        {snapshot ? (
-          <img
-            src={snapshot}
-            alt="Prévia da foto capturada"
-            className="aspect-square w-full max-w-xs rounded-lg bg-black object-cover"
-          />
-        ) : (
-          // eslint-disable-next-line jsx-a11y/media-has-caption
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ transform: 'scaleX(-1)' }}
-            className="aspect-square w-full max-w-xs rounded-lg bg-black object-cover"
-          />
-        )}
-        <div className="flex gap-2">
-          {snapshot ? (
-            <>
-              <Button type="button" size="sm" onClick={confirmSnapshot}><Check /> Usar foto</Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setSnapshot(null)}>
-                <RotateCcw /> Tirar outra
-              </Button>
-            </>
-          ) : (
-            <Button type="button" size="sm" onClick={takeSnapshot}><Camera /> Capturar</Button>
-          )}
-          <Button type="button" size="sm" variant="outline" onClick={stopCamera}><X /> Cancelar</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
       <div className="flex items-center gap-4">
@@ -246,6 +221,54 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
         onChange={handleFileSelected}
       />
       {error && <p className="text-sm text-danger">{error}</p>}
+
+      {/* Dialog em vez de encolher no meio do formulário: a prévia da câmera fica bem
+          maior (até max-w-md) e centralizada, mais fácil de enquadrar o rosto antes de
+          capturar. Fechar o dialog por qualquer via (X, Esc, clique fora) passa por
+          onOpenChange, que cai em stopCamera — garante que a câmera é sempre desligada. */}
+      <Dialog open={capturing} onOpenChange={(open) => { if (!open) stopCamera(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{snapshot ? 'Confirme a foto' : 'Tirar foto'}</DialogTitle>
+            <DialogDescription>
+              {snapshot ? 'Está boa, ou prefere tentar de novo?' : 'Centralize o rosto no quadro e capture.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            {snapshot ? (
+              <img
+                src={snapshot}
+                alt="Prévia da foto capturada"
+                className="aspect-square w-full max-w-sm rounded-xl bg-black object-cover"
+              />
+            ) : (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video
+                ref={attachVideo}
+                autoPlay
+                playsInline
+                muted
+                style={{ transform: 'scaleX(-1)' }}
+                className="aspect-square w-full max-w-sm rounded-xl bg-black object-cover"
+              />
+            )}
+            <div className="flex gap-2">
+              {snapshot ? (
+                <>
+                  <Button type="button" onClick={confirmSnapshot}><Check /> Usar foto</Button>
+                  <Button type="button" variant="outline" onClick={() => setSnapshot(null)}>
+                    <RotateCcw /> Tirar outra
+                  </Button>
+                </>
+              ) : (
+                <Button type="button" onClick={takeSnapshot}><Camera /> Capturar</Button>
+              )}
+              <Button type="button" variant="outline" onClick={stopCamera}><X /> Cancelar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {pickingAvatar && (
         <Suspense fallback={<AvatarPickerFallback onOpenChange={setPickingAvatar} />}>
           <AvatarPickerDialog open onOpenChange={setPickingAvatar} onSelect={onChange} />

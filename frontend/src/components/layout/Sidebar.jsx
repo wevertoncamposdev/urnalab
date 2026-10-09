@@ -32,7 +32,7 @@ const NAV_GROUPS = [
   {
     label: 'Montar a eleição',
     items: [
-      { label: 'Assistente guiado', to: '/sessoes/assistente', icon: Wand2, accent: true },
+      { label: 'Criar sessão', to: '/sessoes/assistente', icon: Wand2, accent: true },
       { label: 'Cargos', to: '/cargos', icon: Briefcase },
       { label: 'Partidos', to: '/partidos', icon: Flag },
       { label: 'Pessoas', to: '/pessoas', icon: IdCard },

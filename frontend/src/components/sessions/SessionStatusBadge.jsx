@@ -1,9 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 
+// Termos pensados em etapas didáticas (Candidatura → Votação → Encerrada) — não
+// nos nomes técnicos DRAFT/OPEN/FINISHED, que continuam só no backend (ver
+// SessionStageControl.jsx, que usa os mesmos três termos no stepper de etapas).
 const STATUS_META = {
-  DRAFT: { label: 'Rascunho', variant: 'default' },
-  OPEN: { label: 'Aberta', variant: 'success' },
-  FINISHED: { label: 'Finalizada', variant: 'dark' },
+  DRAFT: { label: 'Candidatura', variant: 'default' },
+  OPEN: { label: 'Votação', variant: 'success' },
+  FINISHED: { label: 'Encerrada', variant: 'dark' },
 };
 
 export function SessionStatusBadge({ status }) {

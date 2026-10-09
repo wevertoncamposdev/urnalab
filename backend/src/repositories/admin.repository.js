@@ -19,6 +19,14 @@ export const adminRepository = {
     return prisma.vote.count();
   },
 
+  async countPeople() {
+    return prisma.person.count();
+  },
+
+  async countCandidates() {
+    return prisma.candidate.count();
+  },
+
   async countUsersSince(date) {
     return prisma.user.count({ where: { createdAt: { gte: date } } });
   },

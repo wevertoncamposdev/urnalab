@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,9 @@ function CandidateRow({ candidate, rank, isWinner, inRunoff, maxVotes, color }) 
         <CandidateAvatar name={candidate.name} photo={candidate.photo} className="size-8" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 truncate text-sm font-medium">
-            {candidate.name}
+            <Link to={`/pessoas/${candidate.personId}`} className="hover:underline">
+              {candidate.name}
+            </Link>
             {isWinner && <Badge variant="success">Eleito</Badge>}
             {inRunoff && <Badge variant="dark">2º turno</Badge>}
             {candidate.status === 'INACTIVE' && <Badge>Inativo</Badge>}

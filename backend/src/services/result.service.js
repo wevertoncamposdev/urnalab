@@ -94,6 +94,7 @@ function tallyPosition(code, votes, candidates, partiesById, positionsByCode, pe
       const person = peopleById.get(c.personId);
       return {
         id: c.id,
+        personId: c.personId,
         name: person?.name ?? null,
         number: c.number,
         photo: person?.photo ?? null,
