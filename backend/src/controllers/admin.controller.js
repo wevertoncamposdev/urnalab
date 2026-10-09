@@ -14,6 +14,10 @@ export const adminController = {
     sendSuccess(res, await adminService.listUsers(userId, query));
   },
 
+  async paymentsSummary({ res, userId }) {
+    sendSuccess(res, await adminService.getPaymentsSummary(userId));
+  },
+
   async funnel({ res, userId }) {
     sendSuccess(res, await adminService.getFunnel(userId));
   },

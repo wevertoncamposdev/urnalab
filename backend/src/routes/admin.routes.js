@@ -46,4 +46,9 @@ export function registerAdminRoutes(router) {
     maxBodyBytes: PRODUCT_FILE_LIMITS.requestBodyMaxBytes,
   });
   router.get('/api/admin/products/:id/sales', productController.adminSales, { adminOnly: true });
+
+  // Painel financeiro: mesma listagem de produtos acima, só que com total vendido e
+  // receita por produto já embutidos, mais o total geral e de doações (sem Product
+  // nenhum por trás — ver schema.prisma Donation).
+  router.get('/api/admin/payments/summary', adminController.paymentsSummary, { adminOnly: true });
 }

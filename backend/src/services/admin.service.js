@@ -3,6 +3,7 @@ import { adminRepository } from '../repositories/admin.repository.js';
 import { adminVerificationRepository } from '../repositories/admin-verification.repository.js';
 import { analyticsRepository } from '../repositories/analytics.repository.js';
 import { feedbackRepository } from '../repositories/feedback.repository.js';
+import { productRepository } from '../repositories/product.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { ANALYTICS_EVENT_NAMES } from '../rules/analytics-rules.js';
 import { ADMIN_VERIFICATION_RULES } from '../rules/admin-verification-rules.js';
@@ -193,6 +194,48 @@ export const adminService = {
 
     await adminRepository.logAccess(userId, `UPDATE_FEEDBACK_STATUS:${feedbackId}:${status}`);
     return result.record;
+  },
+
+  // Painel financeiro da Área de Gerenciamento: a mesma listagem de produtos
+  // (AdminProducts.jsx) já carregava via GET /api/admin/products, agora enriquecida
+  // com quanto cada um já vendeu — sem precisar abrir o diálogo de vendas por produto
+  // só pra ver o total. `totals` cobre o que nenhum produto individual mostra: o
+  // apurado geral (produtos + doações) e as doações isoladas, já que elas não têm
+  // Product nenhum por trás (ver schema.prisma Donation).
+  async getPaymentsSummary(userId) {
+    const [products, productSales, donationsTotals] = await Promise.all([
+      productRepository.findAll(),
+      adminRepository.paymentsGroupedByProduct(),
+      adminRepository.donationsTotals(),
+    ]);
+
+    const salesByProduct = new Map(
+      productSales.map((row) => [
+        row.productId,
+        { totalSales: row._count._all, totalRevenueCents: row._sum.amountCents ?? 0 },
+      ]),
+    );
+
+    const productsSummary = products.map((product) => {
+      const sales = salesByProduct.get(product.id) ?? { totalSales: 0, totalRevenueCents: 0 };
+      return { ...product, ...sales };
+    });
+
+    const productsRevenueCents = productsSummary.reduce((sum, p) => sum + p.totalRevenueCents, 0);
+    const productsSalesCount = productsSummary.reduce((sum, p) => sum + p.totalSales, 0);
+
+    await adminRepository.logAccess(userId, 'VIEW_PAYMENTS_SUMMARY');
+
+    return {
+      products: productsSummary,
+      totals: {
+        productsSalesCount,
+        productsRevenueCents,
+        donationsCount: donationsTotals.count,
+        donationsRevenueCents: donationsTotals.revenueCents,
+        overallRevenueCents: productsRevenueCents + donationsTotals.revenueCents,
+      },
+    };
   },
 
   // Segunda camada de acesso à Área de Gerenciamento (Etapa 19) — estas duas rotas são

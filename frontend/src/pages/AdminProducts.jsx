@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Pencil, Receipt } from 'lucide-react';
+import { Heart, Package, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,8 +10,9 @@ import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { StatTile } from '@/components/layout/StatTile';
 import { useAsync } from '@/hooks/useAsync';
-import { formatCents, formatDateTime } from '@/lib/format';
+import { formatCents, formatDateTime, formatNumber } from '@/lib/format';
 import { api } from '@/services/api';
 
 const KIND_LABELS = { SESSION_EXPORT: 'Por sessão', EBOOK: 'Por conta' };
@@ -80,8 +81,39 @@ function SalesDialog({ productId, onOpenChange }) {
   );
 }
 
+// Totais do painel financeiro (ver backend/src/services/admin.service.js
+// getPaymentsSummary) — receita geral primeiro (produtos + doações somados), depois
+// os dois números que a tabela de produtos abaixo não mostra sozinha: vendas de
+// produto e doações são contadas separado porque doação não tem Product nenhum por
+// trás (ver schema.prisma Donation).
+function PaymentsTotals({ totals }) {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatTile icon={Wallet} label="Receita total" value={formatCents(totals.overallRevenueCents)} tone="primary" />
+      <StatTile
+        icon={ShoppingCart}
+        label="Vendas de produtos"
+        value={`${formatNumber(totals.productsSalesCount)} · ${formatCents(totals.productsRevenueCents)}`}
+        tone="accent"
+      />
+      <StatTile
+        icon={Heart}
+        label="Doações recebidas"
+        value={formatNumber(totals.donationsCount)}
+        tone="coral"
+      />
+      <StatTile
+        icon={Receipt}
+        label="Receita de doações"
+        value={formatCents(totals.donationsRevenueCents)}
+        tone="success"
+      />
+    </div>
+  );
+}
+
 export default function AdminProducts() {
-  const productsState = useAsync(() => api.admin.products.list(), []);
+  const summaryState = useAsync(() => api.admin.paymentsSummary(), []);
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
   const [viewingSalesId, setViewingSalesId] = useState(null);
@@ -90,68 +122,85 @@ export default function AdminProducts() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <PageHeader
         title="Produtos"
-        description="Catálogo de tudo que é vendido pelo sistema — preço, descrição e disponibilidade."
+        description="Catálogo de tudo que é vendido pelo sistema — preço, descrição, disponibilidade e vendas."
       >
         <Button type="button" onClick={() => setCreating(true)}>Novo produto</Button>
       </PageHeader>
 
-      {productsState.error ? (
-        <ErrorState error={productsState.error} onRetry={productsState.reload} />
-      ) : !productsState.data ? (
-        <Skeleton className="h-64" />
-      ) : productsState.data.length === 0 ? (
-        <EmptyState icon={Package} title="Nenhum produto cadastrado" />
+      {summaryState.error ? (
+        <ErrorState error={summaryState.error} onRetry={summaryState.reload} />
+      ) : !summaryState.data ? (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+          </div>
+          <Skeleton className="h-64" />
+        </>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productsState.data.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{KIND_LABELS[product.kind] ?? product.kind}</TableCell>
-                  <TableCell>{formatCents(product.priceCents)}</TableCell>
-                  <TableCell>
-                    <Badge variant={product.active ? 'success' : 'default'}>
-                      {product.active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setViewingSalesId(product.id)}>
-                        <Receipt /> Vendas
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditing(product)}>
-                        <Pencil /> Editar
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <>
+          <PaymentsTotals totals={summaryState.data.totals} />
+
+          {summaryState.data.products.length === 0 ? (
+            <EmptyState icon={Package} title="Nenhum produto cadastrado" />
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Vendido</TableHead>
+                    <TableHead className="text-right">Receita</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summaryState.data.products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{KIND_LABELS[product.kind] ?? product.kind}</TableCell>
+                      <TableCell>{formatCents(product.priceCents)}</TableCell>
+                      <TableCell>
+                        <Badge variant={product.active ? 'success' : 'default'}>
+                          {product.active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{formatNumber(product.totalSales)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCents(product.totalRevenueCents)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setViewingSalesId(product.id)}>
+                            <Receipt /> Vendas
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditing(product)}>
+                            <Pencil /> Editar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </>
       )}
 
       <ProductFormDialog
         open={creating}
         product={null}
         onOpenChange={setCreating}
-        onSaved={productsState.reload}
+        onSaved={summaryState.reload}
       />
       <ProductFormDialog
         open={Boolean(editing)}
         product={editing}
         onOpenChange={(open) => !open && setEditing(null)}
-        onSaved={productsState.reload}
+        onSaved={summaryState.reload}
       />
       <SalesDialog productId={viewingSalesId} onOpenChange={(open) => !open && setViewingSalesId(null)} />
     </div>
