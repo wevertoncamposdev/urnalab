@@ -186,7 +186,11 @@ export default function Candidates() {
           value={status}
           onChange={setStatus}
           allLabel="Todos os status"
-          options={[{ value: 'ACTIVE', label: 'Ativos' }, { value: 'INACTIVE', label: 'Inativos' }]}
+          options={[
+            { value: 'PENDING', label: 'Pendentes' },
+            { value: 'ACTIVE', label: 'Ativos' },
+            { value: 'INACTIVE', label: 'Inativos' },
+          ]}
         />
       </div>
 
@@ -217,6 +221,12 @@ export default function Candidates() {
             onDeactivate={setDeactivating}
             onReactivate={(candidate) =>
               updateStatus(() => api.candidates.update(candidate.id, { status: 'ACTIVE' }), 'Candidato reativado.')
+            }
+            onApprove={(candidate) =>
+              updateStatus(() => api.candidates.update(candidate.id, { status: 'ACTIVE' }), 'Candidatura aprovada.')
+            }
+            onReject={(candidate) =>
+              updateStatus(() => api.candidates.update(candidate.id, { status: 'INACTIVE' }), 'Candidatura reprovada.')
             }
           />
         </Card>

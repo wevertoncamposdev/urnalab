@@ -11,3 +11,12 @@ export const generatePublicToken = () => randomBytes(18).toString('base64url');
 // colisão (ver generateSessionCode em session.service.js) — não serve pra nada
 // que precise ser imprevisível de verdade.
 export const generateSessionCode = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+// Código do link público de candidatura: mesma ideia do código de votação acima
+// (curto, fácil de digitar), mas em 4 letras maiúsculas — só pra diferenciar
+// visualmente de cara os dois links (ex.: "7421" é pra votar, "QXRL" é pra se
+// candidatar). Trata colisão do mesmo jeito (ver withUniqueCandidacyCode em
+// session.service.js).
+const CANDIDACY_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+export const generateCandidacyCode = () =>
+  Array.from({ length: 4 }, () => CANDIDACY_CODE_ALPHABET[Math.floor(Math.random() * CANDIDACY_CODE_ALPHABET.length)]).join('');

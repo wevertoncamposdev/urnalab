@@ -42,7 +42,7 @@ function normalizeGovernmentProposal(value) {
 
 function assertStatus(status) {
   if (!Object.values(CANDIDATE_STATUS).includes(status)) {
-    throw badRequest('CANDIDATE_STATUS_INVALID', 'Status inválido. Use ACTIVE ou INACTIVE.');
+    throw badRequest('CANDIDATE_STATUS_INVALID', 'Status inválido. Use ACTIVE, INACTIVE ou PENDING.');
   }
 }
 
@@ -178,8 +178,11 @@ export const candidateService = {
   },
 
   // Candidatura = pessoa (já cadastrada em /pessoas) + sessão + cargo + partido +
-  // número. Nome e foto não entram aqui: pertencem à pessoa.
-  async create(input, userId) {
+  // número. Nome e foto não entram aqui: pertencem à pessoa. `status` default é
+  // ACTIVE (cadastro manual pelo admin); o link público de candidatura (Etapa 20,
+  // ver public-candidacy.service.js) passa PENDING, pra exigir aprovação antes de
+  // entrar na cédula.
+  async create(input, userId, { status = CANDIDATE_STATUS.ACTIVE } = {}) {
     const data = isPlainObject(input) ? input : {};
 
     const session = await requireSession(data.sessionId, userId);
@@ -199,7 +202,7 @@ export const candidateService = {
       number,
       governmentProposal: normalizeGovernmentProposal(data.governmentProposal),
       userId,
-      status: CANDIDATE_STATUS.ACTIVE,
+      status,
       createdAt: new Date().toISOString(),
     });
     if (result.conflict) throw numberTaken();

@@ -1,10 +1,20 @@
-import { FileText, Pencil, Power, PowerOff } from 'lucide-react';
+import { Check, FileText, Pencil, Power, PowerOff, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RowActions } from '@/components/layout/RowActions';
 import { ActiveBadge } from '@/components/layout/StatusBadge';
 import { CandidateAvatar } from './CandidateAvatar';
 
-export function CandidatesTable({ candidates, positionLabels, sessionsById, onEdit, onDeactivate, onReactivate, onViewProposal }) {
+export function CandidatesTable({
+  candidates,
+  positionLabels,
+  sessionsById,
+  onEdit,
+  onDeactivate,
+  onReactivate,
+  onApprove,
+  onReject,
+  onViewProposal,
+}) {
   return (
     <Table>
       <TableHeader>
@@ -44,9 +54,14 @@ export function CandidatesTable({ candidates, positionLabels, sessionsById, onEd
                   items={[
                     { label: 'Ver proposta', icon: FileText, onSelect: () => onViewProposal(candidate) },
                     { label: 'Editar', icon: Pencil, onSelect: () => onEdit(candidate), disabled: locked },
-                    candidate.status === 'ACTIVE'
-                      ? { label: 'Desativar', icon: PowerOff, onSelect: () => onDeactivate(candidate), disabled: locked }
-                      : { label: 'Reativar', icon: Power, onSelect: () => onReactivate(candidate), disabled: locked },
+                    ...(candidate.status === 'PENDING'
+                      ? [
+                          { label: 'Aprovar', icon: Check, onSelect: () => onApprove(candidate), disabled: locked },
+                          { label: 'Reprovar', icon: X, onSelect: () => onReject(candidate), disabled: locked },
+                        ]
+                      : candidate.status === 'ACTIVE'
+                        ? [{ label: 'Desativar', icon: PowerOff, onSelect: () => onDeactivate(candidate), disabled: locked }]
+                        : [{ label: 'Reativar', icon: Power, onSelect: () => onReactivate(candidate), disabled: locked }]),
                   ]}
                 />
               </TableCell>

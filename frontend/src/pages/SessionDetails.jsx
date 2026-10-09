@@ -86,6 +86,50 @@ function PublicLinkCard({ publicToken }) {
   );
 }
 
+// Link público de candidatura (Etapa 20): mesmo padrão do link de votação acima,
+// mas só funciona enquanto a sessão é rascunho (depois que a votação abre, o
+// backend não aceita mais candidatura nova — ver public-candidacy.service.js).
+// Código em letras maiúsculas pra diferenciar visualmente do código numérico de
+// votação (`font-mono` continua igual, só a cor do destaque muda).
+function PublicCandidacyLinkCard({ candidacyToken }) {
+  const url = `${window.location.origin}/candidatar/${candidacyToken}`;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Link público de candidatura</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          Qualquer pessoa com este link pode se candidatar nesta sessão, sem precisar de conta.
+          Toda candidatura recebida entra como pendente — aprove ou reprove em Candidatos.
+        </p>
+        <div className="flex flex-col items-center gap-1 rounded-lg border bg-accent-soft/40 py-4">
+          <span className="text-xs text-muted-foreground">Código de acesso</span>
+          <button
+            type="button"
+            onClick={() => copyPublicLink(candidacyToken)}
+            className="font-mono text-3xl font-bold tracking-widest text-accent"
+            title="Copiar código"
+          >
+            {candidacyToken}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <Input readOnly value={url} onFocus={(e) => e.target.select()} className="font-mono text-xs" />
+          <Button type="button" variant="outline" size="icon" onClick={() => copyPublicLink(url)} aria-label="Copiar link" title="Copiar link">
+            <Copy />
+          </Button>
+          <Button type="button" variant="outline" size="icon" asChild>
+            <a href={url} target="_blank" rel="noreferrer" aria-label="Abrir em nova aba" title="Abrir em nova aba">
+              <ExternalLink />
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DateRow({ label, value }) {
   return (
     <div className="flex justify-between gap-4 py-2 text-sm">
@@ -219,6 +263,7 @@ export default function SessionDetails() {
         <AlertDescription>{STATUS_HINT[session.status]}</AlertDescription>
       </Alert>
 
+      {session.status === 'DRAFT' && <PublicCandidacyLinkCard candidacyToken={session.candidacyToken} />}
       {session.status === 'OPEN' && <PublicLinkCard publicToken={session.publicToken} />}
 
       <div className="grid grid-cols-3 gap-4">

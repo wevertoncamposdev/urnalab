@@ -16,6 +16,12 @@ export const sessionRepository = {
     return serializeDates(await prisma.session.findUnique({ where: { publicToken: token } }));
   },
 
+  // Mesmo raciocínio do findByPublicToken acima, mas pro link público de
+  // candidatura (Etapa 20) — ver public-candidacy.service.js.
+  async findByCandidacyToken(token) {
+    return serializeDates(await prisma.session.findUnique({ where: { candidacyToken: token } }));
+  },
+
   async create(data) {
     return serializeDates(await prisma.session.create({ data }));
   },

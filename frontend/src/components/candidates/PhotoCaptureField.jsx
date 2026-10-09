@@ -1,8 +1,37 @@
-import { useEffect, useRef, useState } from 'react';
-import { Camera, Check, RotateCcw, Trash2, Upload, Video, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Camera, Check, RotateCcw, Smile, Trash2, Upload, Video, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { resolvePhotoUrl } from '@/services/api';
+
+// Lazy: AvatarPicker.jsx importa o DiceBear (ver lá), que não pode entrar no
+// bundle inicial de quem usa este campo — PersonFormDialog.jsx e
+// PublicCandidacy.jsx não são rotas lazy em App.jsx, e a segunda é a página
+// pública de candidatura, sem login, aberta por qualquer visitante.
+const AvatarPickerDialog = lazy(() =>
+  import('./AvatarPicker').then((mod) => ({ default: mod.AvatarPickerDialog })),
+);
+
+// Enquanto o chunk do AvatarPicker ainda baixa, mostra um dialog mínimo com o
+// mesmo título — só pra quem clicou em "Escolher avatar" ter feedback visual
+// imediato (mesmo espírito do AdminPageFallback em App.jsx).
+function AvatarPickerFallback({ onOpenChange }) {
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Escolher avatar</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-6 gap-2">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square rounded-full" />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Captura sempre um quadrado: é como a foto é exibida em todo o resto do app
 // (CandidateAvatar é sempre um círculo via object-cover). Pedir isso já na
@@ -19,14 +48,16 @@ const CAMERA_ERROR_MESSAGES = {
 };
 
 // Campo de foto: aceita um arquivo enviado do dispositivo, uma captura da
-// webcam, ou um link http(s) digitado. Upload e câmera viram um data URI (o
-// backend decodifica, salva o arquivo e devolve o caminho). `value` é sempre o
-// que vai no formulário: um link, um caminho já salvo (/photos/...) ou,
-// enquanto não enviado, o data URI recém-gerado.
+// webcam, ou um avatar pronto escolhido no AvatarPicker (ver abaixo). As três
+// opções viram o mesmo tipo de data URI (o backend decodifica, salva o arquivo
+// e devolve o caminho) — pro resto do sistema, um avatar é indistinguível de
+// uma foto de verdade. `value` é sempre o que vai no formulário: um caminho já
+// salvo (/photos/...) ou, enquanto não enviado, o data URI recém-gerado.
 export function PhotoCaptureField({ id, value, onChange, disabled }) {
   const [capturing, setCapturing] = useState(false);
   const [stream, setStream] = useState(null);
   const [snapshot, setSnapshot] = useState(null); // prévia aguardando confirmação
+  const [pickingAvatar, setPickingAvatar] = useState(false);
   const [error, setError] = useState(null);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -181,46 +212,45 @@ export function PhotoCaptureField({ id, value, onChange, disabled }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
+      <div className="flex items-center gap-4">
         {previewUrl ? (
-          <img src={previewUrl} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
+          <img src={previewUrl} alt="" className="size-20 shrink-0 rounded-full object-cover" />
         ) : (
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-            <Camera className="size-5" />
+          <div className="flex size-20 shrink-0 items-center justify-center rounded-full border border-dashed text-muted-foreground">
+            <Camera className="size-6" />
           </div>
         )}
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={openFilePicker}>
-              <Upload /> Fazer upload
+        <div className="flex flex-1 flex-wrap gap-2">
+          <Button id={id} type="button" size="sm" variant="outline" disabled={disabled} onClick={openFilePicker}>
+            <Upload /> Fazer upload
+          </Button>
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={startCamera}>
+            <Video /> Tirar foto
+          </Button>
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setPickingAvatar(true)}>
+            <Smile /> Escolher avatar
+          </Button>
+          {value && (
+            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange('')}>
+              <Trash2 /> Remover
             </Button>
-            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={startCamera}>
-              <Video /> Tirar foto
-            </Button>
-            {value && (
-              <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange('')}>
-                <Trash2 /> Remover
-              </Button>
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelected}
-          />
-          <Input
-            id={id}
-            value={isDataUri ? '' : value ?? ''}
-            placeholder={isDataUri ? 'Foto selecionada' : 'ou cole o link de uma imagem (https://)'}
-            disabled={disabled || isDataUri}
-            onChange={(e) => onChange(e.target.value)}
-          />
+          )}
         </div>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
       {error && <p className="text-sm text-danger">{error}</p>}
+      {pickingAvatar && (
+        <Suspense fallback={<AvatarPickerFallback onOpenChange={setPickingAvatar} />}>
+          <AvatarPickerDialog open onOpenChange={setPickingAvatar} onSelect={onChange} />
+        </Suspense>
+      )}
     </div>
   );
 }

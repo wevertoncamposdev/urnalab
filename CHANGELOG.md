@@ -12,6 +12,25 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
 
 ### Added
 
+- **Cadastro de candidatura por link público (Etapa 20)**: igual já existia pra votação, agora
+  também existe um link público de candidatura — o próprio candidato se cadastra (pessoa +
+  candidatura numa submissão só) sem precisar de conta, e quem administra a sessão aprova ou
+  reprova depois. Backend: novo campo `Session.candidacyToken` (mesmo esquema do `publicToken` já
+  existente — gerado na criação, retroagido sozinho em sessões antigas — mas em 4 letras
+  maiúsculas em vez de 4 dígitos, só pra diferenciar visualmente os dois links de cara, ver
+  `generateCandidacyCode` em `utils/id.js`), `GET /api/public/candidacy/:token` (dados da sessão,
+  cargos e partidos pro formulário) e `POST /api/public/candidacy/:token` (cria a pessoa e a
+  candidatura; se a candidatura falhar — ex. número já em uso — a pessoa criada é desfeita, sem
+  deixar cadastro órfão). Candidatura nova ganhou o status `PENDING` (`CANDIDATE_STATUS`) — não
+  entra na cédula nem na lista pública de candidatos enquanto não for aprovada (`ACTIVE`) ou
+  reprovada (`INACTIVE`); listar pendentes e aprovar/reprovar reaproveitam as rotas
+  `GET`/`PUT /api/candidates` já existentes, filtrando e alterando por `status`, sem rota admin
+  nova. Cadastro só é aceito enquanto a sessão está em rascunho, mesma regra do cadastro manual
+  pelo admin. Frontend: `PublicCandidacy.jsx` (formulário público, reaproveitando
+  `PhotoCaptureField`), card "Link público de candidatura" em `SessionDetails.jsx` (visível
+  enquanto a sessão é rascunho, com o código em destaque), e a tela de Candidatos ganhou o filtro
+  "Pendentes" e as ações "Aprovar"/"Reprovar" por linha.
+
 - **Verificação em duas etapas na Área de Gerenciamento (Etapa 19)**: além da conta já
   precisar ser `ADMIN_EMAIL`, entrar em `/gerenciamento*` agora também exige confirmar um
   código de 6 dígitos mandado por e-mail a cada vez. Backend: model
@@ -36,6 +55,24 @@ incompatíveis sem aviso extra, como é comum nessa faixa de versão.
   cada candidato na lista pra servir de legenda.
 
 ### Changed
+
+- **Avatares prontos no campo de foto, no lugar do link (Etapa 20)**: refinamento depois de testar
+  o cadastro de candidatura por link público. `PhotoCaptureField.jsx` perdeu a opção de colar um
+  link de imagem e ganhou "Escolher avatar": um `AvatarPickerDialog.jsx` novo com ilustrações
+  prontas geradas pelo [DiceBear](https://www.dicebear.com) (5 estilos: Pessoas, Robôs, Retrô,
+  Ilustrado, Minimalista — todos de licença livre, sem exigência de crédito, verificada pacote por
+  pacote) — útil pra manter o cadastro mais didático quando não se quer usar foto pessoal (ex. numa
+  sala de aula). Cada estilo carrega sob demanda via `import()` dinâmico só quando sua aba é aberta
+  (o próprio `AvatarPickerDialog` também é `lazy()` dentro de `PhotoCaptureField.jsx`) — nada disso
+  entra no bundle inicial de quem nunca clica em "Escolher avatar", nem na página pública de
+  candidatura (`PublicCandidacy.jsx`), que não tem login. A grade mostra 12 ilustrações por estilo
+  (geradas com seed aleatória, pré-visualizadas como SVG direto num `<img>`) com um botão "Sortear
+  de novo" que troca as 12 de uma vez; a escolhida é rasterizada num `<canvas>` pra PNG (mesma
+  técnica que upload/câmera já usavam) antes de virar o data URI final — nenhuma mudança no
+  backend, que continua só recebendo e salvando uma imagem. O campo também ganhou um preview maior
+  (círculo, antes quadrado pequeno) dentro de um cartão com borda, e o formulário público de
+  candidatura foi reorganizado em duas seções com rótulo ("Seus dados" e "Sua candidatura") pra
+  deixar essas opções de foto mais visíveis.
 
 - **"Colinha" da votação com select de altura fixa e detalhes em destaque, tela sem scroll no
   desktop (Etapas 21 e 22)**: levantado num Teste de Usabilidade em Campos. A área de consulta

@@ -60,42 +60,48 @@ suficiente sozinho, precisa também de "algo que só o dono do e-mail recebe".
 
 ---
 
-### Etapa 20 — Cadastro de candidatura por link público
-
-Hoje toda candidatura é cadastrada manualmente por quem administra a sessão. Igual já existe
-para a votação (link público de votar), a ideia é gerar também um link público de candidatura:
-o próprio candidato entra, se cadastra e já envia a proposta num formulário único (pessoa +
-candidatura ao mesmo tempo, não dois passos separados). Depois quem criou a sessão analisa cada
-candidatura recebida e marca como apta ou inapta.
-
-Levantado no Teste de Usabilidade em Campos de 2026-10-08.
-
-- [ ] 20.1 — Backend: rota pública de candidatura (ex.: `POST /api/public/candidacy/:sessionId` ou
-  por token de sessão, seguindo o padrão do link público de votação) que recebe dados da pessoa
-  (nome, foto) e da candidatura (cargo, partido, número, proposta) numa única submissão e cria os
-  dois registros. Candidatura entra com um status (ex.: `PENDENTE`/`APTO`/`INAPTO`).
-- [ ] 20.2 — Backend: rota admin para listar candidaturas pendentes de uma sessão e aprovar/reprovar
-  cada uma (`PATCH` de status), visível só pra quem é dono da sessão.
-- [ ] 20.3 — Frontend: página pública de cadastro de candidatura (formulário único, acessível pelo
-  link gerado na sessão), reaproveitando o layout/padrão da página pública de votação.
-- [ ] 20.4 — Frontend: tela de gestão de candidaturas na Área de Gerenciamento da sessão, pra listar
-  as pendentes e aprovar/reprovar, com o link público de candidatura disponível pra copiar/compartilhar.
-
----
-
 ### Etapa 23 — Apresentação automática dos candidatos com Text-to-Speech
 
-Tela nova que mostra os candidatos de uma sessão um por vez, em um card grande, lendo em voz alta
-(TTS) o nome, número e a proposta de cada candidato — pensada pra ser usada antes da votação,
-como forma de apresentação dos candidatos pro eleitorado.
+Um botão na própria tela de votação pública (`PublicVoting.jsx`) abre um dialog que apresenta os
+candidatos da sessão um por vez, em card grande (foto, número, nome, proposta), lendo cada um em
+voz alta automaticamente antes do eleitor começar a votar.
 
-Levantado no Teste de Usabilidade em Campos de 2026-10-08.
+Levantado no Teste de Usabilidade em Campos de 2026-10-08. Refinado em 2026-10-08: a ideia
+original era uma tela própria (`/apresentacao/:sessionId`); virou um dialog disparado por um
+botão na tela de votação, reaproveitando os candidatos que `PublicVoting.jsx` já busca
+(`candidatesState.data`, todos os cargos da sessão de uma vez) — **sem endpoint novo no backend**,
+essa etapa é 100% frontend.
 
-- [ ] 23.1 — Frontend: tela de apresentação (ex.: `/apresentacao/:sessionId`) que percorre os
-  candidatos de uma sessão um a um, em card grande (foto, nome, número, proposta).
-- [ ] 23.2 — Integração com Web Speech API (`speechSynthesis`) pra ler em voz alta nome, número e
-  proposta de cada candidato ao exibir o card, avançando pro próximo automaticamente (ou com
-  controle manual de avançar/pausar).
+**Pesquisa de TTS (2026-10-08)** — a pergunta foi se existe "IA TTS grátis com API pra leitura em
+pt-BR". Resposta: a melhor opção pra esse caso **não é uma API de IA paga** (Google Cloud TTS,
+Azure Speech, AWS Polly, ElevenLabs — todas têm camada grátis limitada, mas exigem conta, chave de
+API e faturamento configurado, complexidade desproporcional pra um botão de "ouvir os
+candidatos"), e sim a **Web Speech API** (`window.speechSynthesis`), nativa do navegador:
+
+- Sem custo, sem chave, sem backend, sem limite de uso — roda 100% no navegador do eleitor.
+- No Chrome/Edge (o navegador mais comum em Chromebook/laboratório de escola), as vozes "Google
+  português do Brasil" disponíveis via `speechSynthesis.getVoices()` já são de qualidade neural
+  (o mesmo motor do Google Cloud TTS, só que de graça pelo navegador) — dá pra escolher uma delas
+  explicitamente em vez de deixar a voz padrão do SO.
+- Limitação conhecida: a lista de vozes carrega de forma assíncrona (evento `voiceschanged`) e
+  varia por navegador/SO/dispositivo — em alguns (Firefox em Linux sem voz pt-BR instalada, por
+  exemplo) pode não ter nenhuma voz em português disponível; precisa de um fallback (mostrar o
+  texto normalmente, com um aviso de que a leitura em voz alta não está disponível nesse
+  navegador) em vez de quebrar a funcionalidade.
+
+- [ ] 23.1 — Frontend: `CandidatePresentationDialog.jsx` — dialog (não uma rota nova) com um card
+  grande por candidato (foto grande, número em destaque, nome, proposta), percorrendo todos os
+  candidatos da sessão agrupados por cargo (cabeçalho "Presidente", depois cada candidato a
+  Presidente, depois "Governador"...). Controles de pausar/retomar, avançar/voltar manualmente e
+  fechar (que também interrompe a leitura em andamento).
+- [ ] 23.2 — Integração com a Web Speech API: ao exibir cada candidato, monta um
+  `SpeechSynthesisUtterance` (`lang = 'pt-BR'`, voz pt-BR escolhida de `getVoices()` quando
+  disponível) lendo cargo (quando muda), número, nome e proposta; ao terminar de falar
+  (`utterance.onend`), avança sozinho pro próximo candidato após uma pequena pausa. Trata o caso
+  de `speechSynthesis` indisponível ou sem voz pt-BR (mostra o card normalmente, só sem a leitura
+  automática, com um aviso).
+- [ ] 23.3 — Botão "Apresentar candidatos" (com ícone, ex.: `Volume2`/`Megaphone`) na tela de
+  votação pública, visível antes/durante a votação, que abre o dialog da 23.1.
 
 ---
 
@@ -129,6 +135,9 @@ andamento" acima como uma Etapa nova.
   acrescentar um upload de logo (reaproveitando `photo-storage.js`, já usado pra foto de
   candidato) daria identidade visual própria pra cada eleição na cédula e nos resultados, além do
   UrnaLab.
+- **Avatares mais dinâmicos e lúdicos**: pedido em 2026-10-08, pesquisado e implementado no mesmo
+  dia — ver `CHANGELOG.md` ("Avatares prontos no campo de foto, no lugar do link", Etapa 20) pelo
+  resultado final (DiceBear, 5 estilos, lazy-load por estilo, "Sortear de novo").
 
 ### Dados e infraestrutura
 
@@ -136,6 +145,28 @@ andamento" acima como uma Etapa nova.
   existe `npm run seed`, que sempre recria do zero).
 - **Paginação** nas listagens (`/api/candidates`, `/api/votes` se virar endpoint): hoje tudo é
   carregado de uma vez, o que não escala para uma eleição com muitos votos.
+- **Liberar/reciclar os códigos curtos dos links públicos (votação e candidatura)**: levantado em
+  2026-10-08, pensando em uso de longo prazo. Hoje `Session.publicToken` (4 dígitos, 10 mil
+  combinações) e `Session.candidacyToken` (4 letras maiúsculas, ~457 mil combinações) nunca são
+  liberados — ficam reservados pra sempre na sessão, mesmo depois de finalizada. Isso não é um bug
+  (o banco garante unicidade e nunca há ambiguidade sobre a qual sessão um código pertence — ver
+  discussão na Etapa 20), mas com o tempo o espaço de 10 mil códigos de votação tende a esgotar.
+  Como a constraint é `@unique`, não `NOT NULL`, "liberar" é só zerar o campo — o gerador que já
+  existe (`withUniqueSessionCode`/`withUniqueCandidacyCode`, `session.service.js`) já sorteia de
+  novo em caso de colisão, então um código zerado já volta a ser sorteável sem nenhuma lógica
+  extra. Dois pedaços:
+  - `candidacyToken` dá pra zerar sem contrapartida nenhuma dentro de `sessionService.open()` — ele
+    só serve durante `DRAFT` (candidatura já é bloqueada fora disso, e o card do link some da tela
+    assim que a sessão sai do rascunho), então nada depende dele depois desse ponto.
+  - `publicToken` é mais delicado: hoje o mesmo link `/votar/:token` serve pra votar (`OPEN`) *e*
+    pra ver o resultado depois (`PublicVoting.jsx` mostra o resultado quando `status === FINISHED`,
+    no mesmo link) — zerar esse token ao finalizar quebraria o link de resultado de quem
+    compartilhou/guardou ele. Pra resolver, precisa separar isso antes: um `resultsToken` novo
+    (longo e opaco, tipo o `generatePublicToken()` já usado no reset de senha — não precisa ser
+    curto/memorizável, só é clicado, nunca digitado) nasce quando a sessão finaliza e vira o link
+    de resultado pra sempre; só depois disso `publicToken` pode ser zerado em `finish()` sem
+    quebrar nada. Precisa de campo novo + migração, uma rota/página pública de resultado própria, e
+    decidir o retrofit pras sessões já finalizadas sem esse token ainda.
 
 ### Segurança e integridade
 
