@@ -110,7 +110,7 @@ export function DuplicateSessionDialog({ session, positionLabels, onOpenChange }
         <DialogHeader>
           <DialogTitle>Duplicar sessão</DialogTitle>
           <DialogDescription>
-            Cria uma sessão nova em rascunho com os mesmos cargos de "{session?.name}" e uma
+            Cria uma sessão nova na etapa de candidatura com os mesmos cargos de "{session?.name}" e uma
             candidatura nova pra cada candidato marcado abaixo.
           </DialogDescription>
         </DialogHeader>

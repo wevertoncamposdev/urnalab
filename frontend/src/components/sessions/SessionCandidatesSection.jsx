@@ -31,9 +31,9 @@ function FilterSelect({ label, value, onChange, allLabel, options }) {
   );
 }
 
-// Candidatos de uma sessão só — mesmos componentes reaproveitados por /candidatos e
-// pelo assistente guiado (CandidatesTable/CandidateFormDialog), sem o filtro "todas
-// as sessões" (aqui a sessão já é fixa, vinda de SessionDetails.jsx).
+// Candidatos de uma sessão só — mesmos componentes reaproveitados por /candidatos
+// (CandidatesTable/CandidateFormDialog), sem o filtro "todas as sessões" (aqui a
+// sessão já é fixa, vinda de SessionDetails.jsx).
 export function SessionCandidatesSection({ session, parties, positions, onCandidatesChanged }) {
   const [position, setPosition] = useState(ALL);
   const [partyId, setPartyId] = useState(ALL);

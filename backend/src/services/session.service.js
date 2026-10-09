@@ -122,15 +122,12 @@ async function assertNoCandidatesInRemovedPositions(session, nextPositions, user
   );
 }
 
-async function changeStatus(id, userId, { from, to, timestampField, errorMessage }) {
+async function changeStatus(id, userId, { from, to, fields, errorMessage }) {
   const session = await findOrFail(id, userId);
   if (session.status !== from) {
     throw conflict('INVALID_SESSION_STATUS', errorMessage);
   }
-  const updated = await sessionRepository.update(id, {
-    status: to,
-    [timestampField]: new Date().toISOString(),
-  });
+  const updated = await sessionRepository.update(id, { status: to, ...fields });
   return withStats(updated);
 }
 
@@ -190,7 +187,7 @@ export const sessionService = {
     return changeStatus(id, userId, {
       from: SESSION_STATUS.DRAFT,
       to: SESSION_STATUS.OPEN,
-      timestampField: 'startedAt',
+      fields: { startedAt: new Date().toISOString() },
       errorMessage: 'Só é possível abrir a votação de uma sessão em rascunho.',
     });
   },
@@ -199,8 +196,33 @@ export const sessionService = {
     return changeStatus(id, userId, {
       from: SESSION_STATUS.OPEN,
       to: SESSION_STATUS.FINISHED,
-      timestampField: 'finishedAt',
+      fields: { finishedAt: new Date().toISOString() },
       errorMessage: 'Só é possível finalizar uma sessão com votação aberta.',
+    });
+  },
+
+  // Etapas reversíveis (pensado pro uso didático): volta a sessão pra rascunho
+  // pra corrigir cargos/candidatos sem precisar recriar tudo. Votos já
+  // registrados não são apagados — continuam contando quando a votação reabrir
+  // (ver vote.service.js, a cadeia de hashes da auditoria não depende do
+  // histórico de status, só da ordem dos votos).
+  reopen(id, userId) {
+    return changeStatus(id, userId, {
+      from: SESSION_STATUS.OPEN,
+      to: SESSION_STATUS.DRAFT,
+      fields: { startedAt: null, finishedAt: null },
+      errorMessage: 'Só é possível voltar para rascunho uma sessão com votação aberta.',
+    });
+  },
+
+  // Reabre a votação de uma sessão já finalizada — mesma ideia do reopen acima,
+  // mas sem voltar os candidatos a ficarem editáveis (só volta a aceitar voto).
+  resume(id, userId) {
+    return changeStatus(id, userId, {
+      from: SESSION_STATUS.FINISHED,
+      to: SESSION_STATUS.OPEN,
+      fields: { finishedAt: null },
+      errorMessage: 'Só é possível reabrir a votação de uma sessão finalizada.',
     });
   },
 

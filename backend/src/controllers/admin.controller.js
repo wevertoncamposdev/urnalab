@@ -6,6 +6,10 @@ export const adminController = {
     sendSuccess(res, await adminService.getOverview(userId));
   },
 
+  async system({ res, userId }) {
+    sendSuccess(res, await adminService.getSystem(userId));
+  },
+
   async listUsers({ res, userId, query }) {
     sendSuccess(res, await adminService.listUsers(userId, query));
   },

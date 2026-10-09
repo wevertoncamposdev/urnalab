@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CheckCircle2, Hourglass, UserPlus } from 'lucide-react';
+import { Briefcase, CheckCircle2, Hourglass, Send, Sparkles, User, UserPlus } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +16,7 @@ import { Wordmark } from '@/components/branding/Wordmark';
 import { useAsync } from '@/hooks/useAsync';
 import { trackEvent } from '@/lib/analytics';
 import { fieldOfError } from '@/lib/form-errors';
+import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
 const GOVERNMENT_PROPOSAL_MAX_LENGTH = 2000;
@@ -109,8 +110,61 @@ export default function PublicCandidacy() {
 
   return (
     <PublicShell title={info.name} subtitle={`${info.year}`}>
+      <CandidacyHero info={info} />
       <CandidacyForm token={token} info={info} onSubmitted={() => setDone(true)} />
     </PublicShell>
+  );
+}
+
+// Cartão de abertura, mesma lógica de identidade visual das demais telas (ícone
+// num círculo colorido + número/texto em destaque, ver StatTile.jsx) — aqui em
+// tom amarelo educativo (destaque, não estrutural) pra não competir com o azul
+// do cabeçalho nem com o verde do botão de envio.
+function CandidacyHero({ info }) {
+  return (
+    <Card className="overflow-hidden border-accent/20 bg-gradient-to-br from-accent-soft/70 via-card to-card">
+      <CardContent className="flex flex-col gap-4 p-6 md:p-8">
+        <div className="flex items-start gap-4">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
+            <UserPlus className="size-7" />
+          </div>
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
+              <Sparkles className="size-3.5" /> Candidatura aberta
+            </p>
+            <h1 className="truncate font-heading text-2xl font-bold leading-tight">{info.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {info.year} · Preencha seus dados para concorrer a um dos cargos abaixo.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {info.positions.map((p) => (
+            <span
+              key={p.code}
+              className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium shadow-sm"
+            >
+              <Briefcase className="size-3.5 text-muted-foreground" /> {p.label}
+            </span>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionHeading({ icon: Icon, tone, children }) {
+  const toneClasses = {
+    primary: 'bg-primary/10 text-primary',
+    accent: 'bg-accent-soft text-accent',
+  };
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-full', toneClasses[tone])}>
+        <Icon className="size-3.5" />
+      </div>
+      <p className="text-sm font-semibold">{children}</p>
+    </div>
   );
 }
 
@@ -158,7 +212,7 @@ function CandidacyForm({ token, info, onSubmitted }) {
 
   return (
     <Card className="p-5 md:p-6">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div>
           <p className="font-heading text-lg font-semibold">Cadastrar candidatura</p>
           <p className="text-sm text-muted-foreground">
@@ -172,7 +226,7 @@ function CandidacyForm({ token, info, onSubmitted }) {
         )}
 
         <div className="flex flex-col gap-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Seus dados</p>
+          <SectionHeading icon={User} tone="primary">Seus dados</SectionHeading>
 
           <FormField label="Nome" htmlFor="candidacy-name" error={fieldError('name')}>
             <Input id="candidacy-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" autoFocus />
@@ -191,7 +245,7 @@ function CandidacyForm({ token, info, onSubmitted }) {
         <div className="h-px bg-border" />
 
         <div className="flex flex-col gap-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sua candidatura</p>
+          <SectionHeading icon={Briefcase} tone="accent">Sua candidatura</SectionHeading>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Cargo" htmlFor="candidacy-position" error={fieldError('position')}>
@@ -250,8 +304,13 @@ function CandidacyForm({ token, info, onSubmitted }) {
         </div>
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={submitting || !name || !position || !partyId || !number}>
-            {submitting ? 'Enviando...' : 'Enviar candidatura'}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full sm:w-auto"
+            disabled={submitting || !name || !position || !partyId || !number}
+          >
+            {submitting ? 'Enviando...' : <><Send /> Enviar candidatura</>}
           </Button>
         </div>
       </form>

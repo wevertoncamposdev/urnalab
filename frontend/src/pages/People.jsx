@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Pencil, Search, Trash2, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Search, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,18 +15,41 @@ import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { PersonFormDialog } from '@/components/people/PersonFormDialog';
 import { useAsync } from '@/hooks/useAsync';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatNumber } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
-function candidacyLabel(count) {
-  return count === 1 ? '1 candidatura' : `${count} candidaturas`;
+const COLUMNS = [
+  { key: 'candidaciesCount', label: 'Candidaturas' },
+  { key: 'proposalsCount', label: 'Propostas' },
+  { key: 'totalVotes', label: 'Votos' },
+  { key: 'electionsWon', label: 'Eleições' },
+];
+
+function SortButton({ label, active, direction, onClick }) {
+  const Icon = active ? (direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground',
+        active && 'text-foreground',
+      )}
+    >
+      {label} <Icon className="size-3.5" />
+    </button>
+  );
 }
 
 // Pessoa é criada automaticamente quando alguém se candidata pelo link público de
 // candidatura (ver public-candidacy.service.js) — esta tela só edita nome/foto ou
-// remove quem nunca chegou a ter candidatura.
+// remove quem nunca chegou a ter candidatura. As colunas de ranking (candidaturas,
+// propostas, votos, eleições vencidas) vêm prontas do backend (ver person.service.js).
 export default function People() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
+  const [sort, setSort] = useState({ key: 'totalVotes', direction: 'desc' });
 
   const { data: people, error, loading, reload } = useAsync(
     () => api.people.list({ search: debouncedSearch }),
@@ -36,6 +60,23 @@ export default function People() {
   const [removing, setRemoving] = useState(null);
 
   const openForm = (person) => setForm({ open: true, person });
+
+  function toggleSort(key) {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'desc' ? 'asc' : 'desc' }
+        : { key, direction: 'desc' },
+    );
+  }
+
+  const sorted = useMemo(() => {
+    if (!people) return [];
+    const factor = sort.direction === 'asc' ? 1 : -1;
+    return [...people].sort((a, b) => {
+      if (sort.key === 'name') return factor * a.name.localeCompare(b.name, 'pt-BR');
+      return factor * ((a[sort.key] ?? 0) - (b[sort.key] ?? 0));
+    });
+  }, [people, sort]);
 
   async function handleRemove(person) {
     try {
@@ -49,7 +90,7 @@ export default function People() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <PageHeader
         title="Pessoas"
         description="Pessoas cadastradas a partir do link de candidatura de cada sessão."
@@ -79,21 +120,40 @@ export default function People() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Pessoa</TableHead>
-                <TableHead>Candidaturas</TableHead>
+                <TableHead>
+                  <SortButton
+                    label="Pessoa"
+                    active={sort.key === 'name'}
+                    direction={sort.direction}
+                    onClick={() => toggleSort('name')}
+                  />
+                </TableHead>
+                {COLUMNS.map((col) => (
+                  <TableHead key={col.key} className="text-right">
+                    <SortButton
+                      label={col.label}
+                      active={sort.key === col.key}
+                      direction={sort.direction}
+                      onClick={() => toggleSort(col.key)}
+                    />
+                  </TableHead>
+                ))}
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {people.map((person) => (
+              {sorted.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <Link to={`/pessoas/${person.id}`} className="flex items-center gap-3 hover:underline">
                       <CandidateAvatar name={person.name} photo={person.photo} />
                       <div className="font-medium">{person.name}</div>
-                    </div>
+                    </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{candidacyLabel(person.candidaciesCount)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatNumber(person.candidaciesCount)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatNumber(person.proposalsCount)}</TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">{formatNumber(person.totalVotes)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatNumber(person.electionsWon)}</TableCell>
                   <TableCell className="text-right">
                     <RowActions
                       label={person.name}

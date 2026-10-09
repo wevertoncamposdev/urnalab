@@ -19,7 +19,7 @@ const FEATURES = [
     icon: ClipboardList,
     title: 'Monte a eleição do zero',
     description:
-      'Cargos, partidos, pessoas e candidatos — com um assistente guiado para quem está começando e validações iguais às de uma eleição de verdade (número único por cargo, sigla única, etc.).',
+      'Cargos, partidos, pessoas e candidatos — com uma criação guiada para quem está começando e validações iguais às de uma eleição de verdade (número único por cargo, sigla única, etc.).',
   },
   {
     icon: Vote,
@@ -55,7 +55,7 @@ const FEATURES = [
 
 const STEPS = [
   { title: 'Crie sua conta', description: 'Já nasce com os 7 cargos do sistema brasileiro prontos para editar.' },
-  { title: 'Monte a eleição', description: 'Cadastre partidos, pessoas e candidatos — ou use o assistente guiado.' },
+  { title: 'Monte a eleição', description: 'Cadastre partidos, pessoas e candidatos — ou use o Criar sessão.' },
   { title: 'Vote', description: 'Pela urna autenticada ou pelo link público, direto do celular.' },
   { title: 'Apure e audite', description: 'Resultado por cargo e a cadeia de hashes conferida voto a voto.' },
 ];

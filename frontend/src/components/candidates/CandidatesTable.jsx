@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Check, FileText, Pencil, Power, PowerOff, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RowActions } from '@/components/layout/RowActions';
@@ -38,7 +39,9 @@ export function CandidatesTable({
                 <div className="flex items-center gap-3">
                   <CandidateAvatar name={candidate.name} photo={candidate.photo} />
                   <div>
-                    <div className="font-medium">{candidate.name}</div>
+                    <Link to={`/pessoas/${candidate.personId}`} className="font-medium hover:underline">
+                      {candidate.name}
+                    </Link>
                     {session && <div className="text-xs text-muted-foreground">{session.name} ({session.year})</div>}
                   </div>
                 </div>

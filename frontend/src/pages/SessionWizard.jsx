@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Flag, Plus, Vote } from 'lucide-react';
+import { Check, Flag, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
-const STEPS = ['Sessão', 'Partidos', 'Revisão'];
+const STEPS = ['Sessão', 'Partidos'];
 
 function Stepper({ current, maxReached, onSelect }) {
   return (
@@ -62,12 +62,14 @@ function Stepper({ current, maxReached, onSelect }) {
   );
 }
 
-// Assistente guiado pra criar uma eleição do zero: sessão → partidos → revisão. Cada
-// passo reaproveita os mesmos diálogos/componentes já usados nas telas normais
-// (Cargos, Partidos) — o assistente só guia a ordem e o fluxo, sem duplicar a lógica
-// de validação/criação, que continua nos services do backend. Candidaturas não têm
-// passo aqui: chegam pelo link público depois (ver PublicCandidacyLinkCard em
-// SessionDetails.jsx, mostrado quando a sessão é rascunho).
+// Criar sessão: fluxo guiado em 2 passos (sessão → partidos). Cada passo reaproveita
+// os mesmos diálogos/componentes já usados nas telas normais (Cargos, Partidos) — só
+// guia a ordem e o fluxo, sem duplicar a lógica de validação/criação, que continua nos
+// services do backend. Ao concluir, cai direto na tela de gerenciamento da sessão —
+// ela já reúne tudo que falta (link de candidatura, abrir votação etc.), então não
+// precisa de uma etapa de revisão própria aqui. Candidaturas não têm passo aqui:
+// chegam pelo link público depois (ver PublicCandidacyLinkCard em SessionDetails.jsx,
+// mostrado enquanto a sessão está na etapa de candidatura).
 export default function SessionWizard() {
   const navigate = useNavigate();
   const { select } = useCurrentSession();
@@ -97,6 +99,10 @@ export default function SessionWizard() {
     navigate(session ? `/sessoes/${session.id}` : '/sessoes');
   }
 
+  function finishWizard() {
+    navigate(`/sessoes/${session.id}`);
+  }
+
   async function submitSessionStep() {
     setSessionSubmitting(true);
     setSessionError(null);
@@ -117,16 +123,6 @@ export default function SessionWizard() {
       setSessionError(err);
     } finally {
       setSessionSubmitting(false);
-    }
-  }
-
-  async function openVoting() {
-    try {
-      await api.sessions.open(session.id);
-      toast.success('Votação aberta!');
-      navigate(`/sessoes/${session.id}`);
-    } catch (err) {
-      toast.error(err.message);
     }
   }
 
@@ -155,15 +151,13 @@ export default function SessionWizard() {
   const positions = positionsState.data;
   const parties = partiesState.data;
   const activeParties = parties.filter((p) => p.status === 'ACTIVE');
-  const positionsByCode = Object.fromEntries(positions.map((p) => [p.code, p]));
-  const sessionPositions = session ? session.positions.map((code) => positionsByCode[code]).filter(Boolean) : [];
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader
-        title="Assistente de nova eleição"
+        title="Criar sessão"
         description="Cadastre tudo que uma eleição precisa, passo a passo: sessão e partidos."
-        actions={<Button variant="ghost" onClick={exitWizard}>Sair do assistente</Button>}
+        actions={<Button variant="ghost" onClick={exitWizard}>Cancelar</Button>}
       />
 
       <Stepper current={step} maxReached={maxReached} onSelect={goTo} />
@@ -188,7 +182,7 @@ export default function SessionWizard() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <Label>Cargos em disputa</Label>
-                <Button type="button" variant="outline" size="sm" onClick={() => setPositionDialogOpen(true)}>
+                <Button type="button" variant="" size="sm" onClick={() => setPositionDialogOpen(true)}>
                   <Plus /> Novo cargo
                 </Button>
               </div>
@@ -233,7 +227,7 @@ export default function SessionWizard() {
               Cada candidato precisa estar vinculado a um partido. Cadastre os partidos desta eleição (ou reaproveite os que já existem).
             </p>
             <div className="flex justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPartyDialogOpen(true)}>
+              <Button type="button" variant="" size="sm" onClick={() => setPartyDialogOpen(true)}>
                 <Plus /> Novo partido
               </Button>
             </div>
@@ -252,33 +246,6 @@ export default function SessionWizard() {
                 ))}
               </div>
             )}
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => goTo(0)}>Voltar</Button>
-              <Button onClick={() => goTo(2)} disabled={activeParties.length === 0}>Continuar</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 2 && session && (
-        <Card>
-          <CardContent className="flex flex-col gap-5 p-6">
-            <div>
-              <h3 className="font-medium">{session.name} ({session.year})</h3>
-              <p className="text-sm text-muted-foreground">Confira o resumo antes de abrir a votação.</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-semibold tabular-nums">{sessionPositions.length}</p>
-                <p className="text-xs text-muted-foreground">Cargos</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-semibold tabular-nums">{activeParties.length}</p>
-                <p className="text-xs text-muted-foreground">Partidos ativos</p>
-              </div>
-            </div>
-
             <Alert>
               <AlertDescription>
                 As candidaturas chegam pelo link público de candidatura — compartilhe-o na tela
@@ -286,16 +253,11 @@ export default function SessionWizard() {
               </AlertDescription>
             </Alert>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-              <Button variant="outline" onClick={() => goTo(1)}>Voltar</Button>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" onClick={() => navigate(`/sessoes/${session.id}`)}>
-                  Deixar como rascunho
-                </Button>
-                <Button onClick={openVoting}>
-                  <Vote /> Abrir votação agora
-                </Button>
-              </div>
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => goTo(0)}>Voltar</Button>
+              <Button onClick={finishWizard} disabled={activeParties.length === 0}>
+                <Check /> Concluir
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -26,6 +26,14 @@ export const sessionController = {
     sendSuccess(res, await sessionService.finish(params.id, userId));
   },
 
+  async reopen({ res, params, userId }) {
+    sendSuccess(res, await sessionService.reopen(params.id, userId));
+  },
+
+  async resume({ res, params, userId }) {
+    sendSuccess(res, await sessionService.resume(params.id, userId));
+  },
+
   async duplicate({ res, params, body, userId }) {
     sendSuccess(res, await sessionService.duplicate(params.id, body, userId), 201);
   },

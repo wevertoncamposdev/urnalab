@@ -216,6 +216,7 @@ export const api = {
 
   people: {
     list: (params) => request(`/api/people${toQuery(params)}`),
+    get: (id) => request(`/api/people/${id}`),
     update: (id, data) => request(`/api/people/${id}`, { method: 'PUT', body: data }),
     remove: (id) => request(`/api/people/${id}`, { method: 'DELETE' }),
   },
@@ -227,6 +228,8 @@ export const api = {
     update: (id, data) => request(`/api/sessions/${id}`, { method: 'PUT', body: data }),
     open: (id) => request(`/api/sessions/${id}/open`, { method: 'POST' }),
     finish: (id) => request(`/api/sessions/${id}/finish`, { method: 'POST' }),
+    reopen: (id) => request(`/api/sessions/${id}/reopen`, { method: 'POST' }),
+    resume: (id) => request(`/api/sessions/${id}/resume`, { method: 'POST' }),
     duplicate: (id, data) => request(`/api/sessions/${id}/duplicate`, { method: 'POST', body: data }),
   },
 
@@ -278,6 +281,7 @@ export const api = {
       confirm: (code) => request('/api/admin/verify/confirm', { method: 'POST', body: { code } }),
     },
     overview: () => request('/api/admin/overview'),
+    system: () => request('/api/admin/system'),
     users: (params) => request(`/api/admin/users${toQuery(params)}`),
     analytics: {
       funnel: () => request('/api/admin/analytics/funnel'),

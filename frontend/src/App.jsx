@@ -17,6 +17,7 @@ import Loja from '@/pages/Loja';
 import Login from '@/pages/Login';
 import Parties from '@/pages/Parties';
 import People from '@/pages/People';
+import PersonDetails from '@/pages/PersonDetails';
 import Positions from '@/pages/Positions';
 import Profile from '@/pages/Profile';
 import PublicCandidacy from '@/pages/PublicCandidacy';
@@ -36,6 +37,7 @@ const Admin = lazy(() => import('@/pages/Admin'));
 const AdminAnalytics = lazy(() => import('@/pages/AdminAnalytics'));
 const AdminFeedback = lazy(() => import('@/pages/AdminFeedback'));
 const AdminProducts = lazy(() => import('@/pages/AdminProducts'));
+const AdminSystem = lazy(() => import('@/pages/AdminSystem'));
 
 function AdminPageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
@@ -106,12 +108,12 @@ export default function App() {
           <Route path="perfil" element={<Profile />} />
           <Route path="sessoes" element={<Sessions />} />
           <Route path="sessoes/assistente" element={<SessionWizard />} />
-          <Route path="sessoes/nova" element={<SessionCreate />} />
           <Route path="sessoes/:id" element={<SessionDetails />} />
           <Route path="sessoes/:id/editar" element={<SessionCreate />} />
           <Route path="cargos" element={<Positions />} />
           <Route path="partidos" element={<Parties />} />
           <Route path="pessoas" element={<People />} />
+          <Route path="pessoas/:id" element={<PersonDetails />} />
           <Route path="candidatos" element={<Candidates />} />
           <Route path="financeiro" element={<Financeiro />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
@@ -140,6 +142,10 @@ export default function App() {
           <Route
             path="gerenciamento/produtos"
             element={<Suspense fallback={<AdminPageFallback />}><AdminProducts /></Suspense>}
+          />
+          <Route
+            path="gerenciamento/sistema"
+            element={<Suspense fallback={<AdminPageFallback />}><AdminSystem /></Suspense>}
           />
         </Route>
       </Routes>
