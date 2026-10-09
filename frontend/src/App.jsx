@@ -20,6 +20,7 @@ import Parties from '@/pages/Parties';
 import People from '@/pages/People';
 import Positions from '@/pages/Positions';
 import Profile from '@/pages/Profile';
+import PublicCandidacy from '@/pages/PublicCandidacy';
 import PublicVoting from '@/pages/PublicVoting';
 import Register from '@/pages/Register';
 import ResetPassword from '@/pages/ResetPassword';
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="esqueci-senha" element={<ForgotPassword />} />
         <Route path="redefinir-senha/:token" element={<ResetPassword />} />
         <Route path="votar/:token" element={<PublicVoting />} />
+        <Route path="candidatar/:token" element={<PublicCandidacy />} />
         <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route path="painel" element={<Dashboard />} />
           <Route path="perfil" element={<Profile />} />

@@ -308,4 +308,12 @@ export const api = {
     // Feedback sempre anônimo aqui (sem login) — ver backend/src/services/feedback.service.js.
     createFeedback: (data) => request('/api/public/feedback', { method: 'POST', body: data }),
   },
+
+  // Link público de candidatura (Etapa 20): mesma ideia do link de votação acima,
+  // mas com token em letras maiúsculas — quem acessa se cadastra como pessoa e
+  // candidato numa submissão só, entrando como PENDING até o admin aprovar.
+  publicCandidacy: {
+    getSession: (token) => request(`/api/public/candidacy/${token}`),
+    create: (token, data) => request(`/api/public/candidacy/${token}`, { method: 'POST', body: data }),
+  },
 };

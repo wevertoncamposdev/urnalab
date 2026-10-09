@@ -203,6 +203,7 @@ function CandidateForm({ candidate, sessions, parties, positions, people, defaul
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger id="candidate-status"><SelectValue /></SelectTrigger>
             <SelectContent>
+              {candidate?.status === 'PENDING' && <SelectItem value="PENDING">Pendente</SelectItem>}
               <SelectItem value="ACTIVE">Ativo</SelectItem>
               <SelectItem value="INACTIVE">Inativo</SelectItem>
             </SelectContent>

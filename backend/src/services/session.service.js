@@ -9,22 +9,27 @@ import { isUniqueViolation } from '../database/index.js';
 import { CANDIDATE_STATUS } from '../rules/candidate-rules.js';
 import { SESSION_LIMITS, SESSION_STATUS } from '../rules/session-rules.js';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
-import { generateSessionCode } from '../utils/id.js';
+import { generateCandidacyCode, generateSessionCode } from '../utils/id.js';
 import { isPlainObject } from '../utils/object.js';
 
-// Só 10 mil códigos de 4 dígitos existem, então colisão é esperada (não um bug) —
-// tenta de novo com outro código sorteado até um ficar livre.
-const MAX_SESSION_CODE_ATTEMPTS = 20;
+// Só 10 mil códigos de 4 dígitos (ou 456 mil de 4 letras) existem, então colisão é
+// esperada (não um bug) — tenta de novo com outro código sorteado até um ficar livre.
+const MAX_CODE_ATTEMPTS = 20;
 
-export async function withUniqueSessionCode(createOrUpdate) {
-  for (let attempt = 1; attempt <= MAX_SESSION_CODE_ATTEMPTS; attempt += 1) {
+async function withUniqueCode(generator, createOrUpdate) {
+  for (let attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt += 1) {
     try {
-      return await createOrUpdate(generateSessionCode());
+      return await createOrUpdate(generator());
     } catch (error) {
-      if (!isUniqueViolation(error) || attempt === MAX_SESSION_CODE_ATTEMPTS) throw error;
+      if (!isUniqueViolation(error) || attempt === MAX_CODE_ATTEMPTS) throw error;
     }
   }
 }
+
+export const withUniqueSessionCode = (createOrUpdate) => withUniqueCode(generateSessionCode, createOrUpdate);
+
+// Link público de candidatura (Etapa 20) — mesmo mecanismo do link de votação acima.
+export const withUniqueCandidacyCode = (createOrUpdate) => withUniqueCode(generateCandidacyCode, createOrUpdate);
 
 // Valida e normaliza os dados vindos da requisição. Lança o primeiro erro encontrado.
 async function normalizeInput(input, userId) {
@@ -73,13 +78,18 @@ async function findOrFail(id, userId) {
 }
 
 // Acrescenta os totais que o dashboard e a tela de detalhes exibem. Sessões
-// criadas antes do link público ganham um token na primeira leitura (preenche
-// sozinho, sem precisar de uma migração separada).
+// criadas antes de cada link público existir ganham o token faltante na
+// primeira leitura (preenche sozinho, sem precisar de uma migração separada).
 async function withStats(session) {
   let current = session;
   if (!current.publicToken) {
     current = await withUniqueSessionCode((publicToken) =>
       sessionRepository.update(current.id, { publicToken }),
+    );
+  }
+  if (!current.candidacyToken) {
+    current = await withUniqueCandidacyCode((candidacyToken) =>
+      sessionRepository.update(current.id, { candidacyToken }),
     );
   }
 
@@ -146,15 +156,18 @@ export const sessionService = {
 
     const data = await normalizeInput(isPlainObject(input) ? input : {}, userId);
     const session = await withUniqueSessionCode((publicToken) =>
-      sessionRepository.create({
-        ...data,
-        userId,
-        publicToken,
-        status: SESSION_STATUS.DRAFT,
-        createdAt: new Date().toISOString(),
-        startedAt: null,
-        finishedAt: null,
-      }),
+      withUniqueCandidacyCode((candidacyToken) =>
+        sessionRepository.create({
+          ...data,
+          userId,
+          publicToken,
+          candidacyToken,
+          status: SESSION_STATUS.DRAFT,
+          createdAt: new Date().toISOString(),
+          startedAt: null,
+          finishedAt: null,
+        }),
+      ),
     );
     return withStats(session);
   },

@@ -142,19 +142,23 @@ model Person {
 }
 
 model Session {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  year        Int
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  year              Int
   // Lista de códigos de cargo habilitados nesta sessão (ver positions.code) — sem
   // tabela de junção porque a ordem é só a de exibição, não uma relação consultável.
-  positions   String[]
-  status      String    @default("DRAFT")
-  publicToken String    @unique
-  createdAt   DateTime  @default(now())
-  startedAt   DateTime?
-  finishedAt  DateTime?
+  positions         String[]
+  status            String    @default("DRAFT")
+  publicToken       String    @unique
+  // Link público de candidatura (Etapa 20) — mesmo esquema do publicToken acima
+  // (gerado na criação, retroagido em quem já existia), só em letras maiúsculas
+  // pra diferenciar visualmente do código de votação (ver utils/id.js).
+  candidacyToken    String?   @unique
+  createdAt         DateTime  @default(now())
+  startedAt         DateTime?
+  finishedAt        DateTime?
   // Preenchido só em sessões criadas por resultService.createRunoffSession — aponta pra
   // sessão do 1º turno que originou esta. Usado pra impedir criar mais de um 2º turno
   // pra mesma sessão origem (ver result.service.js createRunoffSession) — uma eventual
@@ -173,22 +177,22 @@ model Session {
 }
 
 model Candidate {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  partyId   String
-  party     Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  personId  String
-  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-  position  String
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId          String
+  session            Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  partyId            String
+  party              Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  personId           String
+  person             Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  position           String
   // Guardado como texto para preservar zeros à esquerda ("05").
-  number    String
-  status    String   @default("ACTIVE")
+  number             String
+  status             String   @default("ACTIVE")
   // Opcional: o que o candidato pretende fazer no mandato, se eleito.
   governmentProposal String?
-  createdAt DateTime @default(now())
+  createdAt          DateTime @default(now())
 
   votes Vote[]
 
@@ -312,30 +316,30 @@ model Product {
 // (productId, userId) de propósito: uma tentativa rejeitada ou pendente não pode travar
 // uma nova tentativa de pagamento pro mesmo produto.
 model Payment {
-  id            String    @id @default(uuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product   @relation(fields: [productId], references: [id])
   // Só preenchido pra produtos "por sessão" (ver Product.kind) — "por conta" (ebook)
   // fica null, o acesso é só pelo userId.
-  sessionId     String?
-  session       Session?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  amountCents   Int
-  status        String    @default("PENDING")
+  sessionId      String?
+  session        Session?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  amountCents    Int
+  status         String    @default("PENDING")
   // Id da preference criada no Mercado Pago (Checkout Pro) — usado pra montar o
   // link de pagamento devolvido ao front.
   mpPreferenceId String?
   // Id do pagamento em si, só preenchido quando o webhook confirma (ver
   // mercadopago.service.js) — é por ele que reconsultamos o status depois.
-  mpPaymentId   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  paidAt        DateTime?
+  mpPaymentId    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  paidAt         DateTime?
   // Primeiro download/acesso ao produto depois de aprovado (Etapa 14) — trava de
   // reembolso: uma vez preenchido, `payment.service.js refund` não deixa mais
   // reembolsar essa cobrança (senão a conta fica com o produto e o dinheiro de volta).
-  downloadedAt  DateTime?
+  downloadedAt   DateTime?
 
   @@index([userId])
   @@index([sessionId])
