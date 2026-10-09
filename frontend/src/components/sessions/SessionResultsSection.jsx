@@ -1,50 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Lock, Trophy } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Download, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
-import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { PositionResult } from '@/components/results/PositionResult';
-import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { trackEvent } from '@/lib/analytics';
 import { saveBlobAsFile } from '@/lib/download';
 import { formatCents } from '@/lib/format';
 import { api } from '@/services/api';
 
-// Apuração por sessão: só sessões finalizadas entram na lista, como numa eleição real.
-export default function Results() {
-  const [searchParams] = useSearchParams();
+// Apuração da sessão — migrado da antiga página /resultados (removida), agora como
+// seção de SessionDetails.jsx; a sessão já é conhecida pela rota, sem seletor próprio.
+export function SessionResultsSection({ session }) {
   const navigate = useNavigate();
-  const sessionsState = useAsync(() => api.sessions.list(), []);
-  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? '');
+  const [searchParams] = useSearchParams();
   const [creatingRunoff, setCreatingRunoff] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [showChargeDialog, setShowChargeDialog] = useState(false);
 
-  const finishedSessions = (sessionsState.data ?? []).filter((s) => s.status === 'FINISHED');
-  const session = finishedSessions.find((s) => s.id === sessionId) ?? finishedSessions[0] ?? null;
-
-  const resultsState = useAsync(
-    () => (session ? api.results.get(session.id) : Promise.resolve(null)),
-    [session?.id],
-  );
-
-  const paymentState = useAsync(
-    () => (session ? api.payments.getStatus(session.id) : Promise.resolve(null)),
-    [session?.id],
-  );
+  const resultsState = useAsync(() => api.results.get(session.id), [session.id]);
+  const paymentState = useAsync(() => api.payments.getStatus(session.id), [session.id]);
 
   useEffect(() => {
-    if (session) trackEvent('RESULTS_VIEWED', { sessionId: session.id });
-  }, [session?.id]);
+    trackEvent('RESULTS_VIEWED', { sessionId: session.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id]);
 
   // Volta do Checkout Pro do Mercado Pago (ver back_urls em mercadopago.service.js).
   // "success" já costuma vir com o pagamento aprovado, mas o webhook pode demorar
@@ -58,37 +44,9 @@ export default function Results() {
     else if (payment === 'failure') toast.error('Pagamento não aprovado. Tente novamente.');
 
     paymentState.reload();
-    navigate(`/resultados${sessionId ? `?sessionId=${sessionId}` : ''}`, { replace: true });
+    navigate(`/sessoes/${session.id}`, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  if (sessionsState.error) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <ErrorState error={sessionsState.error} onRetry={sessionsState.reload} />
-      </div>
-    );
-  }
-  if (!sessionsState.data) {
-    return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <Skeleton className="h-10 w-60" />
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-  if (!session) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <EmptyState
-          icon={Trophy}
-          title="Nenhuma eleição finalizada"
-          description="Os resultados ficam disponíveis depois que uma sessão é finalizada."
-          action={<Button asChild><Link to="/sessoes">Ver eleições</Link></Button>}
-        />
-      </div>
-    );
-  }
 
   async function createRunoffSession() {
     setCreatingRunoff(true);
@@ -115,7 +73,7 @@ export default function Results() {
     }
   }
 
-  // Redireciona pro Checkout Pro do Mercado Pago — a volta já cai em /resultados
+  // Redireciona pro Checkout Pro do Mercado Pago — a volta já cai em /sessoes/:id
   // com ?payment=success|pending|failure (ver mercadopago.service.js back_urls).
   async function startCheckout() {
     setStartingCheckout(true);
@@ -128,52 +86,22 @@ export default function Results() {
     }
   }
 
-  const sessionPicker = finishedSessions.length > 1 && (
-    <Select value={session.id} onValueChange={setSessionId}>
-      <SelectTrigger aria-label="Sessão" className="w-56"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        {finishedSessions.map((s) => (
-          <SelectItem key={s.id} value={s.id}>{s.name} ({s.year})</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
   const runoffPositions = resultsState.data?.positions.filter((p) => p.runoff) ?? [];
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <PageHeader
-        title="Resultados"
-        description={`${session.name} (${session.year})`}
-        actions={
-          <>
-            {sessionPicker}
-            {paymentState.data && !paymentState.data.paid ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowChargeDialog(true)}
-                disabled={startingCheckout}
-              >
-                <Lock />
-                {startingCheckout ? 'Abrindo pagamento...' : 'Exportar'}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={downloadPdf}
-                disabled={downloadingPdf || !paymentState.data}
-              >
-                <Download /> {downloadingPdf ? 'Gerando...' : 'Baixar PDF'}
-              </Button>
-            )}
-          </>
-        }
-      >
-        <SessionStatusBadge status={session.status} />
-      </PageHeader>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        {paymentState.data && !paymentState.data.paid ? (
+          <Button type="button" variant="outline" onClick={() => setShowChargeDialog(true)} disabled={startingCheckout}>
+            <Lock />
+            {startingCheckout ? 'Abrindo pagamento...' : 'Exportar'}
+          </Button>
+        ) : (
+          <Button type="button" variant="outline" onClick={downloadPdf} disabled={downloadingPdf || !paymentState.data}>
+            <Download /> {downloadingPdf ? 'Gerando...' : 'Baixar PDF'}
+          </Button>
+        )}
+      </div>
 
       {resultsState.error ? (
         <ErrorState error={resultsState.error} onRetry={resultsState.reload} />
@@ -204,7 +132,7 @@ export default function Results() {
       <ConfirmDialog
         open={showChargeDialog}
         onOpenChange={setShowChargeDialog}
-        title={(<>Exportar resultado em PDF <hr /></>)}
+        title="Exportar resultado em PDF"
         description={
           paymentState.data ? (
             <>

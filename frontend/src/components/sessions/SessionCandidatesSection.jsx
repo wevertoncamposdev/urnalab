@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,17 +11,15 @@ import { CandidatesTable } from '@/components/candidates/CandidatesTable';
 import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
-import { useCurrentSession } from '@/hooks/useCurrentSession';
 import { useDebounce } from '@/hooks/useDebounce';
 import { api } from '@/services/api';
 
 const ALL = 'ALL';
 
-function FilterSelect({ label, value, onChange, allLabel, options, disabled }) {
+function FilterSelect({ label, value, onChange, allLabel, options }) {
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select value={value} onValueChange={onChange}>
       <SelectTrigger aria-label={label}><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL}>{allLabel}</SelectItem>
@@ -35,117 +31,55 @@ function FilterSelect({ label, value, onChange, allLabel, options, disabled }) {
   );
 }
 
-export default function Candidates() {
-  const [searchParams] = useSearchParams();
-  const { session: currentSession } = useCurrentSession();
-
-  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? currentSession?.id ?? ALL);
+// Candidatos de uma sessão só — mesmos componentes reaproveitados por /candidatos e
+// pelo assistente guiado (CandidatesTable/CandidateFormDialog), sem o filtro "todas
+// as sessões" (aqui a sessão já é fixa, vinda de SessionDetails.jsx).
+export function SessionCandidatesSection({ session, parties, positions, onCandidatesChanged }) {
   const [position, setPosition] = useState(ALL);
   const [partyId, setPartyId] = useState(ALL);
   const [status, setStatus] = useState(ALL);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
 
-  const sessionsState = useAsync(() => api.sessions.list(), []);
-  const partiesState = useAsync(() => api.parties.list(), []);
-  const positionsState = useAsync(() => api.positions.list(), []);
-
   const filter = (value) => (value === ALL ? '' : value);
   const candidatesState = useAsync(
     () =>
       api.candidates.list({
-        sessionId: filter(sessionId),
+        sessionId: session.id,
         position: filter(position),
         partyId: filter(partyId),
         status: filter(status),
         search: debouncedSearch,
       }),
-    [sessionId, position, partyId, status, debouncedSearch],
+    [session.id, position, partyId, status, debouncedSearch],
   );
 
   const [form, setForm] = useState({ open: false, candidate: null });
   const [deactivating, setDeactivating] = useState(null);
   const [viewingProposal, setViewingProposal] = useState(null);
 
-  const setupError = sessionsState.error ?? partiesState.error ?? positionsState.error;
-  const setupReady = sessionsState.data && partiesState.data && positionsState.data;
-
-  if (setupError) {
-    return (
-      <div className="mx-auto max-w-5xl">
-        <ErrorState
-          error={setupError}
-          onRetry={() => { sessionsState.reload(); partiesState.reload(); positionsState.reload(); }}
-        />
-      </div>
-    );
-  }
-  if (!setupReady) {
-    return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-4">
-        <Skeleton className="h-10 w-60" />
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-
-  const sessions = sessionsState.data;
-  const parties = partiesState.data;
-  const positions = positionsState.data;
-  const sessionsById = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  const positionOptions = positions
+    .filter((p) => session.positions.includes(p.code))
+    .map((p) => ({ value: p.code, label: p.label }));
   const positionLabels = Object.fromEntries(positions.map((p) => [p.code, p.label]));
 
-  const selectedSession = sessionsById[sessionId];
-  const positionOptions = (selectedSession ? positions.filter((p) => selectedSession.positions.includes(p.code)) : positions)
-    .map((p) => ({ value: p.code, label: p.label }));
-
-  // A sessão escolhida define o contexto da tela; só os demais filtros contam como "filtrando".
   const filtering = [position, partyId, status].some((v) => v !== ALL) || Boolean(debouncedSearch);
-
   const candidates = candidatesState.data;
-
-  function changeSession(value) {
-    setSessionId(value);
-    setPosition(ALL);
-  }
 
   async function updateStatus(action, message) {
     try {
       await action();
       toast.success(message);
       candidatesState.reload();
-      sessionsState.reload();
+      onCandidatesChanged?.();
     } catch (err) {
       toast.error(err.message);
     }
   }
 
-  if (sessions.length === 0) {
-    return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-6">
-        <PageHeader title="Candidatos" />
-        <EmptyState
-          icon={Users}
-          title="Crie uma sessão primeiro"
-          description="Todo candidato pertence a uma sessão eleitoral."
-          action={<Button asChild><Link to="/sessoes/nova">Criar sessão</Link></Button>}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto flex flex-col gap-6">
-      <PageHeader title="Candidatos" description="Candidaturas recebidas pelo link de candidatura de cada sessão." />
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <FilterSelect
-          label="Filtrar por sessão"
-          value={sessionId}
-          onChange={changeSession}
-          allLabel="Todas as sessões"
-          options={sessions.map((s) => ({ value: s.id, label: `${s.name} (${s.year})` }))}
-        />
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <FilterSelect label="Filtrar por cargo" value={position} onChange={setPosition} allLabel="Todos os cargos" options={positionOptions} />
         <FilterSelect
           label="Filtrar por partido"
@@ -183,7 +117,7 @@ export default function Candidates() {
           description={
             filtering
               ? 'Ajuste os filtros ou a busca.'
-              : 'Compartilhe o link de candidatura da sessão (em Eleições) para receber candidaturas.'
+              : 'Compartilhe o link de candidatura acima para receber candidaturas.'
           }
         />
       ) : (
@@ -191,7 +125,7 @@ export default function Candidates() {
           <CandidatesTable
             candidates={candidates}
             positionLabels={positionLabels}
-            sessionsById={sessionsById}
+            sessionsById={{ [session.id]: session }}
             onEdit={(candidate) => setForm({ open: true, candidate })}
             onViewProposal={setViewingProposal}
             onDeactivate={setDeactivating}
@@ -211,11 +145,11 @@ export default function Candidates() {
       <CandidateFormDialog
         open={form.open}
         candidate={form.candidate}
-        sessions={sessions}
+        sessions={[session]}
         parties={parties}
         positions={positions}
         onOpenChange={(open) => setForm((current) => ({ ...current, open }))}
-        onSaved={() => { candidatesState.reload(); sessionsState.reload(); partiesState.reload(); }}
+        onSaved={() => { candidatesState.reload(); onCandidatesChanged?.(); }}
       />
       <CandidateProposalDialog
         candidate={viewingProposal}

@@ -10,10 +10,6 @@ export const candidateController = {
     sendSuccess(res, await candidateService.getById(params.id, userId));
   },
 
-  async create({ res, body, userId }) {
-    sendSuccess(res, await candidateService.create(body, userId), 201);
-  },
-
   async update({ res, params, body, userId }) {
     sendSuccess(res, await candidateService.update(params.id, body, userId));
   },

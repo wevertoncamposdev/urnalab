@@ -79,7 +79,7 @@ async function createCheckoutFor(product, scope) {
   const user = await userRepository.findById(userId);
   const amountCents = product.priceCents;
   const title = session ? `${product.name} — ${session.name} (${session.year})` : product.name;
-  const returnPath = session ? `/resultados?sessionId=${session.id}` : `/loja?productId=${product.id}`;
+  const returnPath = session ? `/sessoes/${session.id}` : `/loja?productId=${product.id}`;
 
   // Id gerado antes de chamar o Mercado Pago (pra virar external_reference da
   // preference) — o registro só é gravado depois que a preference é criada com

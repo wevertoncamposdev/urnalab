@@ -10,10 +10,6 @@ export const personController = {
     sendSuccess(res, await personService.getById(params.id, userId));
   },
 
-  async create({ res, body, userId }) {
-    sendSuccess(res, await personService.create(body, userId), 201);
-  },
-
   async update({ res, params, body, userId }) {
     sendSuccess(res, await personService.update(params.id, body, userId));
   },

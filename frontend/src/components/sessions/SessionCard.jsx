@@ -4,15 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatNumber, pluralize } from '@/lib/format';
 import { SessionStatusBadge } from './SessionStatusBadge';
 
-// Botão que vira link só quando `enabled`; senão fica desabilitado com uma dica do motivo.
-function SessionLinkButton({ enabled, to, disabledTitle, children }) {
-  return (
-    <Button size="sm" variant="outline" asChild={enabled} disabled={!enabled} title={enabled ? undefined : disabledTitle}>
-      {enabled ? <Link to={to}>{children}</Link> : children}
-    </Button>
-  );
-}
-
 // Votar é sempre pelo link público (/votar/:token, ver PublicVoting.jsx) — não existe
 // mais uma tela de votação autenticada separada.
 function VoteButton({ session }) {
@@ -46,20 +37,6 @@ export function SessionCard({ session }) {
             <Link to={`/sessoes/${session.id}`}>Gerenciar</Link>
           </Button>
           <VoteButton session={session} />
-          <SessionLinkButton
-            enabled={session.status === 'FINISHED'}
-            to={`/resultados?sessionId=${session.id}`}
-            disabledTitle="Finalize a eleição para ver os resultados"
-          >
-            Resultados
-          </SessionLinkButton>
-          <SessionLinkButton
-            enabled={session.status === 'FINISHED'}
-            to={`/auditoria?sessionId=${session.id}`}
-            disabledTitle="Finalize a eleição para auditar os votos"
-          >
-            Auditoria
-          </SessionLinkButton>
         </div>
       </CardContent>
     </Card>

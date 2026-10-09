@@ -1,24 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Flag, IdCard, Plus, Users, Vote } from 'lucide-react';
+import { Check, Flag, Plus, Vote } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
-import { CandidateFormDialog } from '@/components/candidates/CandidateFormDialog';
-import { CandidatesTable } from '@/components/candidates/CandidatesTable';
-import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PartyFormDialog } from '@/components/parties/PartyFormDialog';
-import { PersonFormDialog } from '@/components/people/PersonFormDialog';
 import { PositionFormDialog } from '@/components/positions/PositionFormDialog';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
@@ -26,7 +21,7 @@ import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
-const STEPS = ['Sessão', 'Partidos', 'Pessoas', 'Candidatos', 'Revisão'];
+const STEPS = ['Sessão', 'Partidos', 'Revisão'];
 
 function Stepper({ current, maxReached, onSelect }) {
   return (
@@ -67,11 +62,12 @@ function Stepper({ current, maxReached, onSelect }) {
   );
 }
 
-// Assistente guiado pra criar uma eleição do zero: sessão → partidos → pessoas
-// → candidatos → revisão. Cada passo reaproveita os mesmos diálogos de
-// cadastro já usados nas telas normais (Cargos, Partidos, Pessoas,
-// Candidatos) — o assistente só guia a ordem e o fluxo, sem duplicar a
-// lógica de validação/criação, que continua nos services do backend.
+// Assistente guiado pra criar uma eleição do zero: sessão → partidos → revisão. Cada
+// passo reaproveita os mesmos diálogos/componentes já usados nas telas normais
+// (Cargos, Partidos) — o assistente só guia a ordem e o fluxo, sem duplicar a lógica
+// de validação/criação, que continua nos services do backend. Candidaturas não têm
+// passo aqui: chegam pelo link público depois (ver PublicCandidacyLinkCard em
+// SessionDetails.jsx, mostrado quando a sessão é rascunho).
 export default function SessionWizard() {
   const navigate = useNavigate();
   const { select } = useCurrentSession();
@@ -82,17 +78,9 @@ export default function SessionWizard() {
 
   const positionsState = useAsync(() => api.positions.list(), []);
   const partiesState = useAsync(() => api.parties.list(), []);
-  const peopleState = useAsync(() => api.people.list(), []);
-  const candidatesState = useAsync(
-    () => (session ? api.candidates.list({ sessionId: session.id }) : Promise.resolve([])),
-    [session?.id],
-  );
 
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
-  const [personDialogOpen, setPersonDialogOpen] = useState(false);
-  const [candidateForm, setCandidateForm] = useState({ open: false, candidate: null });
-  const [deactivating, setDeactivating] = useState(null);
 
   const [name, setName] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -142,27 +130,15 @@ export default function SessionWizard() {
     }
   }
 
-  async function deactivateCandidate() {
-    try {
-      await api.candidates.deactivate(deactivating.id);
-      toast.success('Candidato desativado.');
-      candidatesState.reload();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setDeactivating(null);
-    }
-  }
-
-  const loadError = positionsState.error ?? partiesState.error ?? peopleState.error;
-  const loadReady = positionsState.data && partiesState.data && peopleState.data;
+  const loadError = positionsState.error ?? partiesState.error;
+  const loadReady = positionsState.data && partiesState.data;
 
   if (loadError) {
     return (
       <div className="mx-auto max-w-3xl">
         <ErrorState
           error={loadError}
-          onRetry={() => { positionsState.reload(); partiesState.reload(); peopleState.reload(); }}
+          onRetry={() => { positionsState.reload(); partiesState.reload(); }}
         />
       </div>
     );
@@ -178,20 +154,15 @@ export default function SessionWizard() {
 
   const positions = positionsState.data;
   const parties = partiesState.data;
-  const people = peopleState.data;
   const activeParties = parties.filter((p) => p.status === 'ACTIVE');
   const positionsByCode = Object.fromEntries(positions.map((p) => [p.code, p]));
-  const candidates = candidatesState.data ?? [];
   const sessionPositions = session ? session.positions.map((code) => positionsByCode[code]).filter(Boolean) : [];
-  const positionsWithoutCandidate = sessionPositions.filter(
-    (p) => !candidates.some((c) => c.position === p.code && c.status === 'ACTIVE'),
-  );
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader
         title="Assistente de nova eleição"
-        description="Cadastre tudo que uma eleição precisa, passo a passo: sessão, partidos, pessoas e candidatos."
+        description="Cadastre tudo que uma eleição precisa, passo a passo: sessão e partidos."
         actions={<Button variant="ghost" onClick={exitWizard}>Sair do assistente</Button>}
       />
 
@@ -289,87 +260,7 @@ export default function SessionWizard() {
         </Card>
       )}
 
-      {step === 2 && (
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6">
-            <p className="text-sm text-muted-foreground">
-              Pessoas são reaproveitáveis entre eleições — cadastre quem vai concorrer nesta.
-            </p>
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPersonDialogOpen(true)}>
-                <Plus /> Nova pessoa
-              </Button>
-            </div>
-            {people.length === 0 ? (
-              <EmptyState icon={IdCard} title="Nenhuma pessoa cadastrada" description="Cadastre ao menos uma pessoa para continuar." />
-            ) : (
-              <div className="flex flex-col divide-y rounded-lg border">
-                {people.map((person) => (
-                  <div key={person.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                    <CandidateAvatar name={person.name} photo={person.photo} />
-                    <span className="font-medium">{person.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => goTo(1)}>Voltar</Button>
-              <Button onClick={() => goTo(3)} disabled={people.length === 0}>Continuar</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 3 && session && (
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6">
-            <p className="text-sm text-muted-foreground">
-              Registre as candidaturas desta eleição: quem concorre, por qual partido, a qual cargo e com qual número.
-            </p>
-            {positionsWithoutCandidate.length > 0 && (
-              <Alert>
-                <AlertDescription>
-                  Ainda sem candidato ativo: <strong>{positionsWithoutCandidate.map((p) => p.label).join(', ')}</strong>.
-                </AlertDescription>
-              </Alert>
-            )}
-            <div className="flex justify-end">
-              <Button type="button" size="sm" onClick={() => setCandidateForm({ open: true, candidate: null })}>
-                <Plus /> Nova candidatura
-              </Button>
-            </div>
-            {candidatesState.loading && !candidatesState.data ? (
-              <Skeleton className="h-32" />
-            ) : candidates.length === 0 ? (
-              <EmptyState icon={Users} title="Nenhuma candidatura ainda" description="Registre ao menos um candidato por cargo." />
-            ) : (
-              <div className="rounded-lg border">
-                <CandidatesTable
-                  candidates={candidates}
-                  positionLabels={Object.fromEntries(positions.map((p) => [p.code, p.label]))}
-                  sessionsById={{ [session.id]: session }}
-                  onEdit={(candidate) => setCandidateForm({ open: true, candidate })}
-                  onDeactivate={setDeactivating}
-                  onReactivate={async (candidate) => {
-                    try {
-                      await api.candidates.update(candidate.id, { status: 'ACTIVE' });
-                      candidatesState.reload();
-                    } catch (err) {
-                      toast.error(err.message);
-                    }
-                  }}
-                />
-              </div>
-            )}
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => goTo(2)}>Voltar</Button>
-              <Button onClick={() => goTo(4)} disabled={candidates.length === 0}>Continuar</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 4 && session && (
+      {step === 2 && session && (
         <Card>
           <CardContent className="flex flex-col gap-5 p-6">
             <div>
@@ -377,7 +268,7 @@ export default function SessionWizard() {
               <p className="text-sm text-muted-foreground">Confira o resumo antes de abrir a votação.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border p-3 text-center">
                 <p className="text-2xl font-semibold tabular-nums">{sessionPositions.length}</p>
                 <p className="text-xs text-muted-foreground">Cargos</p>
@@ -386,27 +277,17 @@ export default function SessionWizard() {
                 <p className="text-2xl font-semibold tabular-nums">{activeParties.length}</p>
                 <p className="text-xs text-muted-foreground">Partidos ativos</p>
               </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-semibold tabular-nums">{people.length}</p>
-                <p className="text-xs text-muted-foreground">Pessoas</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-semibold tabular-nums">{candidates.filter((c) => c.status === 'ACTIVE').length}</p>
-                <p className="text-xs text-muted-foreground">Candidatos ativos</p>
-              </div>
             </div>
 
-            {positionsWithoutCandidate.length > 0 && (
-              <Alert>
-                <AlertDescription>
-                  Atenção: <strong>{positionsWithoutCandidate.map((p) => p.label).join(', ')}</strong> ainda sem
-                  candidato ativo. É possível abrir a votação mesmo assim, mas ninguém poderá ser eleito nesse(s) cargo(s).
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert>
+              <AlertDescription>
+                As candidaturas chegam pelo link público de candidatura — compartilhe-o na tela
+                da sessão depois de criá-la.
+              </AlertDescription>
+            </Alert>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-              <Button variant="outline" onClick={() => goTo(3)}>Voltar</Button>
+              <Button variant="outline" onClick={() => goTo(1)}>Voltar</Button>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="outline" onClick={() => navigate(`/sessoes/${session.id}`)}>
                   Deixar como rascunho
@@ -431,33 +312,6 @@ export default function SessionWizard() {
         party={null}
         onOpenChange={setPartyDialogOpen}
         onSaved={() => partiesState.reload()}
-      />
-      <PersonFormDialog
-        open={personDialogOpen}
-        person={null}
-        onOpenChange={setPersonDialogOpen}
-        onSaved={() => peopleState.reload()}
-      />
-      {session && (
-        <CandidateFormDialog
-          open={candidateForm.open}
-          candidate={candidateForm.candidate}
-          sessions={[session]}
-          parties={parties}
-          positions={positions}
-          people={people}
-          defaultSessionId={session.id}
-          onOpenChange={(open) => setCandidateForm((current) => ({ ...current, open }))}
-          onSaved={() => { candidatesState.reload(); peopleState.reload(); }}
-        />
-      )}
-      <ConfirmDialog
-        open={Boolean(deactivating)}
-        onOpenChange={(open) => !open && setDeactivating(null)}
-        title="Desativar candidato?"
-        description={`${deactivating?.name ?? 'O candidato'} deixará de receber novos votos.`}
-        confirmLabel="Desativar"
-        onConfirm={deactivateCandidate}
       />
     </div>
   );

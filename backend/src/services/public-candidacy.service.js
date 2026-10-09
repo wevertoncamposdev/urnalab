@@ -20,9 +20,9 @@ async function requireSessionByToken(token) {
 }
 
 function assertOpenForCandidacy(session) {
-  // Candidatura só é aceita em sessão ainda em rascunho — mesma regra que já vale
-  // pro cadastro manual pelo admin (ver candidateService.create), senão um
-  // candidato poderia entrar depois da votação já ter começado.
+  // Candidatura só é aceita em sessão ainda em rascunho — mesma regra aplicada em
+  // candidateService.create, senão um candidato poderia entrar depois da votação
+  // já ter começado.
   if (session.status !== SESSION_STATUS.DRAFT) {
     throw conflict(
       'CANDIDACY_CLOSED',

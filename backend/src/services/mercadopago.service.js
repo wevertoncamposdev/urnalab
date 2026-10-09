@@ -43,6 +43,14 @@ function isLoopback(url) {
   }
 }
 
+// `returnPath` às vezes já vem com querystring (ex.: `/loja?productId=...`) e às
+// vezes não (ex.: `/sessoes/:id`) — decide entre `?` e `&` conforme o caso, pra
+// nunca gerar uma URL de volta do Checkout Pro malformada.
+function withPaymentStatus(returnPath, status) {
+  const separator = returnPath.includes('?') ? '&' : '?';
+  return `${config.frontendUrl}${returnPath}${separator}payment=${status}`;
+}
+
 // Header "x-signature: ts=<timestamp>,v1=<hash>" — formato chave=valor separado por
 // vírgula, documentado em https://www.mercadopago.com.br/developers (Webhooks > Assinatura).
 function parseSignatureHeader(header) {
@@ -110,9 +118,10 @@ export const mercadoPagoService = {
   // Cria uma "preference" (Checkout Pro) pra uma cobrança avulsa. `externalReference`
   // é o id do nosso Payment — é por ele que o webhook (ver payment.service.js) liga o
   // pagamento aprovado de volta ao produto/sessão certos. `returnPath` (Etapa 15) é pra
-  // onde a volta do Checkout Pro cai — já com `?sessionId=...` ou `?productId=...`,
-  // conforme o escopo do produto (ver payment.service.js createCheckoutFor) — só
-  // acrescenta `&payment=success|pending|failure`.
+  // onde a volta do Checkout Pro cai (ex.: `/sessoes/:id` ou `/loja?productId=...`,
+  // conforme o escopo do produto — ver payment.service.js createCheckoutFor); pode ou
+  // não já ter querystring, `withPaymentStatus` acima decide `?` ou `&` e acrescenta
+  // `payment=success|pending|failure`.
   async createPreference({ paymentId, title, amountCents, payerEmail, returnPath }) {
     requireBackendUrl();
 
@@ -131,9 +140,9 @@ export const mercadoPagoService = {
         external_reference: paymentId,
         notification_url: `${config.backendUrl}/api/payments/webhook`,
         back_urls: {
-          success: `${config.frontendUrl}${returnPath}&payment=success`,
-          pending: `${config.frontendUrl}${returnPath}&payment=pending`,
-          failure: `${config.frontendUrl}${returnPath}&payment=failure`,
+          success: withPaymentStatus(returnPath, 'success'),
+          pending: withPaymentStatus(returnPath, 'pending'),
+          failure: withPaymentStatus(returnPath, 'failure'),
         },
         ...(isLoopback(config.frontendUrl) ? {} : { auto_return: 'approved' }),
       },

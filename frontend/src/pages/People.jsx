@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Pencil, Search, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,8 +20,9 @@ function candidacyLabel(count) {
   return count === 1 ? '1 candidatura' : `${count} candidaturas`;
 }
 
-// Cadastro de pessoas: nome e foto, reaproveitáveis entre quantas candidaturas
-// a pessoa tiver (uma por sessão). Candidatar alguém acontece em Candidatos.
+// Pessoa é criada automaticamente quando alguém se candidata pelo link público de
+// candidatura (ver public-candidacy.service.js) — esta tela só edita nome/foto ou
+// remove quem nunca chegou a ter candidatura.
 export default function People() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
@@ -35,7 +35,7 @@ export default function People() {
   const [form, setForm] = useState({ open: false, person: null });
   const [removing, setRemoving] = useState(null);
 
-  const openForm = (person = null) => setForm({ open: true, person });
+  const openForm = (person) => setForm({ open: true, person });
 
   async function handleRemove(person) {
     try {
@@ -48,16 +48,11 @@ export default function People() {
     }
   }
 
-  const newButton = (
-    <Button onClick={() => openForm()}><Plus /> Nova pessoa</Button>
-  );
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader
         title="Pessoas"
-        description="Cadastro de nome e foto, reaproveitável entre candidaturas em diferentes sessões."
-        actions={newButton}
+        description="Pessoas cadastradas a partir do link de candidatura de cada sessão."
       />
 
       <div className="relative">
@@ -73,8 +68,11 @@ export default function People() {
         <EmptyState
           icon={Users}
           title={debouncedSearch ? 'Nenhuma pessoa encontrada' : 'Nenhuma pessoa cadastrada'}
-          description={debouncedSearch ? 'Ajuste a busca.' : 'Cadastre uma pessoa antes de torná-la candidata numa sessão.'}
-          action={!debouncedSearch && newButton}
+          description={
+            debouncedSearch
+              ? 'Ajuste a busca.'
+              : 'Pessoas aparecem aqui quando alguém se candidata pelo link de candidatura de uma sessão.'
+          }
         />
       ) : (
         <Card className={loading ? 'opacity-60 transition-opacity' : undefined}>

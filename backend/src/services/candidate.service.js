@@ -177,11 +177,11 @@ export const candidateService = {
     return loadWithRelations(await findOrFail(id, userId));
   },
 
-  // Candidatura = pessoa (já cadastrada em /pessoas) + sessão + cargo + partido +
-  // número. Nome e foto não entram aqui: pertencem à pessoa. `status` default é
-  // ACTIVE (cadastro manual pelo admin); o link público de candidatura (Etapa 20,
-  // ver public-candidacy.service.js) passa PENDING, pra exigir aprovação antes de
-  // entrar na cédula.
+  // Candidatura = pessoa + sessão + cargo + partido + número. Nome e foto não entram
+  // aqui: pertencem à pessoa. Chamado só internamente pelo link público de
+  // candidatura (ver public-candidacy.service.js), que passa status PENDING pra
+  // exigir aprovação antes de entrar na cédula; `status` default ACTIVE fica só
+  // pro seed (scripts/seed.js), que chama este service direto sem passar por rota.
   async create(input, userId, { status = CANDIDATE_STATUS.ACTIVE } = {}) {
     const data = isPlainObject(input) ? input : {};
 

@@ -6,7 +6,6 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { useAuth } from '@/hooks/useAuth';
 import { trackEvent } from '@/lib/analytics';
-import Audit from '@/pages/Audit';
 import Candidates from '@/pages/Candidates';
 import ConfirmEmail from '@/pages/ConfirmEmail';
 import Dashboard from '@/pages/Dashboard';
@@ -24,7 +23,6 @@ import PublicCandidacy from '@/pages/PublicCandidacy';
 import PublicVoting from '@/pages/PublicVoting';
 import Register from '@/pages/Register';
 import ResetPassword from '@/pages/ResetPassword';
-import Results from '@/pages/Results';
 import SessionCreate from '@/pages/SessionCreate';
 import SessionDetails from '@/pages/SessionDetails';
 import Sessions from '@/pages/Sessions';
@@ -115,9 +113,7 @@ export default function App() {
           <Route path="partidos" element={<Parties />} />
           <Route path="pessoas" element={<People />} />
           <Route path="candidatos" element={<Candidates />} />
-          <Route path="resultados" element={<Results />} />
           <Route path="financeiro" element={<Financeiro />} />
-          <Route path="auditoria" element={<Audit />} />
           <Route path="sistema-eleitoral" element={<ElectoralSystem />} />
           <Route path="loja" element={<Loja />} />
           <Route path="linha-do-tempo" element={<Timeline />} />
