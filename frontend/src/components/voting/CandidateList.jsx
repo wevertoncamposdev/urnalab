@@ -1,7 +1,26 @@
-import { Users } from 'lucide-react';
+import { Users, Vote } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+// Linha de uma opção do select: avatar pequeno + número em destaque (badge) + nome
+// + sigla do partido — o mesmo conteúdo reaparece mirrorado dentro do gatilho
+// quando selecionado (Radix Select.Value espelha o ItemText do item escolhido),
+// então o próprio campo fechado já mostra "quem" está selecionado, não só um texto.
+function CandidateOptionRow({ candidate }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <CandidateAvatar name={candidate.name} photo={candidate.photo} className="size-7 shrink-0 text-[10px]" />
+      <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-xs font-bold tabular-nums text-primary">
+        {candidate.number}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{candidate.name}</span>
+      {candidate.party && (
+        <span className="shrink-0 text-xs text-muted-foreground">{candidate.party.acronym}</span>
+      )}
+    </span>
+  );
+}
 
 // A "colinha": consulta dos candidatos do cargo sendo votado agora (atualiza
 // sozinha quando o índice do cargo avança, ver PublicVoting.jsx). Um `select`
@@ -30,14 +49,14 @@ export function CandidateList({ positionLabel, candidates, selectedId, onSelect 
       ) : (
         <>
           <Select value={selectedId || undefined} onValueChange={onSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Escolha um candidato para ver os detalhes" />
+            <SelectTrigger className="h-11">
+              {!selected && <Vote className="mr-1.5 inline-block size-4 align-text-bottom text-muted-foreground" />}
+              <SelectValue placeholder="Selecione um candidato" />
             </SelectTrigger>
             <SelectContent>
               {candidates.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  nº {candidate.number} — {candidate.name}
-                  {candidate.party && ` (${candidate.party.acronym})`}
+                <SelectItem key={candidate.id} value={candidate.id} className="py-2">
+                  <CandidateOptionRow candidate={candidate} />
                 </SelectItem>
               ))}
             </SelectContent>
