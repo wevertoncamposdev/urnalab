@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { ErrorState } from '@/components/layout/ErrorState';
+import { ExportPdfDialog } from '@/components/results/ExportPdfDialog';
+import { ExportResultsBanner } from '@/components/results/ExportResultsBanner';
 import { PositionResult } from '@/components/results/PositionResult';
 import { useAsync } from '@/hooks/useAsync';
 import { trackEvent } from '@/lib/analytics';
 import { saveBlobAsFile } from '@/lib/download';
-import { formatCents } from '@/lib/format';
 import { api } from '@/services/api';
 
 // Apuração da sessão — migrado da antiga página /resultados (removida), agora como
@@ -90,18 +89,15 @@ export function SessionResultsSection({ session }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        {paymentState.data && !paymentState.data.paid ? (
-          <Button type="button" variant="outline" onClick={() => setShowChargeDialog(true)} disabled={startingCheckout}>
-            <Lock />
-            {startingCheckout ? 'Abrindo pagamento...' : 'Exportar'}
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" onClick={downloadPdf} disabled={downloadingPdf || !paymentState.data}>
-            <Download /> {downloadingPdf ? 'Gerando...' : 'Baixar PDF'}
-          </Button>
-        )}
-      </div>
+      <ExportResultsBanner
+        loading={paymentState.loading}
+        paid={Boolean(paymentState.data?.paid)}
+        priceCents={paymentState.data?.priceCents}
+        onExport={() => setShowChargeDialog(true)}
+        onDownload={downloadPdf}
+        startingCheckout={startingCheckout}
+        downloadingPdf={downloadingPdf}
+      />
 
       {resultsState.error ? (
         <ErrorState error={resultsState.error} onRetry={resultsState.reload} />
@@ -129,33 +125,13 @@ export function SessionResultsSection({ session }) {
         </>
       )}
 
-      <ConfirmDialog
+      <ExportPdfDialog
         open={showChargeDialog}
         onOpenChange={setShowChargeDialog}
-        title="Exportar resultado em PDF"
-        description={
-          paymentState.data ? (
-            <>
-              Essa sessão ainda não tem a exportação liberada.<br /><br />
-              Pra gerar e baixar o relatório
-              completo em PDF, é necessário um{' '}
-              <strong className="text-foreground">
-                pagamento único de {formatCents(paymentState.data.priceCents)}
-              </strong>. <br /> <br />
-              Depois da confirmação, o PDF fica{' '}
-              <strong className="text-foreground">liberado para sempre</strong> nessa sessão e você pode
-              baixe quantas vezes quiser. <br /> <br />
-              Você será direcionado ao{' '}
-              <strong className="text-foreground">Mercado Pago</strong> para concluir o pagamento
-              com segurança.
-            </>
-          ) : ''
-        }
-        confirmLabel={paymentState.data ? `Pagar ${formatCents(paymentState.data.priceCents)}` : 'Pagar'}
-        onConfirm={() => {
-          setShowChargeDialog(false);
-          startCheckout();
-        }}
+        results={resultsState.data}
+        priceCents={paymentState.data?.priceCents}
+        startingCheckout={startingCheckout}
+        onConfirm={startCheckout}
       />
     </div>
   );

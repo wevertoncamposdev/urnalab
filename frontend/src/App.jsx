@@ -89,8 +89,9 @@ export default function App() {
   const location = useLocation();
   // Na votação pública o feedback já é pedido depois do voto (PostVoteFeedback,
   // dentro da tela de "voto computado") — o botão flutuante some pra não duplicar
-  // e deixar a cédula mais limpa.
-  const hideFeedbackButton = location.pathname.startsWith('/votar/');
+  // e deixar a cédula mais limpa. Na landing some porque o lugar é do botão de
+  // doação (ver DonationButton, montado pela própria Landing.jsx).
+  const hideFeedbackButton = location.pathname.startsWith('/votar/') || location.pathname === '/';
 
   return (
     <>

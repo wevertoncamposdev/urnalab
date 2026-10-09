@@ -37,15 +37,21 @@ async function handleRequest(req, res) {
       }
     }
 
-    let userId = null;
+    // Sempre tenta decodificar o token, mesmo em rota pública (abaixo só rejeita se
+    // faltar numa rota que não é `public`) — é o que permite uma rota pública, como a
+    // de doação (ver donation.routes.js), saber se quem está doando está logado ou
+    // não, sem precisar de duas rotas diferentes pra isso. `verifyJwt` nunca lança,
+    // só devolve null num token ausente/inválido/expirado — nenhuma rota pública
+    // quebra por causa disso.
+    const authHeader = req.headers.authorization ?? '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const payload = token ? verifyJwt(token) : null;
+    const userId = payload?.sub ?? null;
+
     if (!match.public) {
-      const authHeader = req.headers.authorization ?? '';
-      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      const payload = token && verifyJwt(token);
-      if (!payload?.sub) {
+      if (!userId) {
         return sendError(res, 401, 'UNAUTHORIZED', 'Faça login para continuar.');
       }
-      userId = payload.sub;
 
       // Gate da Área de Gerenciamento (Etapa 16) direto aqui, antes de qualquer
       // handler/controller/service rodar — só compara o e-mail já carimbado no token

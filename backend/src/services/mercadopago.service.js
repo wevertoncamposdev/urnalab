@@ -8,6 +8,12 @@ import { serviceUnavailable } from '../utils/errors.js';
 // `fetch` já vem embutido no Node 20.
 const API_URL = 'https://api.mercadopago.com';
 
+// Nome que aparece na fatura/extrato do cartão de quem paga, no lugar do nome pessoal
+// da conta do Mercado Pago cadastrada. Limite rígido de 13 caracteres imposto pela
+// própria API (https://www.mercadopago.com.br/developers/en/docs/checkout-pro-preferences/
+// additional-settings/invoice-description) — não cabe slogan nenhum, só a marca.
+const STATEMENT_DESCRIPTOR = 'URNALAB';
+
 function requireAccessToken() {
   if (!config.mercadoPagoAccessToken) {
     throw serviceUnavailable(
@@ -138,6 +144,7 @@ export const mercadoPagoService = {
         ],
         payer: payerEmail ? { email: payerEmail } : undefined,
         external_reference: paymentId,
+        statement_descriptor: STATEMENT_DESCRIPTOR,
         notification_url: `${config.backendUrl}/api/payments/webhook`,
         back_urls: {
           success: withPaymentStatus(returnPath, 'success'),

@@ -33,6 +33,7 @@ model User {
   adminVerificationCode AdminVerificationCode?
   feedbacks             Feedback[]
   payments              Payment[]
+  donations             Donation[]
 
   @@map("users")
 }
@@ -345,4 +346,28 @@ model Payment {
   @@index([sessionId])
   @@index([productId])
   @@map("payments")
+}
+
+// Doação avulsa (fora do fluxo de produto/Payment acima): sem unlock nenhum do outro
+// lado, valor escolhido pela própria pessoa (dentro de rules/donation-rules.js), e
+// pode repetir quantas vezes quiser — por isso não reaproveita o model Payment, que é
+// todo pensado em torno de "uma cobrança aprovada libera o produto pra sempre" (ver
+// payment.service.js createCheckoutFor, ALREADY_PAID). `userId` nulo quando a doação
+// parte da landing sem login (ver server.js: rota pública que ainda tenta decodificar
+// o token, se houver); `donorName` só é preenchido nesse caso anônimo, texto livre.
+model Donation {
+  id             String    @id @default(uuid())
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  donorName      String?
+  amountCents    Int
+  status         String    @default("PENDING")
+  mpPreferenceId String?
+  mpPaymentId    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  paidAt         DateTime?
+
+  @@index([userId])
+  @@map("donations")
 }

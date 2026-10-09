@@ -4,6 +4,7 @@ import { registerAnalyticsRoutes } from './analytics.routes.js';
 import { registerAuditRoutes } from './audit.routes.js';
 import { registerAuthRoutes } from './auth.routes.js';
 import { registerCandidateRoutes } from './candidate.routes.js';
+import { registerDonationRoutes } from './donation.routes.js';
 import { registerFeedbackRoutes } from './feedback.routes.js';
 import { registerHealthRoutes } from './health.routes.js';
 import { registerInstitutionProfileRoutes } from './institution-profile.routes.js';
@@ -30,6 +31,7 @@ export function createRouter() {
   registerVoteRoutes(router);
   registerResultRoutes(router);
   registerPaymentRoutes(router);
+  registerDonationRoutes(router);
   registerProductRoutes(router);
   registerAuditRoutes(router);
   registerPublicRoutes(router);

@@ -1,4 +1,5 @@
 import { paymentService } from '../services/payment.service.js';
+import { donationService } from '../services/donation.service.js';
 import { mercadoPagoService } from '../services/mercadopago.service.js';
 import { sendSuccess } from '../utils/http.js';
 import { unauthorized } from '../utils/errors.js';
@@ -48,7 +49,11 @@ export const paymentController = {
         }
       }
 
+      // A notificação não diz se é de uma cobrança de produto ou de uma doação (ver
+      // donation.service.js) — cada função só reconsulta a API do Mercado Pago e age
+      // se achar a própria referência (external_reference); a outra vira um no-op.
       await paymentService.confirmPayment(mpPaymentId);
+      await donationService.confirmDonation(mpPaymentId);
     }
 
     sendSuccess(res, { received: true });
