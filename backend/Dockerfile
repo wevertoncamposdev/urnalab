@@ -4,7 +4,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 # Prisma (motor de query) precisa de OpenSSL no Alpine.
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 
 # package.json + prisma/ antes do `npm ci` de propósito: o hook `postinstall`
 # (prisma generate) já roda durante o próprio `npm ci` e precisa do schema
@@ -25,10 +25,18 @@ COPY src ./src
 RUN mkdir -p /app/data && chown -R node:node /app
 ENV DATA_PATH=/app/data
 
-# Imagem node:*-alpine já traz o usuário "node" (não-root) pronto pra uso.
-USER node
+# Volumes externos (Railway Volumes, ou qualquer `docker run -v`) são montados em
+# /app/data no runtime, por cima do que foi chown'd ali em build time — e chegam
+# com o dono que o provedor define (normalmente root), não "node". Por isso o
+# container continua iniciando como root (sem USER aqui): o entrypoint corrige a
+# permissão do volume de verdade já montado e só então troca pro usuário "node"
+# (via su-exec) antes de rodar o CMD — nenhum processo da aplicação roda como root.
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3000
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # `migrate deploy` só aplica migrações pendentes (idempotente) — seguro rodar
 # em todo start do container, antes de abrir a porta. O echo no início não
