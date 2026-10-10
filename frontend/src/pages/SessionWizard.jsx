@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Flag, Plus } from 'lucide-react';
+import { Check, CopyPlus, Flag, Plus, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,12 +23,18 @@ import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
 
-const STEPS = ['Sessão', 'Partidos'];
+// Primeiro passo é sempre "Origem" (escolher entre copiar ou criar do zero) — os passos
+// seguintes dependem da escolha: copiar é um passo só (a sessão de origem já traz cargos
+// e partidos prontos); criar do zero segue o fluxo guiado de sempre (sessão → partidos).
+const STEPS_BY_MODE = {
+  copy: ['Origem', 'Copiar'],
+  new: ['Origem', 'Sessão', 'Partidos'],
+};
 
-function Stepper({ current, maxReached, onSelect }) {
+function Stepper({ steps, current, maxReached, onSelect }) {
   return (
     <ol className="flex flex-wrap items-center justify-center gap-1.5">
-      {STEPS.map((label, index) => {
+      {steps.map((label, index) => {
         const done = index < current;
         const active = index === current;
         const clickable = index <= maxReached && index !== current;
@@ -62,24 +70,29 @@ function Stepper({ current, maxReached, onSelect }) {
   );
 }
 
-// Criar sessão: fluxo guiado em 2 passos (sessão → partidos). Cada passo reaproveita
-// os mesmos diálogos/componentes já usados nas telas normais (Cargos, Partidos) — só
-// guia a ordem e o fluxo, sem duplicar a lógica de validação/criação, que continua nos
-// services do backend. Ao concluir, cai direto na tela de gerenciamento da sessão —
-// ela já reúne tudo que falta (link de candidatura, abrir votação etc.), então não
-// precisa de uma etapa de revisão própria aqui. Candidaturas não têm passo aqui:
-// chegam pelo link público depois (ver PublicCandidacyLinkCard em SessionDetails.jsx,
-// mostrado enquanto a sessão está na etapa de candidatura).
+// Criar sessão: primeiro escolhe a origem (copiar de uma eleição já existente ou criar
+// do zero), depois segue um fluxo guiado — igual ao resto do app, cada passo reaproveita
+// os mesmos diálogos/componentes já usados nas telas normais (Cargos, Partidos), só guia
+// a ordem, sem duplicar validação/criação, que continua nos services do backend. Ao
+// concluir, cai direto na tela de gerenciamento da sessão — ela já reúne tudo que falta
+// (link de candidatura, abrir votação etc.), então não precisa de uma etapa de revisão
+// própria aqui. Copiar reaproveita o mesmo endpoint que "Duplicar" usa de dentro de uma
+// sessão (ver DuplicateSessionDialog.jsx) — cargos e partidos vêm prontos da origem, só
+// as candidaturas marcadas são recriadas; pessoas e partidos nunca são duplicados, só
+// referenciados. Quem cria do zero não tem passo de candidatos aqui: chegam pelo link
+// público depois (ver PublicCandidacyLinkCard em SessionDetails.jsx).
 export default function SessionWizard() {
   const navigate = useNavigate();
   const { select } = useCurrentSession();
 
+  const [mode, setMode] = useState(null); // null | 'new' | 'copy'
   const [step, setStep] = useState(0);
   const [maxReached, setMaxReached] = useState(0);
   const [session, setSession] = useState(null);
 
   const positionsState = useAsync(() => api.positions.list(), []);
   const partiesState = useAsync(() => api.parties.list(), []);
+  const sessionsState = useAsync(() => api.sessions.list(), []);
 
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
@@ -90,9 +103,41 @@ export default function SessionWizard() {
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const [sessionError, setSessionError] = useState(null);
 
+  const [sourceId, setSourceId] = useState('');
+  const [copyName, setCopyName] = useState('');
+  const [copyYear, setCopyYear] = useState(String(new Date().getFullYear()));
+  const [copySelected, setCopySelected] = useState(new Set());
+  const [copySubmitting, setCopySubmitting] = useState(false);
+  const [copyError, setCopyError] = useState(null);
+
+  const sourceCandidatesState = useAsync(
+    () => (sourceId ? api.candidates.list({ sessionId: sourceId, status: 'ACTIVE' }) : Promise.resolve(null)),
+    [sourceId],
+  );
+
+  // Ao escolher a sessão de origem, pré-preenche o nome (a professora ajusta se quiser)
+  // e já marca todo mundo que está ativo — ela desmarca só quem não concorre de novo.
+  useEffect(() => {
+    if (!sourceId || !sessionsState.data) return;
+    const source = sessionsState.data.find((s) => s.id === sourceId);
+    if (source) setCopyName(source.name);
+  }, [sourceId, sessionsState.data]);
+
+  useEffect(() => {
+    if (sourceCandidatesState.data) setCopySelected(new Set(sourceCandidatesState.data.map((c) => c.id)));
+  }, [sourceCandidatesState.data]);
+
+  const steps = STEPS_BY_MODE[mode ?? 'new'];
+
   function goTo(index) {
     setStep(index);
     setMaxReached((current) => Math.max(current, index));
+  }
+
+  function chooseMode(next) {
+    setMode(next);
+    setMaxReached(1);
+    setStep(1);
   }
 
   function exitWizard() {
@@ -113,7 +158,7 @@ export default function SessionWizard() {
       if (isNew) trackEvent('SESSION_CREATED', { sessionId: saved.id });
       setSession(saved);
       select(saved);
-      goTo(1);
+      goTo(2);
     } catch (err) {
       if (err.code === 'INSTITUTION_PROFILE_REQUIRED') {
         toast.error(err.message);
@@ -126,15 +171,58 @@ export default function SessionWizard() {
     }
   }
 
-  const loadError = positionsState.error ?? partiesState.error;
-  const loadReady = positionsState.data && partiesState.data;
+  function toggleCopyCandidate(id) {
+    setCopySelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function submitCopyStep() {
+    setCopySubmitting(true);
+    setCopyError(null);
+    try {
+      const result = await api.sessions.duplicate(sourceId, {
+        name: copyName,
+        year: copyYear === '' ? null : Number(copyYear),
+        candidateIds: [...copySelected],
+      });
+      trackEvent('SESSION_CREATED', { sessionId: result.session.id });
+      select(result.session);
+      if (result.skipped.length > 0) {
+        toast.warning(
+          `${result.copied} candidato(s) copiado(s), ${result.skipped.length} pulado(s): ` +
+            result.skipped.map((s) => `${s.name} (${s.reason})`).join('; '),
+        );
+      } else {
+        toast.success(
+          result.copied === 0 ? 'Sessão criada.' : `Sessão criada com ${result.copied} candidato(s) copiado(s).`,
+        );
+      }
+      navigate(`/sessoes/${result.session.id}`);
+    } catch (err) {
+      if (err.code === 'INSTITUTION_PROFILE_REQUIRED') {
+        toast.error(err.message);
+        navigate('/perfil');
+        return;
+      }
+      setCopyError(err);
+    } finally {
+      setCopySubmitting(false);
+    }
+  }
+
+  const loadError = positionsState.error ?? partiesState.error ?? sessionsState.error;
+  const loadReady = positionsState.data && partiesState.data && sessionsState.data;
 
   if (loadError) {
     return (
       <div className="mx-auto max-w-3xl">
         <ErrorState
           error={loadError}
-          onRetry={() => { positionsState.reload(); partiesState.reload(); }}
+          onRetry={() => { positionsState.reload(); partiesState.reload(); sessionsState.reload(); }}
         />
       </div>
     );
@@ -151,18 +239,164 @@ export default function SessionWizard() {
   const positions = positionsState.data;
   const parties = partiesState.data;
   const activeParties = parties.filter((p) => p.status === 'ACTIVE');
+  const positionLabels = Object.fromEntries(positions.map((p) => [p.code, p.label]));
+  const sourceCandidates = sourceCandidatesState.data ?? [];
+
+  const description =
+    mode === 'copy'
+      ? 'Escolha a eleição de origem e os candidatos que você quer reaproveitar.'
+      : mode === 'new'
+        ? 'Cadastre tudo que uma eleição precisa, passo a passo: sessão e partidos.'
+        : 'Comece copiando os cargos, partidos e candidatos de uma eleição já criada, ou do zero.';
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <PageHeader
         title="Criar sessão"
-        description="Cadastre tudo que uma eleição precisa, passo a passo: sessão e partidos."
+        description={description}
         actions={<Button variant="ghost" onClick={exitWizard}>Cancelar</Button>}
       />
 
-      <Stepper current={step} maxReached={maxReached} onSelect={goTo} />
+      <Stepper steps={steps} current={step} maxReached={maxReached} onSelect={goTo} />
 
       {step === 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => chooseMode('new')}
+            className="flex flex-col items-start gap-3 rounded-lg border bg-card p-6 text-left transition-colors hover:border-primary hover:bg-primary/5"
+          >
+            <Wand2 className="size-6 text-primary" />
+            <div>
+              <p className="font-medium">Criar uma eleição nova</p>
+              <p className="text-sm text-muted-foreground">
+                Comece do zero: defina nome, ano, cargos e partidos.
+              </p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => chooseMode('copy')}
+            className="flex flex-col items-start gap-3 rounded-lg border bg-card p-6 text-left transition-colors hover:border-primary hover:bg-primary/5"
+          >
+            <CopyPlus className="size-6 text-primary" />
+            <div>
+              <p className="font-medium">Copiar de uma eleição existente</p>
+              <p className="text-sm text-muted-foreground">
+                Reaproveite os cargos, partidos e candidatos de uma sessão já criada.
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {step === 1 && mode === 'copy' && (
+        <Card>
+          <CardContent className="flex flex-col gap-6 p-6">
+            {copyError && (
+              <Alert variant="destructive"><AlertDescription>{copyError.message}</AlertDescription></Alert>
+            )}
+
+            {sessionsState.data.length === 0 ? (
+              <EmptyState
+                icon={CopyPlus}
+                title="Nenhuma eleição para copiar"
+                description="Você ainda não tem nenhuma sessão criada — comece do zero."
+                action={<Button onClick={() => chooseMode('new')}><Wand2 /> Criar do zero</Button>}
+              />
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="wizard-copy-source">Copiar de</Label>
+                  <Select value={sourceId} onValueChange={setSourceId}>
+                    <SelectTrigger id="wizard-copy-source">
+                      <SelectValue placeholder="Selecione uma sessão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sessionsState.data.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} ({s.year})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {sourceId && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="wizard-copy-name">Nome da nova sessão</Label>
+                        <Input id="wizard-copy-name" value={copyName} onChange={(e) => setCopyName(e.target.value)} />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="wizard-copy-year">Ano</Label>
+                        <Input id="wizard-copy-year" type="number" value={copyYear} onChange={(e) => setCopyYear(e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Candidatos a reaproveitar</Label>
+                        {sourceCandidates.length > 0 && (
+                          <div className="flex gap-3 text-xs">
+                            <button
+                              type="button"
+                              className="text-primary hover:underline"
+                              onClick={() => setCopySelected(new Set(sourceCandidates.map((c) => c.id)))}
+                            >
+                              Selecionar todos
+                            </button>
+                            <button type="button" className="text-primary hover:underline" onClick={() => setCopySelected(new Set())}>
+                              Nenhum
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {sourceCandidatesState.loading ? (
+                        <p className="text-sm text-muted-foreground">Carregando candidatos...</p>
+                      ) : sourceCandidates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Esta sessão não tem candidatos ativos — a nova sessão nasce só com os cargos.
+                        </p>
+                      ) : (
+                        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-lg border p-2">
+                          {sourceCandidates.map((candidate) => (
+                            <Label
+                              key={candidate.id}
+                              htmlFor={`wizard-copy-candidate-${candidate.id}`}
+                              className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 font-normal hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                id={`wizard-copy-candidate-${candidate.id}`}
+                                checked={copySelected.has(candidate.id)}
+                                onCheckedChange={() => toggleCopyCandidate(candidate.id)}
+                              />
+                              <CandidateAvatar name={candidate.name} photo={candidate.photo} className="size-7 text-xs" />
+                              <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {positionLabels[candidate.position] ?? candidate.position} · nº {candidate.number}
+                              </span>
+                            </Label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => goTo(0)}>Voltar</Button>
+              <Button onClick={submitCopyStep} disabled={!sourceId || !copyName || copySubmitting}>
+                {copySubmitting ? 'Copiando...' : 'Concluir'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 1 && mode === 'new' && (
         <Card>
           <CardContent className="flex flex-col gap-6 p-6">
             <p className="text-sm text-muted-foreground">
@@ -211,7 +445,8 @@ export default function SessionWizard() {
                 ))}
               </div>
             </div>
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => goTo(0)}>Voltar</Button>
               <Button onClick={submitSessionStep} disabled={sessionSubmitting || !name || selectedPositions.length === 0}>
                 {sessionSubmitting ? 'Salvando...' : 'Continuar'}
               </Button>
@@ -220,7 +455,7 @@ export default function SessionWizard() {
         </Card>
       )}
 
-      {step === 1 && (
+      {step === 2 && mode === 'new' && (
         <Card>
           <CardContent className="flex flex-col gap-4 p-6">
             <p className="text-sm text-muted-foreground">
@@ -254,7 +489,7 @@ export default function SessionWizard() {
             </Alert>
 
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => goTo(0)}>Voltar</Button>
+              <Button variant="outline" onClick={() => goTo(1)}>Voltar</Button>
               <Button onClick={finishWizard} disabled={activeParties.length === 0}>
                 <Check /> Concluir
               </Button>
