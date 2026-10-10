@@ -154,19 +154,37 @@ andamento" acima como uma Etapa nova.
   Como a constraint é `@unique`, não `NOT NULL`, "liberar" é só zerar o campo — o gerador que já
   existe (`withUniqueSessionCode`/`withUniqueCandidacyCode`, `session.service.js`) já sorteia de
   novo em caso de colisão, então um código zerado já volta a ser sorteável sem nenhuma lógica
-  extra. Dois pedaços:
-  - `candidacyToken` dá pra zerar sem contrapartida nenhuma dentro de `sessionService.open()` — ele
-    só serve durante `DRAFT` (candidatura já é bloqueada fora disso, e o card do link some da tela
-    assim que a sessão sai do rascunho), então nada depende dele depois desse ponto.
-  - `publicToken` é mais delicado: hoje o mesmo link `/votar/:token` serve pra votar (`OPEN`) *e*
-    pra ver o resultado depois (`PublicVoting.jsx` mostra o resultado quando `status === FINISHED`,
-    no mesmo link) — zerar esse token ao finalizar quebraria o link de resultado de quem
-    compartilhou/guardou ele. Pra resolver, precisa separar isso antes: um `resultsToken` novo
-    (longo e opaco, tipo o `generatePublicToken()` já usado no reset de senha — não precisa ser
-    curto/memorizável, só é clicado, nunca digitado) nasce quando a sessão finaliza e vira o link
-    de resultado pra sempre; só depois disso `publicToken` pode ser zerado em `finish()` sem
-    quebrar nada. Precisa de campo novo + migração, uma rota/página pública de resultado própria, e
-    decidir o retrofit pras sessões já finalizadas sem esse token ainda.
+  extra. Revisitado em 2026-10-10 com um plano em duas frentes:
+  - **Mitigação imediata (barata, sem migração)**: subir `generateSessionCode` (`utils/id.js`) de 4
+    para 6 dígitos — 10 mil → 1 milhão de combinações, ainda só dígitos (fácil de digitar/ditar em
+    voz alta, sem a ambiguidade visual/sonora que letras introduziriam). Aproveitar pra trocar o
+    erro cru do Prisma que `withUniqueCode` relança hoje quando `MAX_CODE_ATTEMPTS` esgota por um
+    `AppError` de negócio (`serviceUnavailable('SESSION_CODE_EXHAUSTED', ...)`, já existe em
+    `utils/errors.js`, mesmo 503 já usado pra falha de gateway do Mercado Pago). Convive sem
+    problema com códigos de 4 dígitos já emitidos — campo é `String` sem tamanho fixo no banco.
+  - **Correção estrutural (a de verdade)**: `candidacyToken` dá pra zerar sem contrapartida nenhuma
+    dentro de `sessionService.open()` — ele só serve durante `DRAFT`, então nada depende dele depois
+    desse ponto. `publicToken` é mais delicado: hoje o mesmo link `/votar/:token` serve pra votar
+    (`OPEN`) *e* pra ver o resultado depois (`PublicVoting.jsx` mostra o resultado quando
+    `status === FINISHED`, no mesmo link) — zerar esse token ao finalizar quebraria o link de
+    resultado de quem compartilhou/guardou ele. Pra resolver, precisa separar isso antes: um
+    `resultsToken` novo (longo e opaco, tipo o `generatePublicToken()` já usado no reset de senha —
+    não precisa ser curto/memorizável, só é clicado, nunca digitado) nasce quando a sessão finaliza
+    (`session.resultsToken ?? generatePublicToken()`, nunca sobrescrevendo um já existente — um
+    `resume()`→`finish()` não pode invalidar um link já compartilhado) e vira o link de resultado
+    pra sempre, servido por uma rota pública nova (`GET /api/public/results/:token`,
+    `findByResultsToken` em `session.repository.js`) e uma página própria no frontend
+    (`/resultado/:token`, reaproveitando a renderização de resultado já existente em
+    `PublicVoting.jsx` via componente extraído, ex. `PublicResultsView`). Retrofit pras sessões já
+    finalizadas sem esse token: lazy-on-read em `withStats`, mesmo padrão já usado pros outros dois
+    tokens — sem script de backfill. Só depois disso — e só depois de validado em produção —
+    `publicToken` pode ser zerado em `finish()` sem quebrar nada; **não fazer isso no mesmo deploy**
+    do `resultsToken`: zerar no instante exato da finalização quebraria a própria aba que está
+    exibindo a votação ao vivo naquele momento (ela faz polling pelo `publicToken`) — a aba
+    precisaria primeiro passar a depender do `resultsToken` antes de o `publicToken` sumir. Depois
+    que a cobrança por compartilhar resultado (ver "Resultados e relatórios" abaixo) existir, a
+    urgência de "proteger" o resultado zerando o token some — o resultado já passa a exigir
+    pagamento (ou assinatura ativa) independente de qual dos dois links for usado.
 
 ### Segurança e integridade
 
@@ -243,9 +261,42 @@ andamento" acima como uma Etapa nova.
 - **Cobrança pela exportação em PDF**: subiu pra "Em andamento" como Etapa 12. O modelo "por sessão"
   (paga uma vez, baixa quantas vezes quiser) e o sistema de cobrança genérico por trás dele (model
   `Product`, Etapa 15) já existem — é o que a loja de materiais didáticos (Etapas 15/16) usa pra
-  vender produtos "por conta", sem sessão envolvida. O que falta de verdade é um modelo de
-  **assinatura mensal** (cobrança recorrente) — hoje só existe cobrança avulsa; Mercado Pago como
-  gateway (PIX/boleto/cartão via Checkout Pro) continua decidido.
+  vender produtos "por conta", sem sessão envolvida.
+- **Cobrança por compartilhar resultado publicamente**: levantado em 2026-10-10, junto com o
+  `resultsToken`/rota `/resultado` descritos em "Dados e infraestrutura" acima. Hoje qualquer pessoa
+  com o link (antigo ou o novo, quando existir) vê o resultado de graça, sem login — a ideia é que
+  nenhum acesso público ao resultado funcione sem a sessão ter sido paga antes (ou a conta ter
+  assinatura ativa, ver item abaixo). Reaproveita o sistema de produtos genérico: novo
+  `PRODUCT_KIND.RESULT_SHARE` + produto fixo por id (`RESULT_SHARE_PRODUCT_ID`, mesmo padrão de
+  `SESSION_EXPORT_PRODUCT_ID`), e generaliza o `if` binário de `scopeForProduct`
+  (`payment.service.js`) pra um conjunto de kinds "por sessão" (já deixando espaço pra outras
+  features premium por sessão no futuro, ex. a importação de CSV citada acima). O gate fica num
+  ponto só dentro de `public-voting.service.js` (`getResultsForSession`), reaproveitado tanto pela
+  rota antiga (`/api/public/sessions/:token/results`) quanto pela nova — então vale pros dois links
+  igual. Sessões já finalizadas antes dessa mudança existir precisam de uma migração de
+  "grandfathering": inserir um `Payment` `APPROVED` de R$0 pro produto novo em cada sessão já
+  `FINISHED` — assim o `isPaidFor` já existente resolve sozinho, sem nenhuma condicional de data
+  espalhada pelo código. UI espelha o botão/diálogo já existente de compra do PDF (`SessionDetails`
+  → aba Resultados).
+- O que falta de verdade pra fechar o ciclo é um modelo de **assinatura mensal** (cobrança
+  recorrente) pensado pra a escola assinar e liberar de uma vez as funcionalidades pagas por sessão
+  (PDF + compartilhamento de resultado acima, e futuras premium por sessão) — **sem** cobrir os
+  produtos avulsos da Loja (ebooks continuam comprados separados). Hoje só existe cobrança avulsa;
+  Mercado Pago (Checkout Pro) continua o gateway decidido pra pagamento único, mas assinatura precisa
+  da API de **preapproval** do Mercado Pago, nunca integrada aqui — maior risco técnico da ideia,
+  precisa validar em sandbox os nomes de campo (`auto_recurring`, `back_url`) e os eventos de webhook
+  de assinatura antes de implementar (é possível até que cada cobrança recorrente mensal chegue como
+  um evento de pagamento comum, não como evento de preapproval — precisa confirmar). Desenho: novo
+  model `Subscription` (1:1 com a conta; status `PENDING/ACTIVE/PAST_DUE/CANCELED`;
+  `mpPreapprovalId`; `currentPeriodEnd`) + `SubscriptionPlan` (preço editável, singleton) — **não**
+  reaproveitar `Product`/`Payment` pra isso, o ciclo de vida de recorrência (pausa, cancelamento,
+  renovação) não cabe no modelo "paga uma vez, libera pra sempre" que `Payment` já é. Checagem de
+  "assinatura ativa" é só leitura, sem cron (`status === ACTIVE && currentPeriodEnd > now()`), mesmo
+  idioma já usado em `paymentRepository.expireStalePending`; entra como um atalho "OR" nos dois gates
+  por sessão acima (`isPaidFor(...) || subscriptionService.isActive(userId)`). UI própria (ideia:
+  página "Plano" ao lado de "Financeiro" no menu da conta — assinar, ver status/vencimento,
+  cancelar), fora da Loja de propósito, já que o escopo da assinatura e o da Loja são coisas
+  diferentes.
 
 ### Notificações
 

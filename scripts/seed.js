@@ -1,6 +1,9 @@
-// Preenche o banco (Postgres, via Prisma) com uma eleição fictícia para testes manuais.
-// Usa os services (não grava no banco direto), então passa pelas mesmas validações da API.
-// Uso: node scripts/seed.js [--voters=N] [--finish]
+// Preenche o banco (Postgres, via Prisma) com uma eleição fictícia para testes manuais e
+// demonstração — cobre o fluxo inteiro do sistema (votação, apuração, cobrança de PDF,
+// doações) numa conta só, pronta para logar e mostrar tudo de uma vez.
+// Usa os services (não grava no banco direto, exceto onde comentado), então passa pelas
+// mesmas validações da API.
+// Uso: node scripts/seed.js [--voters=N] [--no-finish]
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../backend/src/config.js';
@@ -14,12 +17,23 @@ import { personService } from '../backend/src/services/person.service.js';
 import { candidateService } from '../backend/src/services/candidate.service.js';
 import { voteService } from '../backend/src/services/vote.service.js';
 import { productRepository } from '../backend/src/repositories/product.repository.js';
+import { paymentRepository } from '../backend/src/repositories/payment.repository.js';
+import { donationRepository } from '../backend/src/repositories/donation.repository.js';
 import { productFileStorage } from '../backend/src/storage/product-file-storage.js';
 import { buildPlaceholderPdf } from '../backend/src/reports/placeholder-pdf.js';
+import { SESSION_EXPORT_PRODUCT_ID } from '../backend/src/rules/product-rules.js';
 
 // Conta fixa só para o seed: cada conta tem seus próprios dados agora (multiusuário),
-// então o seed precisa de um "dono" — reaproveita a mesma conta a cada execução.
+// então o seed precisa de um "dono" — reaproveita a mesma conta a cada execução. É essa
+// conta que deve ser usada para mostrar a demonstração completa (não existe, hoje, uma
+// eleição "visível para todas as contas" — o isolamento por conta é intencional).
 const SEED_ACCOUNT = { name: 'Demo', email: 'demo@urna.local', password: 'demo12345' };
+
+// Nome fixo da doação anônima de exemplo (ver createDemoDonations) — ela nasce com
+// `userId: null` (é assim que uma doação anônima de verdade também fica), então não tem
+// como `clearPreviousDemoData` achá-la por `userId` como faz com o resto dos dados do
+// seed; usa esse nome como marcador pra conseguir apagar ela de novo antes de recriar.
+const SEED_ANONYMOUS_DONOR_NAME = 'Visitante Exemplo (seed)';
 
 // Perfil de instituição exigido antes de criar qualquer sessão (ver session.service.js
 // create) desde a Etapa 8.3 — o seed nunca tinha sido atualizado pra isso.
@@ -67,8 +81,10 @@ function mulberry32(seed) {
 function parseArgs(argv) {
   const voters = argv.find((arg) => arg.startsWith('--voters='));
   return {
-    voters: voters ? Number(voters.slice('--voters='.length)) : 0,
-    finish: argv.includes('--finish'),
+    // Demonstração completa por padrão: dá pra rodar só `npm run seed` e já ganhar uma
+    // sessão finalizada com votos e resultado — passe --voters=0 pra pular isso.
+    voters: voters ? Number(voters.slice('--voters='.length)) : 150,
+    finish: !argv.includes('--no-finish'),
   };
 }
 
@@ -101,9 +117,19 @@ async function ensureSeedInstitutionProfile(userId) {
 // tabela por tabela. Sem isso, a segunda execução do seed sempre falhava: `createParties`
 // tentava recriar os mesmos partidos (mesmo número/sigla) pra uma conta que já os tinha,
 // batendo na constraint `@@unique([userId, number])`.
+// Exceção: Donation.user é `onDelete: SetNull` (de propósito — uma doação não deve
+// desaparecer se a conta for excluída depois), então sobreviveria ao delete do usuário
+// como registro órfão; apaga explícito aqui pra não acumular doação demo duplicada a
+// cada reseed.
 async function clearPreviousDemoData() {
   const existing = await userRepository.findByEmail(SEED_ACCOUNT.email);
-  if (existing) await prisma.user.delete({ where: { id: existing.id } });
+  if (existing) {
+    await prisma.donation.deleteMany({ where: { userId: existing.id } });
+    await prisma.user.delete({ where: { id: existing.id } });
+  }
+  // Doação anônima de exemplo: nasce com `userId: null`, então o delete acima nunca a
+  // alcança — sem isso ela se acumularia (uma nova a cada reseed, pra sempre).
+  await prisma.donation.deleteMany({ where: { donorName: SEED_ANONYMOUS_DONOR_NAME } });
 
   // As fotos de candidatos antigos (arquivo em disco, não cascateia com o delete acima)
   // ficariam órfãs sem isso.
@@ -142,11 +168,17 @@ async function createParties(userId) {
   return partiesByAcronym;
 }
 
-async function createCandidates(sessionId, partiesByAcronym, userId) {
+// `peopleCache` é compartilhado entre as duas sessões demo (ver main) — mesma pessoa
+// concorrendo nas duas, sem recriar o cadastro (Person não pertence a uma sessão só).
+async function createCandidates(sessionId, partiesByAcronym, userId, peopleCache) {
   const parties = [...partiesByAcronym.values()];
   for (const [position, candidates] of Object.entries(CANDIDATES_BY_POSITION)) {
     for (const [index, candidate] of candidates.entries()) {
-      const person = await personService.create({ name: candidate.name }, userId);
+      let person = peopleCache.get(candidate.name);
+      if (!person) {
+        person = await personService.create({ name: candidate.name }, userId);
+        peopleCache.set(candidate.name, person);
+      }
       await candidateService.create(
         {
           sessionId,
@@ -186,6 +218,48 @@ async function castVotes(sessionId, voters, random, userId) {
   return count;
 }
 
+// Cobrança da exportação em PDF já paga (Etapa 14/15) — grava direto no repository
+// (sem passar pelo Mercado Pago de verdade, igual ao resto do seed que atalha fluxos
+// externos) só pra Financeiro.jsx e o resumo financeiro do admin já mostrarem algo sem
+// precisar simular um checkout de verdade.
+async function createDemoPayment(sessionId, userId) {
+  const product = await productRepository.findById(SESSION_EXPORT_PRODUCT_ID);
+  return paymentRepository.create({
+    userId,
+    productId: product.id,
+    sessionId,
+    amountCents: product.priceCents,
+    status: 'APPROVED',
+    mpPreferenceId: 'seed-preference-export',
+    mpPaymentId: 'seed-payment-export',
+    paidAt: new Date().toISOString(),
+  });
+}
+
+// Doações já aprovadas (uma logada pela própria conta demo, uma anônima — mesmos dois
+// casos que a landing/dashboard suportam de verdade) pra popular o total de doações no
+// resumo financeiro do admin sem precisar de um pagamento real no Mercado Pago.
+async function createDemoDonations(userId) {
+  await donationRepository.create({
+    userId,
+    donorName: null,
+    amountCents: 5000,
+    status: 'APPROVED',
+    mpPreferenceId: 'seed-preference-donation-1',
+    mpPaymentId: 'seed-payment-donation-1',
+    paidAt: new Date().toISOString(),
+  });
+  await donationRepository.create({
+    userId: null,
+    donorName: SEED_ANONYMOUS_DONOR_NAME,
+    amountCents: 2500,
+    status: 'APPROVED',
+    mpPreferenceId: 'seed-preference-donation-2',
+    mpPaymentId: 'seed-payment-donation-2',
+    paidAt: new Date().toISOString(),
+  });
+}
+
 async function main() {
   const { voters, finish } = parseArgs(process.argv.slice(2));
 
@@ -194,31 +268,56 @@ async function main() {
   await ensureSeedInstitutionProfile(user.id);
   const ebookProduct = await ensureDemoEbookProduct();
   const partiesByAcronym = await createParties(user.id);
+  const peopleCache = new Map();
+  const positions = Object.keys(CANDIDATES_BY_POSITION);
 
-  const session = await sessionService.create(
-    { name: 'Eleição Demo 2026', year: 2026, positions: Object.keys(CANDIDATES_BY_POSITION) },
+  // Sessão A: fica OPEN, com zero votos — pra demonstrar (e deixar qualquer um testar,
+  // sem login, pelo link público) o fluxo de votação e de candidatura do zero.
+  const openSession = await sessionService.create(
+    { name: 'Eleição Demo 2026 — vote agora', year: 2026, positions },
     user.id,
   );
-  await createCandidates(session.id, partiesByAcronym, user.id);
-  await sessionService.open(session.id, user.id);
+  await createCandidates(openSession.id, partiesByAcronym, user.id, peopleCache);
+  await sessionService.open(openSession.id, user.id);
+
+  // Sessão B: já com votos simulados e (por padrão) finalizada — pra demonstrar
+  // apuração, exportação em PDF e 2º turno sem precisar votar manualmente antes.
+  const resultSession = await sessionService.create(
+    { name: 'Eleição Demo 2026 — resultado', year: 2026, positions },
+    user.id,
+  );
+  await createCandidates(resultSession.id, partiesByAcronym, user.id, peopleCache);
+  await sessionService.open(resultSession.id, user.id);
 
   let votesCast = 0;
   if (voters > 0) {
-    votesCast = await castVotes(session.id, voters, mulberry32(42), user.id);
+    votesCast = await castVotes(resultSession.id, voters, mulberry32(42), user.id);
   }
 
   if (finish) {
-    await sessionService.finish(session.id, user.id);
+    await sessionService.finish(resultSession.id, user.id);
   }
+
+  await createDemoPayment(resultSession.id, user.id);
+  await createDemoDonations(user.id);
 
   console.log(`Dados em ${config.dataPath}`);
   console.log(`Conta demo: ${SEED_ACCOUNT.email} / ${SEED_ACCOUNT.password}`);
+  console.log(`Login: ${config.frontendUrl}/login`);
   console.log(`Partidos criados: ${partiesByAcronym.size}`);
-  console.log(`Sessão "${session.name}" (${session.id}), cargos: ${session.positions.join(', ')}`);
-  console.log(`Candidatos criados: ${Object.values(CANDIDATES_BY_POSITION).flat().length}`);
-  console.log(`Votos simulados: ${votesCast}`);
-  console.log(`Sessão finalizada: ${finish ? 'sim' : 'não'}`);
+  console.log(`Candidatos por sessão: ${Object.values(CANDIDATES_BY_POSITION).flat().length}`);
+  console.log('');
+  console.log(`Sessão aberta para votar: "${openSession.name}" (${openSession.id})`);
+  console.log(`  Votar sem login: ${config.frontendUrl}/votar/${openSession.publicToken}`);
+  console.log(`  Candidatar-se sem login: ${config.frontendUrl}/candidatar/${openSession.candidacyToken}`);
+  console.log('');
+  console.log(`Sessão com resultado: "${resultSession.name}" (${resultSession.id})`);
+  console.log(`  Votos simulados: ${votesCast}`);
+  console.log(`  Finalizada: ${finish ? 'sim' : 'não'}`);
+  if (finish) console.log(`  Resultado sem login: ${config.frontendUrl}/votar/${resultSession.publicToken}`);
+  console.log('');
   console.log(`Produto ebook de demonstração: "${ebookProduct.name}" (${ebookProduct.id})`);
+  console.log('Cobrança de exportação em PDF e doações de exemplo: criadas (já aprovadas).');
 }
 
 main().catch((error) => {
