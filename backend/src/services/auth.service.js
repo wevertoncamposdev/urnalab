@@ -19,14 +19,73 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Mesmos cargos brasileiros que o simulador sempre ofereceu — cadastrados uma
 // vez para cada conta nova, já editáveis/removíveis dali em diante (ver Cargos).
+// Descrições copiadas de frontend/src/content/electoral-system.js (POSITIONS_INFO[].summary) —
+// mesmo texto educativo já usado na página estática /sistema-eleitoral, agora também como
+// descrição inicial do cargo de verdade (editável depois em Cargos).
 const DEFAULT_POSITIONS = [
-  { label: 'Presidente', digits: 2, order: 1, twoRoundEnabled: true },
-  { label: 'Governador', digits: 2, order: 2, twoRoundEnabled: true },
-  { label: 'Senador', digits: 3, order: 3, twoRoundEnabled: false },
-  { label: 'Deputado Federal', digits: 4, order: 4, twoRoundEnabled: false },
-  { label: 'Deputado Estadual', digits: 5, order: 5, twoRoundEnabled: false },
-  { label: 'Prefeito', digits: 2, order: 6, twoRoundEnabled: false },
-  { label: 'Vereador', digits: 5, order: 7, twoRoundEnabled: false },
+  {
+    label: 'Presidente',
+    digits: 2,
+    order: 1,
+    twoRoundEnabled: true,
+    description:
+      'Chefe do Poder Executivo federal: comanda a administração pública da União, sanciona ' +
+      'ou veta leis e representa o Brasil internacionalmente.',
+  },
+  {
+    label: 'Governador',
+    digits: 2,
+    order: 2,
+    twoRoundEnabled: true,
+    description:
+      'Chefe do Poder Executivo estadual (ou distrital, no caso do Distrito Federal): administra ' +
+      'o estado, propõe o orçamento e sanciona leis estaduais.',
+  },
+  {
+    label: 'Senador',
+    digits: 3,
+    order: 3,
+    twoRoundEnabled: false,
+    description:
+      'Representa o estado (3 vagas por estado, independente da população) no Senado Federal. ' +
+      'As eleições se alternam, a cada 4 anos, entre renovar 1/3 e 2/3 das vagas de cada estado.',
+  },
+  {
+    label: 'Deputado Federal',
+    digits: 4,
+    order: 4,
+    twoRoundEnabled: false,
+    description:
+      'Representa o estado na Câmara dos Deputados, elaborando e votando leis federais e ' +
+      'fiscalizando o Poder Executivo.',
+  },
+  {
+    label: 'Deputado Estadual',
+    digits: 5,
+    order: 5,
+    twoRoundEnabled: false,
+    description:
+      'Representa a população do estado na Assembleia Legislativa, legislando sobre temas ' +
+      'estaduais e fiscalizando o governo do estado.',
+  },
+  {
+    label: 'Prefeito',
+    digits: 2,
+    order: 6,
+    twoRoundEnabled: false,
+    description:
+      'Chefe do Poder Executivo municipal: administra a prefeitura, os serviços públicos locais ' +
+      'e sanciona leis municipais.',
+  },
+  {
+    label: 'Vereador',
+    digits: 5,
+    order: 7,
+    twoRoundEnabled: false,
+    description:
+      'Representa a população do município na Câmara Municipal, legislando sobre temas locais e ' +
+      'fiscalizando a prefeitura.',
+  },
 ];
 
 async function seedDefaultPositions(userId) {

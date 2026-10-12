@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber } from '@/lib/format';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { PositionResultsTable } from '@/components/results/PositionResultsTable';
 import { PositionPieView } from '@/components/results/PositionPieView';
 import { PositionTimelineChart } from '@/components/results/PositionTimelineChart';
@@ -12,7 +13,7 @@ import { PositionTimelineChart } from '@/components/results/PositionTimelineChar
 // (evolução voto a voto, boa pra contar a história da apuração). Brancos/nulos não
 // entram na disputa (convenção eleitoral) e ficam só no resumo do rodapé.
 export function PositionResult({ result }) {
-  const { label, candidates, totals, winners, runoff, timeline } = result;
+  const { label, description, candidates, totals, winners, runoff, timeline } = result;
   const runoffCandidates = runoff
     ? candidates.filter((c) => runoff.candidateIds.includes(c.id))
     : [];
@@ -20,7 +21,10 @@ export function PositionResult({ result }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{label}</CardTitle>
+        <CardTitle className="flex items-center gap-1.5">
+          {label}
+          <PositionDescriptionButton label={label} description={description} />
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {runoff && (

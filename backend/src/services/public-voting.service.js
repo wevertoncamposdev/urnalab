@@ -28,7 +28,7 @@ export const publicVotingService = {
       status: session.status,
       positions: session.positions.map((code) => {
         const rule = positionByCode.get(code);
-        return { code, label: rule?.label ?? code, digits: rule?.digits ?? 0 };
+        return { code, label: rule?.label ?? code, digits: rule?.digits ?? 0, description: rule?.description ?? null };
       }),
     };
   },

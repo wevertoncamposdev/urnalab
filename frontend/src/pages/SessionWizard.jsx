@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PartyFormDialog } from '@/components/parties/PartyFormDialog';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { PositionFormDialog } from '@/components/positions/PositionFormDialog';
 import { useAsync } from '@/hooks/useAsync';
 import { useCurrentSession } from '@/hooks/useCurrentSession';
@@ -439,7 +440,10 @@ export default function SessionWizard() {
                         )
                       }
                     />
-                    <span className="flex-1">{position.label}</span>
+                    <span className="flex flex-1 items-center gap-1.5">
+                      {position.label}
+                      <PositionDescriptionButton label={position.label} description={position.description} />
+                    </span>
                     <span className="text-xs text-muted-foreground">{position.digits} dígitos</span>
                   </Label>
                 ))}

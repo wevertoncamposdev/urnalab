@@ -7,10 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { fieldOfError } from '@/lib/form-errors';
 import { api } from '@/services/api';
 
-const FIELD_RULES = [['LABEL', 'label'], ['DIGITS', 'digits'], ['ORDER', 'order']];
+const FIELD_RULES = [['LABEL', 'label'], ['DIGITS', 'digits'], ['ORDER', 'order'], ['DESCRIPTION', 'description']];
 
 function PositionForm({ position, onSaved, onCancel }) {
   const editing = Boolean(position);
@@ -18,6 +19,7 @@ function PositionForm({ position, onSaved, onCancel }) {
   const [digits, setDigits] = useState(position ? String(position.digits) : '');
   const [order, setOrder] = useState(position ? String(position.order) : '');
   const [twoRoundEnabled, setTwoRoundEnabled] = useState(position?.twoRoundEnabled ?? false);
+  const [description, setDescription] = useState(position?.description ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,6 +35,7 @@ function PositionForm({ position, onSaved, onCancel }) {
       digits: digits === '' ? null : Number(digits),
       order: order === '' ? undefined : Number(order),
       twoRoundEnabled,
+      description: description.trim() || null,
     };
     try {
       if (editing) await api.positions.update(position.id, payload);
@@ -94,6 +97,20 @@ function PositionForm({ position, onSaved, onCancel }) {
           />
         </FormField>
       </div>
+      <FormField
+        label="Descrição (opcional)"
+        htmlFor="position-description"
+        error={fieldError('description')}
+        hint="Explica as funções/atribuições do cargo — aparece para quem for consultar, inclusive na tela de votação."
+      >
+        <Textarea
+          id="position-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="O que esse cargo faz..."
+          rows={3}
+        />
+      </FormField>
       <Label htmlFor="position-two-round" className="flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3 py-2.5 font-normal">
         <Checkbox
           id="position-two-round"

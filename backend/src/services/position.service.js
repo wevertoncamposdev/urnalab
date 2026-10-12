@@ -49,7 +49,15 @@ function normalizeFields(input) {
   // válidos) no 1º turno, a apuração aponta os dois mais votados para a disputa.
   const twoRoundEnabled = Boolean(input.twoRoundEnabled);
 
-  return { label, digits, order, twoRoundEnabled };
+  const description = typeof input.description === 'string' ? input.description.trim() : '';
+  if (description.length > POSITION_LIMITS.descriptionMaxLength) {
+    throw badRequest(
+      'POSITION_DESCRIPTION_TOO_LONG',
+      `A descrição pode ter no máximo ${POSITION_LIMITS.descriptionMaxLength} caracteres.`,
+    );
+  }
+
+  return { label, digits, order, twoRoundEnabled, description: description || null };
 }
 
 // Busca sempre dentro da conta de quem fez a requisição: um cargo de outra
@@ -100,6 +108,7 @@ export const positionService = {
       digits: current.digits,
       order: current.order,
       twoRoundEnabled: current.twoRoundEnabled,
+      description: current.description,
       ...changes,
     });
 

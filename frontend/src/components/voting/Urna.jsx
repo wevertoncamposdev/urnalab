@@ -2,6 +2,7 @@ import { Frown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { VoteKeypad } from '@/components/voting/VoteKeypad';
 import { getCandidatePreviewState } from '@/lib/candidate-preview';
 import { cn } from '@/lib/utils';
@@ -11,7 +12,7 @@ import { cn } from '@/lib/utils';
 // em vez do visor escuro); assim que fecha, troca pra foto/nome do candidato (ou
 // o aviso de nulo) — mesmo veredito que CandidatePreviewPanel mostra no painel
 // lateral, só que direto "na tela", como uma urna de verdade.
-function UrnaScreen({ positionLabel, digits, digitsRequired, blank, lookup }) {
+function UrnaScreen({ positionLabel, positionDescription, digits, digitsRequired, blank, lookup }) {
   const typing = !blank && digits.length < digitsRequired;
 
   if (typing) {
@@ -22,7 +23,10 @@ function UrnaScreen({ positionLabel, digits, digitsRequired, blank, lookup }) {
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Você está votando para
           </span>
-          <span className="font-heading text-base font-semibold md:text-xl">{positionLabel}</span>
+          <span className="flex items-center gap-1">
+            <span className="font-heading text-base font-semibold md:text-xl">{positionLabel}</span>
+            <PositionDescriptionButton label={positionLabel} description={positionDescription} />
+          </span>
         </div>
         <div className="flex gap-1.5 rounded-lg bg-muted p-2.5 md:gap-2 md:p-3">
           {slots.map((digit, index) => (
@@ -100,6 +104,7 @@ function UrnaScreen({ positionLabel, digits, digitsRequired, blank, lookup }) {
 // com um `min-h` só como piso pra não sumir de vez numa janela bem baixa.
 export function Urna({
   positionLabel,
+  positionDescription,
   digits,
   digitsRequired,
   blank,
@@ -114,7 +119,14 @@ export function Urna({
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 rounded-[28px] bg-sidebar p-3 shadow-lg md:gap-3 md:p-4">
       <div className="flex min-h-[96px] flex-1 items-center justify-center overflow-y-auto rounded-2xl bg-white p-3 md:min-h-[120px] md:p-4">
-        <UrnaScreen positionLabel={positionLabel} digits={digits} digitsRequired={digitsRequired} blank={blank} lookup={lookup} />
+        <UrnaScreen
+          positionLabel={positionLabel}
+          positionDescription={positionDescription}
+          digits={digits}
+          digitsRequired={digitsRequired}
+          blank={blank}
+          lookup={lookup}
+        />
       </div>
 
       <VoteKeypad onDigit={onDigit} onClear={onClear} onBlank={onBlank} disabled={submitting} />
