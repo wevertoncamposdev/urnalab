@@ -12,7 +12,7 @@ import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatTile } from '@/components/layout/StatTile';
 import { useAsync } from '@/hooks/useAsync';
-import { formatCents, formatDateTime, formatNumber } from '@/lib/format';
+import { formatCents, formatDateTime, formatNumber, formatPrice } from '@/lib/format';
 import { api } from '@/services/api';
 
 const KIND_LABELS = { SESSION_EXPORT: 'Por sessão', EBOOK: 'Por conta' };
@@ -161,7 +161,7 @@ export default function AdminProducts() {
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell className="text-muted-foreground">{KIND_LABELS[product.kind] ?? product.kind}</TableCell>
-                      <TableCell>{formatCents(product.priceCents)}</TableCell>
+                      <TableCell>{formatPrice(product.priceCents)}</TableCell>
                       <TableCell>
                         <Badge variant={product.active ? 'success' : 'default'}>
                           {product.active ? 'Ativo' : 'Inativo'}

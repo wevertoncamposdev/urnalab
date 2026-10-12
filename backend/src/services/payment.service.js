@@ -47,12 +47,18 @@ async function scopeForProduct(product, { sessionId, userId }) {
 }
 
 async function getStatusFor(product, scope) {
+  // Produto gratuito (priceCents === 0) libera direto, sem Payment nenhum — ver
+  // validateProductInput em product.service.js, que agora aceita preço zero.
+  if (product.priceCents === 0) return { paid: true, priceCents: 0 };
+
   const { where } = await scopeForProduct(product, scope);
   const approved = await paymentRepository.findApproved(where);
   return { paid: Boolean(approved), priceCents: product.priceCents };
 }
 
 async function isPaidFor(product, scope) {
+  if (product.priceCents === 0) return true;
+
   try {
     const { where } = await scopeForProduct(product, scope);
     const approved = await paymentRepository.findApproved(where);
@@ -63,6 +69,14 @@ async function isPaidFor(product, scope) {
 }
 
 async function createCheckoutFor(product, scope) {
+  // Produto gratuito nunca deveria chegar aqui pelo fluxo normal (getStatusFor já reporta
+  // `paid: true`, então o frontend nunca abre checkout) — guarda antes de scopeForProduct
+  // pra não vazar um erro de sessão (SESSION_NOT_FOUND/RESULTS_NOT_AVAILABLE) em vez deste,
+  // num uso indevido direto da API.
+  if (product.priceCents === 0) {
+    throw conflict('PRODUCT_FREE_NO_CHECKOUT', 'Esse produto é gratuito, não é preciso pagar.');
+  }
+
   const { userId } = scope;
   const { where, session } = await scopeForProduct(product, scope);
 

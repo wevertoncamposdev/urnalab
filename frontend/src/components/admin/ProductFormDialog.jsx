@@ -72,6 +72,7 @@ function ProductForm({ product, onSaved, onCancel }) {
   const [name, setName] = useState(product?.name ?? '');
   const [description, setDescription] = useState(product?.description ?? '');
   const [priceReais, setPriceReais] = useState(centsToReais(product?.priceCents));
+  const [free, setFree] = useState(product?.priceCents === 0);
   const [kind, setKind] = useState(product?.kind ?? 'EBOOK');
   const [active, setActive] = useState(product?.active ?? true);
   const [coverImage, setCoverImage] = useState(product?.coverImage ?? '');
@@ -105,7 +106,7 @@ function ProductForm({ product, onSaved, onCancel }) {
     const payload = {
       name,
       description,
-      priceCents: Math.round(Number(priceReais.replace(',', '.')) * 100),
+      priceCents: free ? 0 : Math.round(Number(priceReais.replace(',', '.')) * 100),
       active,
       coverImage: coverImage || null,
       ...(editing ? {} : { kind }),
@@ -141,13 +142,20 @@ function ProductForm({ product, onSaved, onCancel }) {
       </FormField>
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Preço (R$)" htmlFor="product-price" error={fieldError('priceCents')}>
-          <Input
-            id="product-price"
-            inputMode="decimal"
-            value={priceReais}
-            onChange={(e) => setPriceReais(e.target.value)}
-            placeholder="9.90"
-          />
+          <div className="flex flex-col gap-1.5">
+            <Input
+              id="product-price"
+              inputMode="decimal"
+              value={priceReais}
+              onChange={(e) => setPriceReais(e.target.value)}
+              placeholder="9.90"
+              disabled={free}
+            />
+            <Label htmlFor="product-free" className="flex cursor-pointer items-center gap-2 text-xs font-normal text-muted-foreground">
+              <Checkbox id="product-free" checked={free} onCheckedChange={(checked) => setFree(checked === true)} />
+              Produto gratuito
+            </Label>
+          </div>
         </FormField>
         <FormField
           label="Tipo"

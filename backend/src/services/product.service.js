@@ -41,8 +41,11 @@ function validateProductInput(data, { partial = false } = {}) {
 
   if (!partial || data.priceCents !== undefined) {
     const priceCents = Number(data.priceCents);
-    if (!Number.isInteger(priceCents) || priceCents <= 0) {
-      throw badRequest('PRODUCT_PRICE_INVALID', 'Informe um preço válido, em centavos (maior que zero).');
+    if (!Number.isInteger(priceCents) || priceCents < 0) {
+      throw badRequest(
+        'PRODUCT_PRICE_INVALID',
+        'Informe um preço válido, em centavos (maior ou igual a zero — 0 é produto gratuito).',
+      );
     }
     patch.priceCents = priceCents;
   }
