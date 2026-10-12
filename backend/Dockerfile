@@ -16,6 +16,12 @@ RUN npm ci
 
 COPY src ./src
 
+# `scripts/seed-demo.js` vai junto na imagem de propósito: permite recriar a conta demo
+# direto no shell do Railway (`node scripts/seed-demo.js`, env vars já injetadas pelo
+# Railway) sem precisar colar o arquivo inteiro à mão a cada vez. Não é executado
+# automaticamente por nenhum CMD/entrypoint — só fica disponível pra rodar sob demanda.
+COPY scripts ./scripts
+
 # Fotos de candidatos continuam em arquivo (o resto dos dados foi para o
 # Postgres via Prisma). Sem instrução VOLUME aqui de propósito — o Railway
 # rejeita o build com ela (usa Railway Volumes, configurado no dashboard do

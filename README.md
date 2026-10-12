@@ -241,13 +241,17 @@ A checagem "sessão está `OPEN`" e a gravação do voto rodam como uma única o
 (`sessionRepository.withLock`, usada também por `sessionService.finish`), então uma finalização
 concorrente nunca deixa passar um voto depois de completada.
 
-`npm run seed [-- --voters=N] [-- --finish]` (ou `node scripts/seed.js --voters=N --finish`) recria
-a conta demo no Postgres (`demo@urna.local` / `demo12345`, perfil de instituição já preenchido),
-com 3 partidos, uma sessão com 9 candidatos fictícios, o produto de demonstração da Loja (ver
-"Cobrança e produtos" abaixo) e, opcionalmente, simula N eleitores votando (válido/branco/nulo,
-gerador de semente fixa) e finaliza a sessão — usando os services, como qualquer outro cliente da
-API. Idempotente: pode rodar várias vezes seguidas (apaga a conta demo anterior, se houver, antes
-de recriar — `onDelete: Cascade` em toda relação de `User` cuida do resto).
+`npm run seed [-- --voters=N] [-- --no-finish]` (ou `node backend/scripts/seed-demo.js
+--voters=N`) recria a conta demo no Postgres (`demo@urna.local` / `demo12345`, perfil de
+instituição já preenchido), com 3 partidos, duas sessões com 9 candidatos fictícios cada
+(uma aberta pra votar, outra já finalizada com votos simulados e resultado), o produto de
+demonstração da Loja (ver "Cobrança e produtos" abaixo), uma cobrança de PDF e duas
+doações já aprovadas — usando os services, como qualquer outro cliente da API. Idempotente:
+pode rodar várias vezes seguidas (apaga a conta demo anterior, se houver, antes de recriar —
+`onDelete: Cascade` em toda relação de `User` cuida do resto). O script vive dentro de
+`backend/scripts/` (não num `scripts/` fora da imagem) de propósito: o `Dockerfile` leva ele
+pra produção, então dá pra rodar direto no shell do Railway (`node scripts/seed-demo.js`) pra
+recriar a demo lá sem precisar colar nada à mão.
 
 ## API de resultados (Etapa 6)
 

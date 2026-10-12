@@ -3,25 +3,32 @@
 // doações) numa conta só, pronta para logar e mostrar tudo de uma vez.
 // Usa os services (não grava no banco direto, exceto onde comentado), então passa pelas
 // mesmas validações da API.
-// Uso: node scripts/seed.js [--voters=N] [--no-finish]
+//
+// Vive dentro de `backend/` (não num `scripts/` fora da imagem) de propósito: assim o
+// `Dockerfile` leva ele junto pra produção (ver `COPY scripts ./scripts`), e dá pra rodar
+// direto no shell do Railway sem precisar colar o arquivo inteiro à mão — só
+// `node scripts/seed-demo.js` (lá, as variáveis de ambiente já vêm injetadas pelo
+// Railway, sem precisar de `--env-file`; em dev local, `npm run seed` já passa esse flag).
+//
+// Uso: node scripts/seed-demo.js [--voters=N] [--no-finish]
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { config } from '../backend/src/config.js';
-import { prisma } from '../backend/src/database/index.js';
-import { authService } from '../backend/src/services/auth.service.js';
-import { institutionProfileService } from '../backend/src/services/institution-profile.service.js';
-import { sessionService } from '../backend/src/services/session.service.js';
-import { userRepository } from '../backend/src/repositories/user.repository.js';
-import { partyService } from '../backend/src/services/party.service.js';
-import { personService } from '../backend/src/services/person.service.js';
-import { candidateService } from '../backend/src/services/candidate.service.js';
-import { voteService } from '../backend/src/services/vote.service.js';
-import { productRepository } from '../backend/src/repositories/product.repository.js';
-import { paymentRepository } from '../backend/src/repositories/payment.repository.js';
-import { donationRepository } from '../backend/src/repositories/donation.repository.js';
-import { productFileStorage } from '../backend/src/storage/product-file-storage.js';
-import { buildPlaceholderPdf } from '../backend/src/reports/placeholder-pdf.js';
-import { SESSION_EXPORT_PRODUCT_ID } from '../backend/src/rules/product-rules.js';
+import { config } from '../src/config.js';
+import { prisma } from '../src/database/index.js';
+import { authService } from '../src/services/auth.service.js';
+import { institutionProfileService } from '../src/services/institution-profile.service.js';
+import { sessionService } from '../src/services/session.service.js';
+import { userRepository } from '../src/repositories/user.repository.js';
+import { partyService } from '../src/services/party.service.js';
+import { personService } from '../src/services/person.service.js';
+import { candidateService } from '../src/services/candidate.service.js';
+import { voteService } from '../src/services/vote.service.js';
+import { productRepository } from '../src/repositories/product.repository.js';
+import { paymentRepository } from '../src/repositories/payment.repository.js';
+import { donationRepository } from '../src/repositories/donation.repository.js';
+import { productFileStorage } from '../src/storage/product-file-storage.js';
+import { buildPlaceholderPdf } from '../src/reports/placeholder-pdf.js';
+import { SESSION_EXPORT_PRODUCT_ID } from '../src/rules/product-rules.js';
 
 // Conta fixa só para o seed: cada conta tem seus próprios dados agora (multiusuário),
 // então o seed precisa de um "dono" — reaproveita a mesma conta a cada execução. É essa
@@ -144,7 +151,7 @@ async function clearPreviousDemoData() {
 async function ensureDemoEbookProduct() {
   const buffer = await buildPlaceholderPdf(
     'UrnaLab — Material de apoio (exemplo)',
-    'Este é um arquivo de demonstração gerado pelo seed de desenvolvimento (scripts/seed.js) — '
+    'Este é um arquivo de demonstração gerado pelo seed de desenvolvimento (scripts/seed-demo.js) — '
     + 'substitua pelo conteúdo real do material didático (plano de aula de cidadania usando o '
     + 'UrnaLab) antes de vender de verdade.',
   );
