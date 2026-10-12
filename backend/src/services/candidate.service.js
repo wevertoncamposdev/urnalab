@@ -181,7 +181,7 @@ export const candidateService = {
   // aqui: pertencem à pessoa. Chamado só internamente pelo link público de
   // candidatura (ver public-candidacy.service.js), que passa status PENDING pra
   // exigir aprovação antes de entrar na cédula; `status` default ACTIVE fica só
-  // pro seed (scripts/seed.js), que chama este service direto sem passar por rota.
+  // pro seed (scripts/seed-demo.js), que chama este service direto sem passar por rota.
   async create(input, userId, { status = CANDIDATE_STATUS.ACTIVE } = {}) {
     const data = isPlainObject(input) ? input : {};
 

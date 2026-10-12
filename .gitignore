@@ -5,3 +5,6 @@ dist
 backend/data/photos
 backend/data/products
 backend/data/*.json
+CLAUDE.md
+.claude
+.clauderules

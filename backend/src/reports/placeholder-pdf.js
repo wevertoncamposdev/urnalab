@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 
-// PDF de uma página só, usado hoje só pelo seed de desenvolvimento (scripts/seed.js)
+// PDF de uma página só, usado hoje só pelo seed de desenvolvimento (scripts/seed-demo.js)
 // pra ter um arquivo de verdade por trás de um produto EBOOK de demonstração (Etapa
 // 15.3) — o conteúdo real do material (texto, plano de aula) é decisão de conteúdo,
 // fora do escopo deste gerador.

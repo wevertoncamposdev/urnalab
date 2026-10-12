@@ -10,7 +10,7 @@ export const productRepository = {
     return serializeDates(await prisma.product.findUnique({ where: { id } }));
   },
 
-  // Usado hoje só pelo seed de desenvolvimento (scripts/seed.js) — pra criar o ebook de
+  // Usado hoje só pelo seed de desenvolvimento (scripts/seed-demo.js) — pra criar o ebook de
   // demonstração. Idempotente por slug, pro seed poder rodar várias vezes sem duplicar.
   async upsertBySlug(slug, data) {
     return serializeDates(
