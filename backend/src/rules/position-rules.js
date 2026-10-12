@@ -6,4 +6,5 @@ export const POSITION_LIMITS = Object.freeze({
   maxDigits: 6,
   minOrder: 1,
   maxOrder: 999,
+  descriptionMaxLength: 1000,
 });

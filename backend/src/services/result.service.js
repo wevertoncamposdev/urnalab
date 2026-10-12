@@ -120,6 +120,7 @@ function tallyPosition(code, votes, candidates, partiesById, positionsByCode, pe
     code,
     label: position.label,
     digits: position.digits,
+    description: position.description ?? null,
     twoRoundEnabled: Boolean(position.twoRoundEnabled),
     totals: {
       totalVotes,

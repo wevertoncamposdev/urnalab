@@ -13,6 +13,8 @@ export const shortHash = (hash) => (hash ? `${hash.slice(0, 8)}…${hash.slice(-
 export const formatCents = (cents) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+export const formatPrice = (cents) => (cents === 0 ? 'Gratuito' : formatCents(cents));
+
 export function formatBytes(bytes) {
   if (!bytes) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];

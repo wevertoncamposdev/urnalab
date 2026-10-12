@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatTile } from '@/components/layout/StatTile';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { DuplicateSessionDialog } from '@/components/sessions/DuplicateSessionDialog';
 import { SessionAuditSection } from '@/components/sessions/SessionAuditSection';
 import { SessionCandidatesSection } from '@/components/sessions/SessionCandidatesSection';
@@ -294,7 +295,10 @@ export default function SessionDetails() {
                 <ul className="divide-y">
                   {session.positions.map((code) => (
                     <li key={code} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                      <span className="font-medium">{rules[code]?.label ?? code}</span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        {rules[code]?.label ?? code}
+                        <PositionDescriptionButton label={rules[code]?.label ?? code} description={rules[code]?.description} />
+                      </span>
                       <span className="text-xs text-muted-foreground">{rules[code]?.digits} dígitos</span>
                     </li>
                   ))}

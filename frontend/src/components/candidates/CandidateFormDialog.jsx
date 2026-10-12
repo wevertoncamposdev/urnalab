@@ -7,6 +7,7 @@ import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { fieldOfError } from '@/lib/form-errors';
 import { api } from '@/services/api';
 import { CandidateAvatar } from './CandidateAvatar';
@@ -88,7 +89,16 @@ function CandidateForm({ candidate, sessions, parties, positions, onSaved, onCan
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Cargo" htmlFor="candidate-position" error={fieldError('position')}>
+        <FormField
+          label={
+            <span className="flex items-center gap-1.5">
+              Cargo
+              <PositionDescriptionButton label={rules[position]?.label} description={rules[position]?.description} />
+            </span>
+          }
+          htmlFor="candidate-position"
+          error={fieldError('position')}
+        >
           <Select value={position} onValueChange={changePosition} disabled={identityLocked}>
             <SelectTrigger id="candidate-position"><SelectValue placeholder="Selecione o cargo" /></SelectTrigger>
             <SelectContent>

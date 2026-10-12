@@ -1,5 +1,6 @@
 import { Users, Vote } from 'lucide-react';
 import { CandidateAvatar } from '@/components/candidates/CandidateAvatar';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -29,7 +30,7 @@ function CandidateOptionRow({ candidate }) {
 // ocupando o espaço que sobraria vazio (Etapa 21): sem dialog, a foto, o
 // número (bem grande, é o que mais importa na hora de votar) e a proposta já
 // ficam visíveis ali mesmo.
-export function CandidateList({ positionLabel, candidates, selectedId, onSelect }) {
+export function CandidateList({ positionLabel, positionDescription, candidates, selectedId, onSelect }) {
   const selected = candidates.find((c) => c.id === selectedId) ?? null;
 
   return (
@@ -38,7 +39,10 @@ export function CandidateList({ positionLabel, candidates, selectedId, onSelect 
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Candidatos a
         </span>
-        <span className="font-heading text-lg font-semibold">{positionLabel}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="font-heading text-lg font-semibold">{positionLabel}</span>
+          <PositionDescriptionButton label={positionLabel} description={positionDescription} />
+        </span>
       </div>
 
       {candidates.length === 0 ? (

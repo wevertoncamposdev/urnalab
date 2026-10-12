@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
-import { formatCents } from '@/lib/format';
+import { formatCents, formatPrice } from '@/lib/format';
 import { saveBlobAsFile } from '@/lib/download';
 import { api, resolvePhotoUrl } from '@/services/api';
 
@@ -112,7 +112,7 @@ export default function Loja() {
                 <CardContent className="flex flex-col gap-4">
                   <p className="text-sm text-muted-foreground">{product.description}</p>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{formatCents(product.priceCents)}</span>
+                    <span className="font-medium">{formatPrice(product.priceCents)}</span>
                     {paid ? (
                       <Button
                         size="sm"

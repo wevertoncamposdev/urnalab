@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { PhotoCaptureField } from '@/components/candidates/PhotoCaptureField';
 import { EmptyState } from '@/components/layout/EmptyState';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { Logo } from '@/components/branding/Logo';
 import { Wordmark } from '@/components/branding/Wordmark';
 import { useAsync } from '@/hooks/useAsync';
@@ -145,6 +146,7 @@ function CandidacyHero({ info }) {
               className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium shadow-sm"
             >
               <Briefcase className="size-3.5 text-muted-foreground" /> {p.label}
+              <PositionDescriptionButton label={p.label} description={p.description} />
             </span>
           ))}
         </div>
@@ -248,7 +250,16 @@ function CandidacyForm({ token, info, onSubmitted }) {
           <SectionHeading icon={Briefcase} tone="accent">Sua candidatura</SectionHeading>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Cargo" htmlFor="candidacy-position" error={fieldError('position')}>
+            <FormField
+              label={
+                <span className="flex items-center gap-1.5">
+                  Cargo
+                  <PositionDescriptionButton label={positionRule?.label} description={positionRule?.description} />
+                </span>
+              }
+              htmlFor="candidacy-position"
+              error={fieldError('position')}
+            >
               <Select value={position} onValueChange={changePosition}>
                 <SelectTrigger id="candidacy-position"><SelectValue placeholder="Selecione o cargo" /></SelectTrigger>
                 <SelectContent>

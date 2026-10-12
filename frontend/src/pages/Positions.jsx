@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { RowActions } from '@/components/layout/RowActions';
+import { PositionDescriptionButton } from '@/components/positions/PositionDescriptionButton';
 import { PositionFormDialog } from '@/components/positions/PositionFormDialog';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/services/api';
@@ -78,6 +79,7 @@ export default function Positions() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{position.label}</span>
+                      <PositionDescriptionButton label={position.label} description={position.description} />
                       {position.twoRoundEnabled && <Badge>2º turno</Badge>}
                     </div>
                     <div className="font-mono text-xs text-muted-foreground">{position.code}</div>

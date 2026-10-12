@@ -219,6 +219,7 @@ export default function PublicVoting() {
         <div className="flex flex-1 flex-col-reverse gap-3 md:grid md:min-h-0 md:grid-cols-[1fr_380px] md:items-stretch md:gap-6">
           <CandidateList
             positionLabel={rule.label}
+            positionDescription={rule.description}
             candidates={currentCandidates}
             selectedId={selectedCandidateId}
             onSelect={setSelectedCandidateId}
@@ -227,6 +228,7 @@ export default function PublicVoting() {
           <div className="md:min-h-0 md:overflow-y-auto">
             <Urna
               positionLabel={rule.label}
+              positionDescription={rule.description}
               digits={digits}
               digitsRequired={rule.digits}
               blank={blank}
